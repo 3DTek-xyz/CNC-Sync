@@ -107,7 +107,7 @@ namespace GCodeSyncGUI
                 AutoUpdater.RemindLaterAt = 24; // Check again in 24 hours
                 
                 // Configure for GitHub releases
-                AutoUpdater.Start("https://raw.githubusercontent.com/3DTek-xyz/CNC-FTPSync/main/update.xml");
+                AutoUpdater.Start("https://3dtek-xyz.github.io/CNC-FTPSync/update.xml");
                 
                 _logService.LogInfo("AutoUpdater initialized successfully");
             }
