@@ -1,0 +1,11 @@
+# Dialog Image Placeholder  
+# This should be a 493x312 pixel bitmap (.bmp) file
+# Shows on the left side of installer welcome/completion dialogs
+# Should contain your company logo and professional branding
+# 
+# To create:
+# 1. Create a 493x312 pixel image
+# 2. Add your CBWSS logo
+# 3. Add company branding (3DTek)
+# 4. Use professional colors (blues, grays)
+# 5. Save as Dialog.bmp in this folder

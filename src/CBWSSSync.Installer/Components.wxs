@@ -81,13 +81,6 @@
             KeyPath="yes" />
     </Component>
 
-    <!-- Application Logo -->
-    <Component Id="Logo" Guid="*">
-      <File Id="CBWSS_Logo.png" 
-            Source="$(var.GCodeSyncGUI.TargetDir)CBWSS-Logo.png" 
-            KeyPath="yes" />
-    </Component>
-
   </ComponentGroup>
 
   <!-- Service components -->
@@ -113,14 +106,6 @@
     <Component Id="NLogConfig" Guid="*">
       <File Id="NLog.config" 
             Source="$(var.GCodeSyncCore.ProjectDir)NLog.config" 
-            KeyPath="yes" />
-    </Component>
-
-    <!-- Sample Configuration Files -->
-    <Component Id="SampleConfigs" Guid="*">
-      <File Id="config.json.sample" 
-            Source="config\config.json.sample" 
-            Name="config.json.sample" 
             KeyPath="yes" />
     </Component>
 

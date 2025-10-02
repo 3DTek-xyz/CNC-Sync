@@ -24,7 +24,7 @@ jobs:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
     - name: Install WiX Toolset
-      run: dotnet tool install --global wix
+      run: dotnet tool install --global wix --version 5.0.1
       
     - name: Restore NuGet packages
       run: dotnet restore

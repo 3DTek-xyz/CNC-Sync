@@ -1,0 +1,11 @@
+# Banner Image Placeholder
+# This should be a 493x58 pixel bitmap (.bmp) file
+# Shows at the top of installer dialogs
+# Should contain your company logo and product branding
+# Use your CBWSS-Logo.png as reference for design
+# 
+# To create:
+# 1. Open your CBWSS-Logo.png in image editor
+# 2. Resize to 493x58 pixels
+# 3. Add text "CBWSS-Sync Installer" if desired
+# 4. Save as Banner.bmp in this folder
