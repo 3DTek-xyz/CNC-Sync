@@ -67,16 +67,13 @@ namespace GCodeSyncCore.Services
             }
             catch (Exception ex)
             {
-                // If loading fails, log error and return default configuration
-                // Note: We can't use ILogService here as it depends on configuration
+                // If loading fails, throw exception - no defaults/fallbacks allowed
                 Console.WriteLine($"Error loading configuration: {ex.Message}");
+                throw new InvalidOperationException($"Configuration file not found or invalid at '{ConfigurationFilePath}'. Please run the GUI application first to create a valid configuration.", ex);
             }
 
-            // Return default configuration if file doesn't exist or loading fails
-            Console.WriteLine($"ConfigService.LoadConfiguration: Using default configuration");
-            var defaultConfig = GetDefaultConfiguration();
-            SaveConfiguration(defaultConfig);
-            return defaultConfig;
+            // If we get here, config file doesn't exist - throw exception
+            throw new InvalidOperationException($"Configuration file not found at '{ConfigurationFilePath}'. Please run the GUI application first to create a valid configuration.");
         }
 
         public void SaveConfiguration(SyncConfiguration config)

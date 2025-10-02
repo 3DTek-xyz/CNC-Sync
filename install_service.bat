@@ -54,13 +54,22 @@ sc description GCodeSyncService "Monitors G-Code project folders and automatical
 REM Set service failure actions (restart on failure)
 sc failure GCodeSyncService reset= 86400 actions= restart/30000/restart/60000/restart/60000
 
-REM Start the service
+echo.
+echo Service installed successfully!
+echo.
+echo IMPORTANT: Before starting the service, you must:
+echo 1. Run the GUI application (GCodeSyncGUI.exe)
+echo 2. Configure your FTP settings and folders
+echo 3. Save the configuration
+echo.
 echo Starting service...
 sc start GCodeSyncService
 
 if %errorLevel% neq 0 (
     echo WARNING: Service installed but failed to start
-    echo Check Windows Event Log for error details
+    echo This is normal if configuration hasn't been set up yet.
+    echo Run the GUI application first to create configuration.
+    echo Check Windows Event Log for detailed error information.
 ) else (
     echo.
     echo SUCCESS: G-Code Sync Service installed and started successfully!

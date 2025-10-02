@@ -734,6 +734,9 @@ namespace GCodeSyncGUI
 
             ListViewItemSorter = new DirectoryListViewColumnSorter();
             
+            // Add resize handler for responsive column widths
+            Resize += OnResize;
+            
             // Enable column sorting
             ColumnClick += new ColumnClickEventHandler((object? sender, ColumnClickEventArgs e) =>
             {
@@ -790,6 +793,22 @@ namespace GCodeSyncGUI
                 }
             });
         }
+        
+        public void ResizeColumns()
+        {
+            if (Columns.Count >= 2 && Width > 0)
+            {
+                // Give Folder column 70% of space, Modified gets 30%
+                int totalWidth = Width - SystemInformation.VerticalScrollBarWidth - 10; // Account for scrollbar and padding
+                Columns[0].Width = (int)(totalWidth * 0.7); // Folder gets more space
+                Columns[1].Width = (int)(totalWidth * 0.3); // Modified
+            }
+        }
+        
+        private void OnResize(object? sender, EventArgs e)
+        {
+            ResizeColumns();
+        }
     }
 
     public class ListViewFileBrowser : ListViewBrowser
@@ -802,6 +821,9 @@ namespace GCodeSyncGUI
             Columns.Add("Size", 80, HorizontalAlignment.Right);
 
             ListViewItemSorter = new FileListViewColumnSorter();
+            
+            // Add resize handler for responsive column widths
+            Resize += OnResize;
             
             // Enable column sorting
             ColumnClick += new ColumnClickEventHandler((object? sender, ColumnClickEventArgs e) =>
@@ -862,6 +884,24 @@ namespace GCodeSyncGUI
                     }
                 }
             });
+        }
+        
+        public void ResizeColumns()
+        {
+            if (Columns.Count >= 4 && Width > 0)
+            {
+                // Distribute width: File(50%), Type(15%), Modified(25%), Size(10%)
+                int totalWidth = Width - SystemInformation.VerticalScrollBarWidth - 10; // Account for scrollbar and padding
+                Columns[0].Width = (int)(totalWidth * 0.50); // File gets most space
+                Columns[1].Width = (int)(totalWidth * 0.15); // Type
+                Columns[2].Width = (int)(totalWidth * 0.25); // Modified
+                Columns[3].Width = (int)(totalWidth * 0.10); // Size
+            }
+        }
+        
+        private void OnResize(object? sender, EventArgs e)
+        {
+            ResizeColumns();
         }
     }
 

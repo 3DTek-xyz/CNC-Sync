@@ -26,7 +26,17 @@ namespace GCodeSyncService
                 // Initialize services
                 var configService = new ConfigurationService();
                 _logService = new LogService();
-                var config = configService.LoadConfiguration();
+                
+                SyncConfiguration config;
+                try
+                {
+                    config = configService.LoadConfiguration();
+                }
+                catch (InvalidOperationException ex)
+                {
+                    Logger.Error(ex, "Service startup failed - configuration required");
+                    throw new InvalidOperationException("G-Code Sync Service requires valid configuration. Please run the GUI application first to set up configuration.", ex);
+                }
                 
                 // Set up NLog configuration
                 var logDirectory = Path.GetDirectoryName(config.LogFilePath);

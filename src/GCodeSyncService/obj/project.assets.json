@@ -2970,19 +2970,19 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Emils\\.nuget\\packages\\": {}
+    "/Users/benharper/.nuget/packages/": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Emils\\Dropbox\\CBWSS-SYNC\\src\\GCodeSyncService\\GCodeSyncService.csproj",
+      "projectUniqueName": "/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncService/GCodeSyncService.csproj",
       "projectName": "GCodeSyncService",
-      "projectPath": "C:\\Users\\Emils\\Dropbox\\CBWSS-SYNC\\src\\GCodeSyncService\\GCodeSyncService.csproj",
-      "packagesPath": "C:\\Users\\Emils\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Emils\\Dropbox\\CBWSS-SYNC\\src\\GCodeSyncService\\obj\\",
+      "projectPath": "/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncService/GCodeSyncService.csproj",
+      "packagesPath": "/Users/benharper/.nuget/packages/",
+      "outputPath": "/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncService/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "C:\\Users\\Emils\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "/Users/benharper/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net9.0-windows"
@@ -2994,8 +2994,8 @@
         "net9.0-windows7.0": {
           "targetAlias": "net9.0-windows",
           "projectReferences": {
-            "C:\\Users\\Emils\\Dropbox\\CBWSS-SYNC\\src\\GCodeSyncCore\\GCodeSyncCore.csproj": {
-              "projectPath": "C:\\Users\\Emils\\Dropbox\\CBWSS-SYNC\\src\\GCodeSyncCore\\GCodeSyncCore.csproj"
+            "/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncCore/GCodeSyncCore.csproj": {
+              "projectPath": "/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncCore/GCodeSyncCore.csproj"
             }
           }
         }
@@ -3010,7 +3010,7 @@
         "auditLevel": "low",
         "auditMode": "direct"
       },
-      "SdkAnalysisLevel": "9.0.300"
+      "SdkAnalysisLevel": "9.0.200"
     },
     "frameworks": {
       "net9.0-windows7.0": {
@@ -3044,6 +3044,16 @@
         ],
         "assetTargetFallback": true,
         "warn": true,
+        "downloadDependencies": [
+          {
+            "name": "Microsoft.NETCore.App.Host.win-x64",
+            "version": "[9.0.3, 9.0.3]"
+          },
+          {
+            "name": "Microsoft.WindowsDesktop.App.Ref",
+            "version": "[9.0.3, 9.0.3]"
+          }
+        ],
         "frameworkReferences": {
           "Microsoft.NETCore.App": {
             "privateAssets": "all"
@@ -3052,7 +3062,7 @@
             "privateAssets": "none"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.201/PortableRuntimeIdentifierGraph.json"
       }
     },
     "runtimes": {

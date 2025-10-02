@@ -72,6 +72,9 @@ namespace GCodeSyncGUI
             _directoryBrowser.ItemActivate += OnDirectoryItemActivate;
             _directoryBrowser.SelectedIndexChanged += OnDirectorySelectionChanged;
             _fileBrowser.ItemActivate += OnFileItemActivate;
+            
+            // Set up container resize handler for responsive column sizing
+            Resize += OnContainerResize;
         }
         
         /// <summary>
@@ -280,9 +283,8 @@ namespace GCodeSyncGUI
                 LoadDirectories();
                 LoadFiles();
                 
-                // Auto-resize columns after loading
-                _directoryBrowser.AutoResizeColumns(ColumnHeaderAutoResizeStyle.HeaderSize);
-                _fileBrowser.AutoResizeColumns(ColumnHeaderAutoResizeStyle.HeaderSize);
+                // Trigger column resize for responsive layout
+                TriggerColumnResize();
             }
             catch (Exception ex)
             {
@@ -520,7 +522,17 @@ namespace GCodeSyncGUI
             }
         }
 
+        private void OnContainerResize(object? sender, EventArgs e)
+        {
+            TriggerColumnResize();
+        }
 
+        private void TriggerColumnResize()
+        {
+            // Trigger resize on both ListViews to recalculate column widths
+            _directoryBrowser?.ResizeColumns();
+            _fileBrowser?.ResizeColumns();
+        }
 
         protected override void Dispose(bool disposing)
         {
