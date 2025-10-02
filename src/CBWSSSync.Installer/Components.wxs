@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  
+  <!-- Main application components -->
+  <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+    
+    <!-- GUI Application -->
+    <Component Id="GCodeSyncGUI" Guid="*">
+      <File Id="GCodeSyncGUI.exe" 
+            Source="$(var.GCodeSyncGUI.TargetPath)" 
+            KeyPath="yes" />
+      <File Id="GCodeSyncGUI.deps.json" 
+            Source="$(var.GCodeSyncGUI.TargetDir)GCodeSyncGUI.deps.json" />
+      <File Id="GCodeSyncGUI.runtimeconfig.json" 
+            Source="$(var.GCodeSyncGUI.TargetDir)GCodeSyncGUI.runtimeconfig.json" />
+    </Component>
+
+    <!-- Core Library -->
+    <Component Id="GCodeSyncCore" Guid="*">
+      <File Id="GCodeSyncCore.dll" 
+            Source="$(var.GCodeSyncCore.TargetPath)" 
+            KeyPath="yes" />
+    </Component>
+
+    <!-- AutoUpdater.NET -->
+    <Component Id="AutoUpdaterNET" Guid="*">
+      <File Id="AutoUpdater.NET.dll" 
+            Source="$(var.GCodeSyncGUI.TargetDir)AutoUpdater.NET.dll" 
+            KeyPath="yes" />
+    </Component>
+
+    <!-- WebView2 Runtime Dependencies -->
+    <Component Id="WebView2Core" Guid="*">
+      <File Id="Microsoft.Web.WebView2.Core.dll" 
+            Source="$(var.GCodeSyncGUI.TargetDir)Microsoft.Web.WebView2.Core.dll" 
+            KeyPath="yes" />
+    </Component>
+
+    <Component Id="WebView2WinForms" Guid="*">
+      <File Id="Microsoft.Web.WebView2.WinForms.dll" 
+            Source="$(var.GCodeSyncGUI.TargetDir)Microsoft.Web.WebView2.WinForms.dll" 
+            KeyPath="yes" />
+    </Component>
+
+    <Component Id="WebView2Wpf" Guid="*">
+      <File Id="Microsoft.Web.WebView2.Wpf.dll" 
+            Source="$(var.GCodeSyncGUI.TargetDir)Microsoft.Web.WebView2.Wpf.dll" 
+            KeyPath="yes" />
+    </Component>
+
+    <Component Id="WebView2Loader" Guid="*">
+      <File Id="WebView2Loader.dll" 
+            Source="$(var.GCodeSyncGUI.TargetDir)WebView2Loader.dll" 
+            KeyPath="yes" />
+    </Component>
+
+    <!-- NLog Dependencies -->
+    <Component Id="NLog" Guid="*">
+      <File Id="NLog.dll" 
+            Source="$(var.GCodeSyncGUI.TargetDir)NLog.dll" 
+            KeyPath="yes" />
+    </Component>
+
+    <!-- ServiceController Dependencies -->
+    <Component Id="ServiceController" Guid="*">
+      <File Id="System.ServiceProcess.ServiceController.dll" 
+            Source="$(var.GCodeSyncGUI.TargetDir)System.ServiceProcess.ServiceController.dll" 
+            KeyPath="yes" />
+    </Component>
+
+    <!-- Other Dependencies -->
+    <Component Id="ObjectPool" Guid="*">
+      <File Id="Microsoft.Extensions.ObjectPool.dll" 
+            Source="$(var.GCodeSyncGUI.TargetDir)Microsoft.Extensions.ObjectPool.dll" 
+            KeyPath="yes" />
+    </Component>
+
+    <Component Id="ServiceModel" Guid="*">
+      <File Id="System.ServiceModel.Primitives.dll" 
+            Source="$(var.GCodeSyncGUI.TargetDir)System.ServiceModel.Primitives.dll" 
+            KeyPath="yes" />
+    </Component>
+
+    <!-- Application Logo -->
+    <Component Id="Logo" Guid="*">
+      <File Id="CBWSS_Logo.png" 
+            Source="$(var.GCodeSyncGUI.TargetDir)CBWSS-Logo.png" 
+            KeyPath="yes" />
+    </Component>
+
+  </ComponentGroup>
+
+  <!-- Service components -->
+  <ComponentGroup Id="ServiceComponents" Directory="INSTALLFOLDER">
+    
+    <!-- Service Executable -->
+    <Component Id="GCodeSyncService" Guid="*">
+      <File Id="GCodeSyncService.exe" 
+            Source="$(var.GCodeSyncService.TargetPath)" 
+            KeyPath="yes" />
+      <File Id="GCodeSyncService.deps.json" 
+            Source="$(var.GCodeSyncService.TargetDir)GCodeSyncService.deps.json" />
+      <File Id="GCodeSyncService.runtimeconfig.json" 
+            Source="$(var.GCodeSyncService.TargetDir)GCodeSyncService.runtimeconfig.json" />
+    </Component>
+
+  </ComponentGroup>
+
+  <!-- Configuration components -->
+  <ComponentGroup Id="ConfigurationComponents" Directory="ConfigFolder">
+    
+    <!-- NLog Configuration -->
+    <Component Id="NLogConfig" Guid="*">
+      <File Id="NLog.config" 
+            Source="$(var.GCodeSyncCore.ProjectDir)NLog.config" 
+            KeyPath="yes" />
+    </Component>
+
+    <!-- Sample Configuration Files -->
+    <Component Id="SampleConfigs" Guid="*">
+      <File Id="config.json.sample" 
+            Source="config\config.json.sample" 
+            Name="config.json.sample" 
+            KeyPath="yes" />
+    </Component>
+
+  </ComponentGroup>
+
+</Wix>
