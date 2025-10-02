@@ -1,0 +1,186 @@
+{
+  "format": 1,
+  "restore": {
+    "/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncService/GCodeSyncService.csproj": {}
+  },
+  "projects": {
+    "/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncCore/GCodeSyncCore.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncCore/GCodeSyncCore.csproj",
+        "projectName": "GCodeSyncCore",
+        "projectPath": "/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncCore/GCodeSyncCore.csproj",
+        "packagesPath": "/Users/benharper/.nuget/packages/",
+        "outputPath": "/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncCore/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/Users/benharper/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.200"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "dependencies": {
+            "NLog": {
+              "target": "Package",
+              "version": "[5.3.4, )"
+            },
+            "System.Configuration.ConfigurationManager": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "System.ServiceModel.Primitives": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.WindowsDesktop.App.Ref",
+              "version": "[9.0.3, 9.0.3]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.201/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncService/GCodeSyncService.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncService/GCodeSyncService.csproj",
+        "projectName": "GCodeSyncService",
+        "projectPath": "/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncService/GCodeSyncService.csproj",
+        "packagesPath": "/Users/benharper/.nuget/packages/",
+        "outputPath": "/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncService/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/Users/benharper/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0-windows"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0-windows7.0": {
+            "targetAlias": "net9.0-windows",
+            "projectReferences": {
+              "/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncCore/GCodeSyncCore.csproj": {
+                "projectPath": "/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncCore/GCodeSyncCore.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.200"
+      },
+      "frameworks": {
+        "net9.0-windows7.0": {
+          "targetAlias": "net9.0-windows",
+          "dependencies": {
+            "Microsoft.Extensions.Hosting": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Microsoft.Extensions.Hosting.WindowsServices": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "NLog": {
+              "target": "Package",
+              "version": "[5.3.4, )"
+            },
+            "NLog.Extensions.Logging": {
+              "target": "Package",
+              "version": "[5.3.7, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.NETCore.App.Host.win-x64",
+              "version": "[9.0.3, 9.0.3]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Ref",
+              "version": "[9.0.3, 9.0.3]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            },
+            "Microsoft.WindowsDesktop.App.WindowsForms": {
+              "privateAssets": "none"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.201/PortableRuntimeIdentifierGraph.json"
+        }
+      },
+      "runtimes": {
+        "win-x64": {
+          "#import": []
+        }
+      }
+    }
+  }
+}
