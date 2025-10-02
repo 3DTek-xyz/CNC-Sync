@@ -47,3 +47,8 @@ C:/Users/Emils/Dropbox/CBWSS-SYNC/src/GCodeSyncGUI/obj/Debug/net9.0-windows/win-
 /Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncGUI/obj/Debug/net9.0-windows/win-x64/GCodeSyncGUI.pdb
 /Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncGUI/obj/Debug/net9.0-windows/win-x64/GCodeSyncGUI.genruntimeconfig.cache
 /Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncGUI/obj/Debug/net9.0-windows/win-x64/ref/GCodeSyncGUI.dll
+/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncGUI/bin/Debug/net9.0-windows/win-x64/AutoUpdater.NET.dll
+/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncGUI/bin/Debug/net9.0-windows/win-x64/Microsoft.Web.WebView2.Core.dll
+/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncGUI/bin/Debug/net9.0-windows/win-x64/Microsoft.Web.WebView2.WinForms.dll
+/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncGUI/bin/Debug/net9.0-windows/win-x64/Microsoft.Web.WebView2.Wpf.dll
+/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncGUI/bin/Debug/net9.0-windows/win-x64/WebView2Loader.dll

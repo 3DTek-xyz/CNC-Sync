@@ -7,6 +7,7 @@ namespace GCodeSyncGUI
         private ToolStripMenuItem fileToolStripMenuItem;
         private ToolStripMenuItem closeToTrayToolStripMenuItem;
         private ToolStripMenuItem closeFullyToolStripMenuItem;
+        private ToolStripMenuItem checkForUpdatesToolStripMenuItem;
         private ToolStripMenuItem uninstallAndCloseToolStripMenuItem;
         private ToolStripMenuItem serviceToolStripMenuItem;
         private ToolStripMenuItem installServiceToolStripMenuItem;
@@ -125,6 +126,7 @@ namespace GCodeSyncGUI
             this.fileToolStripMenuItem = new ToolStripMenuItem();
             this.closeToTrayToolStripMenuItem = new ToolStripMenuItem();
             this.closeFullyToolStripMenuItem = new ToolStripMenuItem();
+            this.checkForUpdatesToolStripMenuItem = new ToolStripMenuItem();
             this.uninstallAndCloseToolStripMenuItem = new ToolStripMenuItem();
             this.serviceToolStripMenuItem = new ToolStripMenuItem();
             this.installServiceToolStripMenuItem = new ToolStripMenuItem();
@@ -144,6 +146,8 @@ namespace GCodeSyncGUI
                 this.closeToTrayToolStripMenuItem,
                 this.closeFullyToolStripMenuItem,
                 new ToolStripSeparator(),
+                this.checkForUpdatesToolStripMenuItem,
+                new ToolStripSeparator(),
                 this.uninstallAndCloseToolStripMenuItem});
                 
             // Close to Tray Menu Item
@@ -157,6 +161,12 @@ namespace GCodeSyncGUI
             this.closeFullyToolStripMenuItem.Size = new Size(200, 22);
             this.closeFullyToolStripMenuItem.Text = "Close &Fully";
             this.closeFullyToolStripMenuItem.Click += CloseFully_Click;
+            
+            // Check for Updates Menu Item
+            this.checkForUpdatesToolStripMenuItem.Name = "checkForUpdatesToolStripMenuItem";
+            this.checkForUpdatesToolStripMenuItem.Size = new Size(200, 22);
+            this.checkForUpdatesToolStripMenuItem.Text = "Check for &Updates";
+            this.checkForUpdatesToolStripMenuItem.Click += CheckForUpdates_Click;
             
             // Uninstall and Close Menu Item
             this.uninstallAndCloseToolStripMenuItem.Name = "uninstallAndCloseToolStripMenuItem";
@@ -605,6 +615,7 @@ namespace GCodeSyncGUI
             var trayUninstallMenuItem = new ToolStripMenuItem("&Uninstall Service", null, UninstallService_Click);
             var trayStartMenuItem = new ToolStripMenuItem("&Start Service", null, StartService_Click);
             var trayStopMenuItem = new ToolStripMenuItem("S&top Service", null, StopService_Click);
+            var trayCheckUpdatesMenuItem = new ToolStripMenuItem("Check for &Updates", null, CheckForUpdates_Click);
             var trayExitMenuItem = new ToolStripMenuItem("E&xit", null, CloseFully_Click);
             
             this.trayContextMenu.Items.AddRange(new ToolStripItem[] {
@@ -615,6 +626,8 @@ namespace GCodeSyncGUI
                 new ToolStripSeparator(),
                 trayStartMenuItem,
                 trayStopMenuItem,
+                new ToolStripSeparator(),
+                trayCheckUpdatesMenuItem,
                 new ToolStripSeparator(),
                 trayExitMenuItem
             });

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<item>
+    <version>1.1.0.0</version>
+    <url>https://github.com/3DTek-xyz/CNC-FTPSync/releases/download/v1.1.0/CBWSS-Sync-Setup-v1.1.0.exe</url>
+    <changelog>https://github.com/3DTek-xyz/CNC-FTPSync/releases/tag/v1.1.0</changelog>
+    <mandatory>false</mandatory>
+    <args>/SILENT</args>
+    <checksum algorithm="SHA512">ACTUAL_FILE_CHECKSUM_HERE</checksum>
+</item>

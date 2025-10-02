@@ -3,6 +3,7 @@ using GCodeSyncCore.Services;
 using System.ServiceProcess;
 using System.Diagnostics;
 using GCodeSyncGUI.Resources;
+using AutoUpdaterDotNET;
 
 namespace GCodeSyncGUI
 {
@@ -53,6 +54,7 @@ namespace GCodeSyncGUI
             InitializeNotifyIcon();
             LoadConfiguration();
             SetupEventHandlers();
+            InitializeAutoUpdater();
             
             // Auto-detect service status and start standalone if needed
             _ = Task.Run(AutoDetectAndStartMonitoring);
@@ -88,6 +90,111 @@ namespace GCodeSyncGUI
             _notifyIcon.DoubleClick += ShowForm_Click;
 
             UpdateNotifyIconStatus("Stopped");
+        }
+
+        private void InitializeAutoUpdater()
+        {
+            try
+            {
+                // Configure AutoUpdater.NET
+                AutoUpdater.ApplicationExitEvent += AutoUpdater_ApplicationExitEvent;
+                AutoUpdater.CheckForUpdateEvent += AutoUpdater_CheckForUpdateEvent;
+                
+                // Configure update settings
+                AutoUpdater.ShowSkipButton = true;
+                AutoUpdater.ShowRemindLaterButton = true;
+                AutoUpdater.RemindLaterTimeSpan = RemindLaterFormat.Hours;
+                AutoUpdater.RemindLaterAt = 24; // Check again in 24 hours
+                
+                // Configure for GitHub releases
+                AutoUpdater.Start("https://raw.githubusercontent.com/3DTek-xyz/CNC-FTPSync/main/update.xml");
+                
+                _logService.LogInfo("AutoUpdater initialized successfully");
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError($"Failed to initialize AutoUpdater: {ex.Message}");
+            }
+        }
+
+        private void AutoUpdater_ApplicationExitEvent()
+        {
+            // Handle application exit for updates
+            _logService.LogInfo("AutoUpdater requesting application exit for update");
+            
+            // Stop the service if it's running
+            try
+            {
+                if (IsServiceInstalled("GCodeSyncService"))
+                {
+                    using var service = new ServiceController("GCodeSyncService");
+                    if (service.Status == ServiceControllerStatus.Running)
+                    {
+                        _logService.LogInfo("Stopping service for update");
+                        service.Stop();
+                        service.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(30));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError($"Error stopping service for update: {ex.Message}");
+            }
+            
+            // Exit the application
+            Application.Exit();
+        }
+
+        private void AutoUpdater_CheckForUpdateEvent(UpdateInfoEventArgs args)
+        {
+            try
+            {
+                if (args.Error == null)
+                {
+                    if (args.IsUpdateAvailable)
+                    {
+                        _logService.LogInfo($"Update available: Version {args.CurrentVersion} -> {args.InstalledVersion}");
+                        
+                        var result = MessageBox.Show(
+                            $"A new version ({args.CurrentVersion}) is available!\n\n" +
+                            $"Current Version: {args.InstalledVersion}\n" +
+                            $"New Version: {args.CurrentVersion}\n\n" +
+                            $"Release Notes:\n{args.ChangelogURL}\n\n" +
+                            $"Would you like to download and install the update now?",
+                            "CBWSS-Sync Update Available",
+                            MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Information);
+
+                        if (result == DialogResult.Yes)
+                        {
+                            try
+                            {
+                                if (AutoUpdater.DownloadUpdate(args))
+                                {
+                                    Application.Exit();
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logService.LogError($"Error downloading update: {ex.Message}");
+                                MessageBox.Show($"Failed to download update: {ex.Message}", "Update Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        _logService.LogInfo("No updates available - application is up to date");
+                    }
+                }
+                else
+                {
+                    _logService.LogError($"Update check failed: {args.Error.Message}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError($"Error during update check: {ex.Message}");
+            }
         }
 
         private void UpdateNotifyIconStatus(string status)
@@ -2059,6 +2166,39 @@ namespace GCodeSyncGUI
             catch (Exception ex)
             {
                 _logService.LogError($"Error showing application from tray: {ex.Message}");
+            }
+        }
+
+        private void CheckForUpdates_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                _logService.LogInfo("Manual update check initiated by user");
+                
+                // Force a manual update check
+                AutoUpdater.CheckForUpdateEvent += (args) => {
+                    if (args.Error != null)
+                    {
+                        MessageBox.Show($"Error checking for updates: {args.Error.Message}", 
+                            "Update Check Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                    
+                    if (!args.IsUpdateAvailable)
+                    {
+                        MessageBox.Show("You have the latest version of CBWSS-Sync!", 
+                            "No Updates Available", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    // If update is available, the normal update dialog will show
+                };
+                
+                AutoUpdater.Start("https://raw.githubusercontent.com/3DTek-xyz/CNC-FTPSync/main/update.xml");
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError($"Error during manual update check: {ex.Message}");
+                MessageBox.Show($"Error checking for updates: {ex.Message}", 
+                    "Update Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

@@ -10,15 +10,3 @@
 /Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncCore/bin/Release/net9.0/GCodeSyncCore.dll
 /Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncCore/bin/Release/net9.0/GCodeSyncCore.pdb
 /Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncCore/obj/Release/net9.0/ref/GCodeSyncCore.dll
-C:\Users\Emils\Dropbox\CBWSS-SYNC\src\GCodeSyncCore\bin\Release\net9.0\GCodeSyncCore.deps.json
-C:\Users\Emils\Dropbox\CBWSS-SYNC\src\GCodeSyncCore\bin\Release\net9.0\GCodeSyncCore.dll
-C:\Users\Emils\Dropbox\CBWSS-SYNC\src\GCodeSyncCore\bin\Release\net9.0\GCodeSyncCore.pdb
-C:\Users\Emils\Dropbox\CBWSS-SYNC\src\GCodeSyncCore\obj\Release\net9.0\GCodeSyncCore.csproj.AssemblyReference.cache
-C:\Users\Emils\Dropbox\CBWSS-SYNC\src\GCodeSyncCore\obj\Release\net9.0\GCodeSyncCore.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\Emils\Dropbox\CBWSS-SYNC\src\GCodeSyncCore\obj\Release\net9.0\GCodeSyncCore.AssemblyInfoInputs.cache
-C:\Users\Emils\Dropbox\CBWSS-SYNC\src\GCodeSyncCore\obj\Release\net9.0\GCodeSyncCore.AssemblyInfo.cs
-C:\Users\Emils\Dropbox\CBWSS-SYNC\src\GCodeSyncCore\obj\Release\net9.0\GCodeSyncCore.csproj.CoreCompileInputs.cache
-C:\Users\Emils\Dropbox\CBWSS-SYNC\src\GCodeSyncCore\obj\Release\net9.0\GCodeSyncCore.dll
-C:\Users\Emils\Dropbox\CBWSS-SYNC\src\GCodeSyncCore\obj\Release\net9.0\refint\GCodeSyncCore.dll
-C:\Users\Emils\Dropbox\CBWSS-SYNC\src\GCodeSyncCore\obj\Release\net9.0\GCodeSyncCore.pdb
-C:\Users\Emils\Dropbox\CBWSS-SYNC\src\GCodeSyncCore\obj\Release\net9.0\ref\GCodeSyncCore.dll

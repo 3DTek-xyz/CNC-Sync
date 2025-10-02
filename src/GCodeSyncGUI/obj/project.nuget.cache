@@ -1,10 +1,12 @@
 {
   "version": 2,
-  "dgSpecHash": "oz5H7+R4NWc=",
+  "dgSpecHash": "48nPX8l/ixY=",
   "success": true,
   "projectFilePath": "/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncGUI/GCodeSyncGUI.csproj",
   "expectedPackageFiles": [
+    "/Users/benharper/.nuget/packages/autoupdater.net.official/1.9.2/autoupdater.net.official.1.9.2.nupkg.sha512",
     "/Users/benharper/.nuget/packages/microsoft.extensions.objectpool/6.0.16/microsoft.extensions.objectpool.6.0.16.nupkg.sha512",
+    "/Users/benharper/.nuget/packages/microsoft.web.webview2/1.0.2592.51/microsoft.web.webview2.1.0.2592.51.nupkg.sha512",
     "/Users/benharper/.nuget/packages/nlog/5.3.4/nlog.5.3.4.nupkg.sha512",
     "/Users/benharper/.nuget/packages/system.configuration.configurationmanager/9.0.0/system.configuration.configurationmanager.9.0.0.nupkg.sha512",
     "/Users/benharper/.nuget/packages/system.diagnostics.eventlog/9.0.0/system.diagnostics.eventlog.9.0.0.nupkg.sha512",
@@ -15,12 +17,12 @@
     "/Users/benharper/.nuget/packages/system.security.cryptography.xml/6.0.1/system.security.cryptography.xml.6.0.1.nupkg.sha512",
     "/Users/benharper/.nuget/packages/system.servicemodel.primitives/8.0.0/system.servicemodel.primitives.8.0.0.nupkg.sha512",
     "/Users/benharper/.nuget/packages/system.serviceprocess.servicecontroller/9.0.0/system.serviceprocess.servicecontroller.9.0.0.nupkg.sha512",
-    "/Users/benharper/.nuget/packages/microsoft.netcore.app.runtime.win-x64/9.0.3/microsoft.netcore.app.runtime.win-x64.9.0.3.nupkg.sha512",
-    "/Users/benharper/.nuget/packages/microsoft.windowsdesktop.app.ref/9.0.3/microsoft.windowsdesktop.app.ref.9.0.3.nupkg.sha512",
-    "/Users/benharper/.nuget/packages/microsoft.windowsdesktop.app.runtime.win-x64/9.0.3/microsoft.windowsdesktop.app.runtime.win-x64.9.0.3.nupkg.sha512",
     "/Users/benharper/.nuget/packages/microsoft.aspnetcore.app.runtime.win-x64/9.0.3/microsoft.aspnetcore.app.runtime.win-x64.9.0.3.nupkg.sha512",
     "/Users/benharper/.nuget/packages/microsoft.netcore.app.crossgen2.osx-arm64/9.0.3/microsoft.netcore.app.crossgen2.osx-arm64.9.0.3.nupkg.sha512",
-    "/Users/benharper/.nuget/packages/microsoft.netcore.app.host.win-x64/9.0.3/microsoft.netcore.app.host.win-x64.9.0.3.nupkg.sha512"
+    "/Users/benharper/.nuget/packages/microsoft.netcore.app.host.win-x64/9.0.3/microsoft.netcore.app.host.win-x64.9.0.3.nupkg.sha512",
+    "/Users/benharper/.nuget/packages/microsoft.netcore.app.runtime.win-x64/9.0.3/microsoft.netcore.app.runtime.win-x64.9.0.3.nupkg.sha512",
+    "/Users/benharper/.nuget/packages/microsoft.windowsdesktop.app.ref/9.0.3/microsoft.windowsdesktop.app.ref.9.0.3.nupkg.sha512",
+    "/Users/benharper/.nuget/packages/microsoft.windowsdesktop.app.runtime.win-x64/9.0.3/microsoft.windowsdesktop.app.runtime.win-x64.9.0.3.nupkg.sha512"
   ],
   "logs": []
 }
