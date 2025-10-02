@@ -34,7 +34,7 @@ namespace GCodeSyncCore.Services
             {
                 _logger.LogInfo($"Starting processing of project folder: {projectPath}");
 
-                // Step 1: Analyze the project
+                // Step 1: Analyze the project (using original path)
                 var projectInfo = AnalyzeProject(projectPath);
                 if (string.IsNullOrEmpty(projectInfo.LatestRevision))
                 {
@@ -45,29 +45,35 @@ namespace GCodeSyncCore.Services
 
                 _logger.LogInfo($"Project: {projectInfo.ProjectName}, Latest Revision: {projectInfo.LatestRevision}");
 
-                // Step 2: Create and clean subdirectories
+                // Step 2: Copy entire project to FTP working area
+                await CopyProjectToFtpWorkingAreaAsync(projectInfo);
+
+                // Step 3: Re-analyze project in FTP working area to get correct file paths
+                projectInfo = AnalyzeProject(projectInfo.FtpWorkingPath);
+                projectInfo.ProjectName = Path.GetFileName(projectPath); // Preserve original project name
+
+                // Step 4: Create and clean subdirectories (in FTP working area)
                 await CreateAndCleanSubdirectoriesAsync(projectInfo);
 
-                // Step 3: Move NC files
+                // Step 5: Move NC files (in FTP working area)
                 await MoveNcFilesAsync(projectInfo);
 
-                // Step 4: Move CYC files and process coordinates
+                // Step 6: Move CYC files and process coordinates (in FTP working area)
                 await MoveCycFilesAsync(projectInfo);
 
-                // Step 5: Move JPG files
+                // Step 7: Move JPG files (in FTP working area)
                 await MoveJpgFilesAsync(projectInfo);
 
-                // Step 6: Move XML files
+                // Step 8: Move XML files (in FTP working area)
                 await MoveXmlFilesAsync(projectInfo);
 
-                // Step 7: Process CYC coordinates and convert to UTF-8
+                // Step 9: Process CYC coordinates and convert to UTF-8 (in FTP working area)
                 await ProcessCycCoordinatesAsync(projectInfo);
 
-                // Step 8: Create FTP upload folder and copy files
-                await CreateFtpUploadFolderAsync(projectInfo);
+                // Files are now ready in FTP working area - no additional copying needed
 
                 result.Success = true;
-                result.Message = $"Successfully processed project: {projectInfo.ProjectName}-{projectInfo.LatestRevision}";
+                result.Message = $"Successfully processed project: {projectInfo.ProjectName}-{projectInfo.LatestRevision} (originals preserved)";
                 _logger.LogInfo(result.Message);
             }
             catch (Exception ex)
@@ -150,8 +156,9 @@ namespace GCodeSyncCore.Services
 
         private async Task CreateAndCleanSubdirectoriesAsync(ProjectInfo projectInfo)
         {
-            var ncPath = Path.Combine(projectInfo.ProjectPath, "NC");
-            var autoLabelPath = Path.Combine(projectInfo.ProjectPath, "AutoStickLabel");
+            var workingPath = string.IsNullOrEmpty(projectInfo.FtpWorkingPath) ? projectInfo.ProjectPath : projectInfo.FtpWorkingPath;
+            var ncPath = Path.Combine(workingPath, "NC");
+            var autoLabelPath = Path.Combine(workingPath, "AutoStickLabel");
 
             var paths = new[] { ncPath, autoLabelPath };
 
@@ -180,12 +187,13 @@ namespace GCodeSyncCore.Services
 
         private async Task MoveNcFilesAsync(ProjectInfo projectInfo)
         {
-            var ncPath = Path.Combine(projectInfo.ProjectPath, "NC");
+            var workingPath = string.IsNullOrEmpty(projectInfo.FtpWorkingPath) ? projectInfo.ProjectPath : projectInfo.FtpWorkingPath;
+            var ncPath = Path.Combine(workingPath, "NC");
             var moveCount = 0;
 
-            // Search for NC files in project directory using revision pattern (like PowerShell)
+            // Search for NC files in working directory using revision pattern (like PowerShell)
             var searchPattern = $"*R{projectInfo.LatestRevision}.nc";
-            var ncFiles = Directory.GetFiles(projectInfo.ProjectPath, searchPattern, SearchOption.AllDirectories);
+            var ncFiles = Directory.GetFiles(workingPath, searchPattern, SearchOption.AllDirectories);
 
             foreach (var ncFile in ncFiles)
             {
@@ -210,12 +218,13 @@ namespace GCodeSyncCore.Services
 
         private async Task MoveCycFilesAsync(ProjectInfo projectInfo)
         {
-            var autoLabelPath = Path.Combine(projectInfo.ProjectPath, "AutoStickLabel");
+            var workingPath = string.IsNullOrEmpty(projectInfo.FtpWorkingPath) ? projectInfo.ProjectPath : projectInfo.FtpWorkingPath;
+            var autoLabelPath = Path.Combine(workingPath, "AutoStickLabel");
             var moveCount = 0;
 
-            // Search for CYC files in project directory using revision pattern (like PowerShell)
+            // Search for CYC files in working directory using revision pattern (like PowerShell)
             var searchPattern = $"*R{projectInfo.LatestRevision}.cyc";
-            var cycFiles = Directory.GetFiles(projectInfo.ProjectPath, searchPattern, SearchOption.AllDirectories);
+            var cycFiles = Directory.GetFiles(workingPath, searchPattern, SearchOption.AllDirectories);
 
             foreach (var cycFile in cycFiles)
             {
@@ -240,11 +249,12 @@ namespace GCodeSyncCore.Services
 
         private async Task MoveJpgFilesAsync(ProjectInfo projectInfo)
         {
-            var autoLabelPath = Path.Combine(projectInfo.ProjectPath, "AutoStickLabel");
+            var workingPath = string.IsNullOrEmpty(projectInfo.FtpWorkingPath) ? projectInfo.ProjectPath : projectInfo.FtpWorkingPath;
+            var autoLabelPath = Path.Combine(workingPath, "AutoStickLabel");
             var moveCount = 0;
 
-            // Search for JPG files in project directory (like PowerShell)
-            var jpgFiles = Directory.GetFiles(projectInfo.ProjectPath, "*.JPG", SearchOption.AllDirectories);
+            // Search for JPG files in working directory (like PowerShell)
+            var jpgFiles = Directory.GetFiles(workingPath, "*.JPG", SearchOption.AllDirectories);
 
             foreach (var jpgFile in jpgFiles)
             {
@@ -269,11 +279,12 @@ namespace GCodeSyncCore.Services
 
         private async Task MoveXmlFilesAsync(ProjectInfo projectInfo)
         {
-            var autoLabelPath = Path.Combine(projectInfo.ProjectPath, "AutoStickLabel");
+            var workingPath = string.IsNullOrEmpty(projectInfo.FtpWorkingPath) ? projectInfo.ProjectPath : projectInfo.FtpWorkingPath;
+            var autoLabelPath = Path.Combine(workingPath, "AutoStickLabel");
             var moveCount = 0;
 
-            // Search for XML files in project directory (like PowerShell)
-            var xmlFiles = Directory.GetFiles(projectInfo.ProjectPath, "*.xml", SearchOption.AllDirectories);
+            // Search for XML files in working directory (like PowerShell)
+            var xmlFiles = Directory.GetFiles(workingPath, "*.xml", SearchOption.AllDirectories);
 
             foreach (var xmlFile in xmlFiles)
             {
@@ -298,7 +309,8 @@ namespace GCodeSyncCore.Services
 
         private async Task ProcessCycCoordinatesAsync(ProjectInfo projectInfo)
         {
-            var autoLabelPath = Path.Combine(projectInfo.ProjectPath, "AutoStickLabel");
+            var workingPath = string.IsNullOrEmpty(projectInfo.FtpWorkingPath) ? projectInfo.ProjectPath : projectInfo.FtpWorkingPath;
+            var autoLabelPath = Path.Combine(workingPath, "AutoStickLabel");
             var cycFiles = Directory.GetFiles(autoLabelPath, "*.cyc")
                 .Where(f => !Path.GetFileName(f).StartsWith("ORIGINAL_"))
                 .ToList();
@@ -352,6 +364,37 @@ namespace GCodeSyncCore.Services
             }
 
             _logger.LogInfo($"Processed {processedCount} CYC files with coordinate updates and UTF-8 conversion");
+            await Task.CompletedTask;
+        }
+
+        private async Task CopyProjectToFtpWorkingAreaAsync(ProjectInfo projectInfo)
+        {
+            try
+            {
+                var ftpFolderName = $"{projectInfo.ProjectName}-{projectInfo.LatestRevision}";
+                var ftpWorkingPath = Path.Combine(_config.FtpUploadFolder, ftpFolderName);
+
+                if (Directory.Exists(ftpWorkingPath))
+                {
+                    _logger.LogWarning($"FTP working folder already exists, cleaning: {ftpWorkingPath}");
+                    Directory.Delete(ftpWorkingPath, true);
+                }
+
+                Directory.CreateDirectory(ftpWorkingPath);
+                _logger.LogInfo($"Created FTP working folder: {ftpWorkingPath}");
+
+                // Copy entire project to FTP working area
+                CopyDirectory(projectInfo.ProjectPath, ftpWorkingPath, true);
+                projectInfo.FtpWorkingPath = ftpWorkingPath;
+                
+                _logger.LogInfo($"Successfully copied entire project to FTP working area: {ftpFolderName}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Error copying project to FTP working area", ex);
+                throw;
+            }
+
             await Task.CompletedTask;
         }
 

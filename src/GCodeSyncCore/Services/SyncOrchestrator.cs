@@ -49,6 +49,7 @@ namespace GCodeSyncCore.Services
 
         public async Task StartAsync()
         {
+            var orchestratorStopwatch = System.Diagnostics.Stopwatch.StartNew();
             try
             {
                 if (IsRunning)
@@ -57,34 +58,43 @@ namespace GCodeSyncCore.Services
                     return;
                 }
 
-                _logger.LogInfo("Starting G-Code Sync orchestrator...");
+                _logger.LogInfo($"STARTUP TIMING: Starting G-Code Sync orchestrator at {DateTime.Now:HH:mm:ss.fff}");
                 SetStatus("Starting...");
 
                 // Reload configuration
+                _logger.LogInfo($"STARTUP TIMING: Loading configuration at {orchestratorStopwatch.ElapsedMilliseconds}ms");
                 _config = _configService.LoadConfiguration();
+                _logger.LogInfo($"STARTUP TIMING: Configuration loaded at {orchestratorStopwatch.ElapsedMilliseconds}ms");
 
                 // Ensure required directories exist
+                _logger.LogInfo($"STARTUP TIMING: Ensuring directories exist at {orchestratorStopwatch.ElapsedMilliseconds}ms");
                 EnsureDirectoriesExist();
+                _logger.LogInfo($"STARTUP TIMING: Directory check completed at {orchestratorStopwatch.ElapsedMilliseconds}ms");
 
                 // Test FTP connection
+                _logger.LogInfo($"STARTUP TIMING: Starting FTP connection test at {orchestratorStopwatch.ElapsedMilliseconds}ms");
                 SetStatus("Testing FTP connection...");
                 if (!await _ftpService.TestConnectionAsync())
                 {
                     throw new InvalidOperationException("FTP connection test failed. Please check configuration.");
                 }
+                _logger.LogInfo($"STARTUP TIMING: FTP connection test completed at {orchestratorStopwatch.ElapsedMilliseconds}ms");
 
                 // Initialize and start folder watcher
+                _logger.LogInfo($"STARTUP TIMING: Creating folder watcher at {orchestratorStopwatch.ElapsedMilliseconds}ms");
                 _folderWatcher = new FolderWatcherService(_logger, _config);
                 _folderWatcher.FolderCreated += OnFolderCreated;
+                _logger.LogInfo($"STARTUP TIMING: Starting folder watcher at {orchestratorStopwatch.ElapsedMilliseconds}ms");
                 _folderWatcher.Start();
+                _logger.LogInfo($"STARTUP TIMING: Folder watcher started at {orchestratorStopwatch.ElapsedMilliseconds}ms");
 
                 SetStatus("Running - Monitoring for new folders");
-                _logger.LogInfo($"G-Code Sync orchestrator started. Monitoring: {_config.WatchFolder}");
+                _logger.LogInfo($"STARTUP TIMING: G-Code Sync orchestrator startup completed at {orchestratorStopwatch.ElapsedMilliseconds}ms. Monitoring: {_config.WatchFolder}");
             }
             catch (Exception ex)
             {
                 SetStatus("Failed to start");
-                _logger.LogError("Failed to start sync orchestrator", ex);
+                _logger.LogError($"STARTUP TIMING: Failed to start sync orchestrator at {orchestratorStopwatch.ElapsedMilliseconds}ms", ex);
                 throw;
             }
         }

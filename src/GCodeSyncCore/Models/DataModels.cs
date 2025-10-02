@@ -16,6 +16,7 @@ namespace GCodeSyncCore.Models
     public class ProjectInfo
     {
         public string ProjectPath { get; set; } = string.Empty;
+        public string FtpWorkingPath { get; set; } = string.Empty;
         public string ProjectName { get; set; } = string.Empty;
         public string LatestRevision { get; set; } = string.Empty;
         public List<FileInfo> CycFiles { get; set; } = new();

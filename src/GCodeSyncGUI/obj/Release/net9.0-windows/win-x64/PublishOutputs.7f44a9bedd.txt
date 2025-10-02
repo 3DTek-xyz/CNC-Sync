@@ -1,0 +1,14 @@
+/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncGUI/bin/Release/net9.0-windows/win-x64/publish/NLog.config
+/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncGUI/bin/Release/net9.0-windows/win-x64/publish/CBWSS-Logo.png
+/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncGUI/bin/Release/net9.0-windows/win-x64/publish/GCodeSyncGUI.exe
+/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncGUI/bin/Release/net9.0-windows/win-x64/publish/GCodeSyncGUI.deps.json
+/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncGUI/bin/Release/net9.0-windows/win-x64/publish/GCodeSyncGUI.runtimeconfig.json
+/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncGUI/bin/Release/net9.0-windows/win-x64/publish/GCodeSyncGUI.pdb
+/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncGUI/bin/Release/net9.0-windows/win-x64/publish/GCodeSyncCore.pdb
+/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncGUI/bin/Release/net9.0-windows/win-x64/publish/System.Diagnostics.EventLog.Messages.dll
+/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncGUI/bin/Release/net9.0-windows/win-x64/publish/Microsoft.Extensions.ObjectPool.dll
+/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncGUI/bin/Release/net9.0-windows/win-x64/publish/NLog.dll
+/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncGUI/bin/Release/net9.0-windows/win-x64/publish/System.ServiceModel.Primitives.dll
+/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncGUI/bin/Release/net9.0-windows/win-x64/publish/System.ServiceProcess.ServiceController.dll
+/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncGUI/bin/Release/net9.0-windows/win-x64/publish/GCodeSyncCore.dll
+/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/GCodeSyncGUI/bin/Release/net9.0-windows/win-x64/publish/GCodeSyncGUI.dll

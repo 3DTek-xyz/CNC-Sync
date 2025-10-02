@@ -2,6 +2,7 @@ using GCodeSyncCore.Models;
 using GCodeSyncCore.Services;
 using System.ServiceProcess;
 using System.Diagnostics;
+using GCodeSyncGUI.Resources;
 
 namespace GCodeSyncGUI
 {
@@ -46,6 +47,9 @@ namespace GCodeSyncGUI
             _logService = new LogService();
             _config = _configService.LoadConfiguration();
             
+            // Set the application icon
+            this.Icon = IconLoader.LoadApplicationIcon();
+            
             InitializeNotifyIcon();
             LoadConfiguration();
             SetupEventHandlers();
@@ -74,6 +78,9 @@ namespace GCodeSyncGUI
             contextMenu.Items.Add("-");
             contextMenu.Items.Add("Start Service", null, StartService_Click);
             contextMenu.Items.Add("Stop Service", null, StopService_Click);
+            contextMenu.Items.Add("-");
+            contextMenu.Items.Add("Install Service", null, InstallService_Click);
+            contextMenu.Items.Add("Uninstall Service", null, UninstallService_Click);
             contextMenu.Items.Add("-");
             contextMenu.Items.Add("Exit", null, Exit_Click);
 
@@ -107,27 +114,38 @@ namespace GCodeSyncGUI
 
         private async Task AutoDetectAndStartMonitoring()
         {
+            var startupStopwatch = System.Diagnostics.Stopwatch.StartNew();
             try
             {
+                _logService.LogInfo($"STARTUP TIMING: AutoDetectAndStartMonitoring started at {DateTime.Now:HH:mm:ss.fff}");
+                
                 // Wait a bit for the UI to fully initialize
+                _logService.LogInfo($"STARTUP TIMING: Starting 2-second UI delay at {startupStopwatch.ElapsedMilliseconds}ms");
                 await Task.Delay(2000);
+                _logService.LogInfo($"STARTUP TIMING: UI delay completed at {startupStopwatch.ElapsedMilliseconds}ms");
                 
                 // Check if Windows Service is running
+                _logService.LogInfo($"STARTUP TIMING: Starting service status check at {startupStopwatch.ElapsedMilliseconds}ms");
                 bool serviceRunning = false;
+                bool serviceInstalled = false;
                 try
                 {
                     using var service = new ServiceController("GCodeSyncService");
+                    serviceInstalled = true;
                     serviceRunning = service.Status == ServiceControllerStatus.Running;
+                    _logService.LogInfo($"STARTUP TIMING: Service status check completed at {startupStopwatch.ElapsedMilliseconds}ms - Installed: {serviceInstalled}, Running: {serviceRunning}, Status: {service.Status}");
                 }
-                catch
+                catch (Exception serviceEx)
                 {
                     // Service not installed or accessible
                     serviceRunning = false;
+                    serviceInstalled = false;
+                    _logService.LogInfo($"STARTUP TIMING: Service status check failed at {startupStopwatch.ElapsedMilliseconds}ms - Service not installed or accessible: {serviceEx.Message}");
                 }
 
                 if (!serviceRunning)
                 {
-                    _logService.LogInfo("Windows Service not running - starting standalone mode automatically");
+                    _logService.LogInfo($"STARTUP TIMING: Windows Service not running - starting standalone mode at {startupStopwatch.ElapsedMilliseconds}ms");
                     
                     // Start standalone mode on UI thread
                     if (InvokeRequired)
@@ -138,16 +156,19 @@ namespace GCodeSyncGUI
                     {
                         StartStandaloneMode();
                     }
+                    _logService.LogInfo($"STARTUP TIMING: Standalone mode start initiated at {startupStopwatch.ElapsedMilliseconds}ms");
                 }
                 else
                 {
-                    _logService.LogInfo("Windows Service is running - monitoring active via service");
+                    _logService.LogInfo($"STARTUP TIMING: Windows Service is running - monitoring active via service at {startupStopwatch.ElapsedMilliseconds}ms");
                     UpdateNotifyIconStatus("Running via Service");
                 }
+                
+                _logService.LogInfo($"STARTUP TIMING: AutoDetectAndStartMonitoring completed at {startupStopwatch.ElapsedMilliseconds}ms");
             }
             catch (Exception ex)
             {
-                _logService.LogError("Error during auto-detection", ex);
+                _logService.LogError($"STARTUP TIMING: Error during auto-detection at {startupStopwatch.ElapsedMilliseconds}ms", ex);
             }
         }
 
@@ -277,8 +298,11 @@ namespace GCodeSyncGUI
 
         private async void StartStandaloneMode()
         {
+            var standaloneStopwatch = System.Diagnostics.Stopwatch.StartNew();
             try
             {
+                _logService.LogInfo($"STARTUP TIMING: StartStandaloneMode started at {DateTime.Now:HH:mm:ss.fff}");
+                
                 if (_orchestrator?.IsRunning == true)
                 {
                     MessageBox.Show("Standalone mode is already running.", "Already Running", 
@@ -290,15 +314,25 @@ namespace GCodeSyncGUI
                 btnStopStandalone.Enabled = true;
 
                 // Initialize orchestrator
+                _logService.LogInfo($"STARTUP TIMING: Creating GCodeProcessorService at {standaloneStopwatch.ElapsedMilliseconds}ms");
                 var gCodeProcessor = new GCodeProcessorService(_logService, _config);
+                _logService.LogInfo($"STARTUP TIMING: GCodeProcessorService created at {standaloneStopwatch.ElapsedMilliseconds}ms");
+                
+                _logService.LogInfo($"STARTUP TIMING: Creating FtpService at {standaloneStopwatch.ElapsedMilliseconds}ms");
                 var ftpService = new FtpService(_logService, _config);
+                _logService.LogInfo($"STARTUP TIMING: FtpService created at {standaloneStopwatch.ElapsedMilliseconds}ms");
+                
+                _logService.LogInfo($"STARTUP TIMING: Creating SyncOrchestrator at {standaloneStopwatch.ElapsedMilliseconds}ms");
                 _orchestrator = new SyncOrchestrator(_configService, _logService, gCodeProcessor, ftpService);
+                _logService.LogInfo($"STARTUP TIMING: SyncOrchestrator created at {standaloneStopwatch.ElapsedMilliseconds}ms");
 
                 _orchestrator.StatusChanged += (status) => UpdateNotifyIconStatus(status);
                 
+                _logService.LogInfo($"STARTUP TIMING: Starting orchestrator at {standaloneStopwatch.ElapsedMilliseconds}ms");
                 await _orchestrator.StartAsync();
+                _logService.LogInfo($"STARTUP TIMING: Orchestrator started at {standaloneStopwatch.ElapsedMilliseconds}ms");
                 
-                _logService.LogInfo("Standalone mode started from GUI");
+                _logService.LogInfo($"STARTUP TIMING: Standalone mode completed at {standaloneStopwatch.ElapsedMilliseconds}ms");
             }
             catch (Exception ex)
             {
@@ -396,17 +430,92 @@ namespace GCodeSyncGUI
         {
             try
             {
-                var service = new ServiceController("GCodeSyncService");
+                _logService.LogInfo("Attempting to start Windows Service...");
+                
+                if (!IsServiceInstalled("GCodeSyncService"))
+                {
+                    _logService.LogError("Service start failed - service not installed");
+                    MessageBox.Show("Service is not installed. Please install the service first using 'Install Service' option.", 
+                        "Service Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                using var service = new ServiceController("GCodeSyncService");
+                _logService.LogInfo($"Current service status: {service.Status}");
+                
                 if (service.Status != ServiceControllerStatus.Running)
                 {
-                    service.Start();
-                    _logService.LogInfo("Windows Service start command sent");
+                    if (service.Status == ServiceControllerStatus.Stopped)
+                    {
+                        _logService.LogInfo("Starting service with elevated privileges...");
+                        
+                        // Use sc.exe with UAC elevation to start service
+                        var startProcess = new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = "sc.exe",
+                            Arguments = "start GCodeSyncService",
+                            UseShellExecute = true,
+                            CreateNoWindow = false,
+                            Verb = "runas"
+                        };
+
+                        using var process = System.Diagnostics.Process.Start(startProcess);
+                        if (process != null)
+                        {
+                            process.WaitForExit();
+                            _logService.LogInfo($"Service start command exit code: {process.ExitCode}");
+                            
+                            if (process.ExitCode == 0)
+                            {
+                                // Actually verify the service started by checking its status
+                                var actualStatus = VerifyServiceStatus("GCodeSyncService", ServiceControllerStatus.Running, 10);
+                                if (actualStatus == ServiceControllerStatus.Running)
+                                {
+                                    _logService.LogInfo("Windows Service started successfully");
+                                    MessageBox.Show("Service started successfully.", "Service Control", 
+                                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                }
+                                else
+                                {
+                                    _logService.LogError($"Service start command succeeded but service is {actualStatus}. Check Event Viewer for details.");
+                                    var recentErrors = GetRecentServiceErrors("GCodeSyncService");
+                                    MessageBox.Show($"Service start command succeeded but service failed to start properly.\n\nActual Status: {actualStatus}\n\nThis usually means:\n- Configuration file is missing or invalid\n- Required folders don't exist\n- FTP settings are incorrect\n- Dependencies are missing\n\nRecent Event Log Entries:\n{recentErrors}", 
+                                        "Service Start Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                }
+                            }
+                            else
+                            {
+                                _logService.LogError($"Service start failed with exit code {process.ExitCode}");
+                                MessageBox.Show($"Service start failed with exit code {process.ExitCode}.\n\nCheck Windows Event Viewer for detailed error information.", 
+                                    "Service Start Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }
+                        }
+                        else
+                        {
+                            _logService.LogError("Failed to start sc.exe process for service start - User may have cancelled UAC prompt");
+                            MessageBox.Show("Service start cancelled or failed.\n\nThis could be because UAC elevation was cancelled.", 
+                                "Service Start Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
+                    else
+                    {
+                        var statusMsg = $"Service cannot be started. Current status: {service.Status}";
+                        _logService.LogWarning(statusMsg);
+                        MessageBox.Show(statusMsg, "Service Status", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
+                }
+                else
+                {
+                    _logService.LogInfo("Service is already running");
+                    MessageBox.Show("Service is already running.", "Service Status", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to start Windows Service: {ex.Message}", "Service Error", 
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                _logService.LogError($"Service start failed: {ex.Message}\n{ex.StackTrace}");
+                MessageBox.Show($"Failed to start Windows Service: {ex.Message}\n\nMake sure you have administrative privileges and the service is properly installed.", 
+                    "Service Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -414,16 +523,452 @@ namespace GCodeSyncGUI
         {
             try
             {
-                var service = new ServiceController("GCodeSyncService");
+                _logService.LogInfo("Attempting to stop Windows Service...");
+                
+                using var service = new ServiceController("GCodeSyncService");
+                _logService.LogInfo($"Current service status: {service.Status}");
+                
                 if (service.Status == ServiceControllerStatus.Running)
                 {
-                    service.Stop();
-                    _logService.LogInfo("Windows Service stop command sent");
+                    _logService.LogInfo("Stopping service with elevated privileges...");
+                    
+                    // Use sc.exe with UAC elevation to stop service
+                    var stopProcess = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "sc.exe",
+                        Arguments = "stop GCodeSyncService",
+                        UseShellExecute = true,
+                        CreateNoWindow = false,
+                        Verb = "runas"
+                    };
+
+                    using var process = System.Diagnostics.Process.Start(stopProcess);
+                    if (process != null)
+                    {
+                        process.WaitForExit();
+                        _logService.LogInfo($"Service stop exit code: {process.ExitCode}");
+                        
+                        if (process.ExitCode == 0)
+                        {
+                            _logService.LogInfo("Windows Service stopped successfully");
+                            MessageBox.Show("Service stopped successfully.", "Service Control", 
+                                MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                        else
+                        {
+                            _logService.LogError($"Service stop failed with exit code {process.ExitCode}");
+                            MessageBox.Show($"Service stop failed with exit code {process.ExitCode}.\n\nCheck Windows Event Viewer for detailed error information.", 
+                                "Service Stop Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
+                    else
+                    {
+                        _logService.LogError("Failed to start sc.exe process for service stop - User may have cancelled UAC prompt");
+                        MessageBox.Show("Service stop cancelled or failed.\n\nThis could be because UAC elevation was cancelled.", 
+                            "Service Stop Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+                else
+                {
+                    var statusMsg = $"Service is not running. Current status: {service.Status}";
+                    _logService.LogInfo(statusMsg);
+                    MessageBox.Show(statusMsg, "Service Status", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
             catch (Exception ex)
             {
+                _logService.LogError($"Service stop failed: {ex.Message}\n{ex.StackTrace}");
                 MessageBox.Show($"Failed to stop Windows Service: {ex.Message}", "Service Error", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void InstallService_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                // Check if already installed
+                if (IsServiceInstalled("GCodeSyncService"))
+                {
+                    MessageBox.Show("Service is already installed.", "Service Install", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                var result = MessageBox.Show(
+                    "This will install the G-Code Sync Windows Service.\n\n" +
+                    "Administrative privileges are required.\n" +
+                    "Continue with installation?", 
+                    "Install Service", 
+                    MessageBoxButtons.YesNo, 
+                    MessageBoxIcon.Question);
+
+                if (result == DialogResult.Yes)
+                {
+                    InstallWindowsService();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to install service: {ex.Message}", "Service Install Error", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void UninstallService_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                if (!IsServiceInstalled("GCodeSyncService"))
+                {
+                    MessageBox.Show("Service is not installed.", "Service Uninstall", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                var result = MessageBox.Show(
+                    "This will uninstall the G-Code Sync Windows Service.\n\n" +
+                    "Administrative privileges are required.\n" +
+                    "Continue with uninstallation?", 
+                    "Uninstall Service", 
+                    MessageBoxButtons.YesNo, 
+                    MessageBoxIcon.Question);
+
+                if (result == DialogResult.Yes)
+                {
+                    UninstallWindowsService();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to uninstall service: {ex.Message}", "Service Uninstall Error", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private bool IsServiceInstalled(string serviceName)
+        {
+            try
+            {
+                using var service = new ServiceController(serviceName);
+                var status = service.Status;
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        private ServiceControllerStatus VerifyServiceStatus(string serviceName, ServiceControllerStatus expectedStatus, int timeoutSeconds)
+        {
+            try
+            {
+                using var service = new ServiceController(serviceName);
+                var startTime = DateTime.Now;
+                var timeout = TimeSpan.FromSeconds(timeoutSeconds);
+
+                while (DateTime.Now - startTime < timeout)
+                {
+                    service.Refresh();
+                    _logService.LogInfo($"Service status check: {service.Status}");
+                    
+                    if (service.Status == expectedStatus)
+                    {
+                        return service.Status;
+                    }
+                    
+                    if (service.Status == ServiceControllerStatus.Stopped && expectedStatus == ServiceControllerStatus.Running)
+                    {
+                        // Service failed to start - don't wait anymore
+                        _logService.LogWarning("Service failed to start - status is Stopped");
+                        return service.Status;
+                    }
+                    
+                    System.Threading.Thread.Sleep(1000); // Wait 1 second before checking again
+                }
+                
+                service.Refresh();
+                _logService.LogWarning($"Service status verification timed out. Final status: {service.Status}");
+                return service.Status;
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError($"Error verifying service status: {ex.Message}");
+                return ServiceControllerStatus.Stopped; // Assume stopped if we can't check
+            }
+        }
+
+        private string GetRecentServiceErrors(string serviceName)
+        {
+            try
+            {
+                using var eventLog = new System.Diagnostics.EventLog("System");
+                var recentErrors = new List<string>();
+                var cutoff = DateTime.Now.AddMinutes(-5); // Look for errors in the last 5 minutes
+
+                foreach (System.Diagnostics.EventLogEntry entry in eventLog.Entries)
+                {
+                    if (entry.TimeGenerated < cutoff) continue;
+                    if (entry.EntryType != System.Diagnostics.EventLogEntryType.Error) continue;
+                    if (!entry.Message.Contains(serviceName, StringComparison.OrdinalIgnoreCase)) continue;
+
+                    recentErrors.Add($"[{entry.TimeGenerated:yyyy-MM-dd HH:mm:ss}] {entry.Message}");
+                    
+                    if (recentErrors.Count >= 3) break; // Limit to 3 most recent errors
+                }
+
+                return recentErrors.Any() ? string.Join("\n\n", recentErrors) : "No recent service errors found in System Event Log.";
+            }
+            catch (Exception ex)
+            {
+                return $"Unable to read Event Log: {ex.Message}";
+            }
+        }
+
+        private void InstallWindowsService()
+        {
+            try
+            {
+                _logService.LogInfo("Starting Windows Service installation...");
+                
+                // Match install_service.bat logic exactly: %~dp0CBWSS-SYNC\Service\GCodeSyncService.exe
+                // Get the directory where this executable is running from
+                var currentDir = Path.GetDirectoryName(Application.ExecutablePath) ?? Environment.CurrentDirectory;
+                _logService.LogInfo($"Current executable directory: {currentDir}");
+                
+                // The GUI is inside CBWSS-SYNC\GUI, so we need to go up one level to find CBWSS-SYNC\Service
+                // Account for nested CBWSS-SYNC structure: project\CBWSS-SYNC\GUI -> project\CBWSS-SYNC\Service
+                var serviceExePath = Path.Combine(Path.GetDirectoryName(currentDir) ?? currentDir, "Service", "GCodeSyncService.exe");
+                _logService.LogInfo($"First search path: {serviceExePath}");
+                
+                // If not found, try other common locations
+                if (!File.Exists(serviceExePath))
+                {
+                    // Try: current\CBWSS-SYNC\Service (if GUI is in root)
+                    serviceExePath = Path.Combine(currentDir, "CBWSS-SYNC", "Service", "GCodeSyncService.exe");
+                    _logService.LogInfo($"Second search path: {serviceExePath}");
+                }
+                
+                if (!File.Exists(serviceExePath))
+                {
+                    // Try: parent\Service (if GUI is in CBWSS-SYNC\GUI)
+                    var parentDir = Path.GetDirectoryName(currentDir);
+                    if (parentDir != null)
+                    {
+                        serviceExePath = Path.Combine(parentDir, "Service", "GCodeSyncService.exe");
+                        _logService.LogInfo($"Third search path: {serviceExePath}");
+                    }
+                }
+                
+                if (!File.Exists(serviceExePath))
+                {
+                    var errorMsg = $"Service executable not found after searching all locations. Current dir: {currentDir}";
+                    _logService.LogError(errorMsg);
+                    MessageBox.Show($"Service executable not found.\n\nSearched locations:\n" +
+                                  $"1. {Path.Combine(Path.GetDirectoryName(currentDir) ?? currentDir, "Service", "GCodeSyncService.exe")}\n" +
+                                  $"2. {Path.Combine(currentDir, "CBWSS-SYNC", "Service", "GCodeSyncService.exe")}\n" +
+                                  $"3. Current dir: {currentDir}\n\n" +
+                                  $"Please run build.bat first to create the CBWSS-SYNC deployment structure.", 
+                        "Service Install Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                _logService.LogInfo($"Found service executable at: {serviceExePath}");
+                var command = $"create GCodeSyncService binPath= \"\\\"{serviceExePath}\\\"\" start= auto DisplayName= \"G-Code Sync Service\"";
+                _logService.LogInfo($"Executing sc.exe command: {command}");
+
+                var processInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "sc.exe",
+                    Arguments = command,
+                    UseShellExecute = true,  // Required for UAC elevation
+                    CreateNoWindow = false,   // UAC dialog needs to be visible
+                    Verb = "runas"           // Request elevation
+                };
+
+                using var process = System.Diagnostics.Process.Start(processInfo);
+                if (process != null)
+                {
+                    process.WaitForExit();
+                    
+                    _logService.LogInfo($"Service install exit code: {process.ExitCode}");
+                    
+                    if (process.ExitCode == 0)
+                    {
+                        _logService.LogInfo("Service created successfully, setting description...");
+                        
+                        // Set description with elevated permissions
+                        var descProcess = new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = "sc.exe",
+                            Arguments = "description GCodeSyncService \"Monitors G-Code project folders and automatically processes and uploads files via FTP\"",
+                            UseShellExecute = true,
+                            CreateNoWindow = false,
+                            Verb = "runas"
+                        };
+                        using var descProc = System.Diagnostics.Process.Start(descProcess);
+                        descProc?.WaitForExit();
+
+                        // Ask user if they want to start the service immediately
+                        var startResult = MessageBox.Show(
+                            "Service installed successfully!\n\n" +
+                            "Would you like to start the service now?\n\n" +
+                            "Note: The service needs valid configuration to run properly. " +
+                            "If you haven't configured FTP settings yet, you can start it later using 'Start Service' from the context menu.",
+                            "Start Service Now?",
+                            MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Question);
+
+                        if (startResult == DialogResult.Yes)
+                        {
+                            _logService.LogInfo("User chose to start the service immediately");
+                            var startProcess = new System.Diagnostics.ProcessStartInfo
+                            {
+                                FileName = "sc.exe",
+                                Arguments = "start GCodeSyncService",
+                                UseShellExecute = true,
+                                CreateNoWindow = false,
+                                Verb = "runas"
+                            };
+                            using var startProc = System.Diagnostics.Process.Start(startProcess);
+                            if (startProc != null)
+                            {
+                                startProc.WaitForExit();
+                                _logService.LogInfo($"Service start command exit code: {startProc.ExitCode}");
+                                
+                                if (startProc.ExitCode == 0)
+                                {
+                                    // Actually verify the service started by checking its status
+                                    var actualStatus = VerifyServiceStatus("GCodeSyncService", ServiceControllerStatus.Running, 10);
+                                    if (actualStatus == ServiceControllerStatus.Running)
+                                    {
+                                        _logService.LogInfo("Service installed and started successfully");
+                                        MessageBox.Show("Service installed and started successfully!", "Service Control", 
+                                            MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                    }
+                                    else
+                                    {
+                                        _logService.LogError($"Service start command succeeded but service is {actualStatus}. Check Event Viewer for details.");
+                                        var recentErrors = GetRecentServiceErrors("GCodeSyncService");
+                                        MessageBox.Show($"Service installed but failed to start properly.\n\nActual Status: {actualStatus}\n\nThis usually means:\n- Configuration file is missing or invalid\n- Required folders don't exist\n- FTP settings are incorrect\n- Dependencies are missing\n\nRecent Event Log Entries:\n{recentErrors}\n\nYou can configure settings and then use 'Start Service' when ready.", 
+                                            "Service Install Complete - Start Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                    }
+                                }
+                                else
+                                {
+                                    _logService.LogWarning($"Service failed to start (exit code: {startProc.ExitCode})");
+                                    MessageBox.Show($"Service installed but failed to start (exit code: {startProc.ExitCode}).\n\nThis usually means:\n- Configuration is missing or invalid\n- Required folders don't exist\n- FTP settings are incorrect\n\nCheck the Windows Event Log for details, or configure settings first then try 'Start Service' again.", 
+                                        "Service Start Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            _logService.LogInfo("Service installed, user chose not to start immediately");
+                            MessageBox.Show("Service installed successfully!\n\nUse 'Start Service' from the context menu when ready.", 
+                                "Service Install Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                        _logService.LogInfo("Windows Service installation completed");
+                    }
+                    else
+                    {
+                        var errorMsg = $"Service installation failed with exit code {process.ExitCode}. Check Windows Event Viewer for details.";
+                        _logService.LogError(errorMsg);
+                        MessageBox.Show($"Service installation failed with exit code {process.ExitCode}.\n\nThis usually indicates:\n" +
+                                      $"- Administrative privileges are required\n" +
+                                      $"- Service already exists\n" +
+                                      $"- Invalid service path\n\n" +
+                                      $"Check the Windows Event Viewer for detailed error information.", "Service Install Error", 
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+                else
+                {
+                    _logService.LogError("Failed to start sc.exe process for service installation - User may have cancelled UAC prompt");
+                    MessageBox.Show("Service installation cancelled or failed to start.\n\nThis could be because:\n- UAC elevation was cancelled\n- System security policy prevents elevation", "Service Install Error", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError($"Service installation exception: {ex.Message}\n{ex.StackTrace}");
+                MessageBox.Show($"Service installation failed: {ex.Message}", "Service Install Error", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void UninstallWindowsService()
+        {
+            try
+            {
+                _logService.LogInfo("Starting Windows Service uninstallation...");
+                
+                // Stop service first
+                if (IsServiceInstalled("GCodeSyncService"))
+                {
+                    _logService.LogInfo("Service found, checking if running...");
+                    using var service = new ServiceController("GCodeSyncService");
+                    if (service.Status == ServiceControllerStatus.Running)
+                    {
+                        _logService.LogInfo("Service is running, stopping it...");
+                        service.Stop();
+                        service.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(30));
+                        _logService.LogInfo("Service stopped successfully");
+                    }
+                    else
+                    {
+                        _logService.LogInfo($"Service status: {service.Status}");
+                    }
+                }
+                else
+                {
+                    _logService.LogWarning("Service not found or not installed");
+                }
+
+                _logService.LogInfo("Executing sc.exe delete command with elevated permissions...");
+                var processInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "sc.exe",
+                    Arguments = "delete GCodeSyncService",
+                    UseShellExecute = true,  // Required for UAC elevation
+                    CreateNoWindow = false,   // UAC dialog needs to be visible
+                    Verb = "runas"           // Request elevation
+                };
+
+                using var process = System.Diagnostics.Process.Start(processInfo);
+                if (process != null)
+                {
+                    process.WaitForExit();
+                    
+                    _logService.LogInfo($"Service uninstall exit code: {process.ExitCode}");
+                    
+                    if (process.ExitCode == 0)
+                    {
+                        MessageBox.Show("Service uninstalled successfully!", "Service Uninstall", 
+                            MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        _logService.LogInfo("Windows Service uninstalled successfully");
+                    }
+                    else
+                    {
+                        var errorMsg = $"Service uninstallation failed with exit code {process.ExitCode}. Check Windows Event Viewer for details.";
+                        _logService.LogError(errorMsg);
+                        MessageBox.Show($"Service uninstallation failed with exit code {process.ExitCode}.\n\n" +
+                                      $"Check the Windows Event Viewer for detailed error information.", "Service Uninstall Error", 
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+                else
+                {
+                    _logService.LogError("Failed to start sc.exe process for service uninstallation - User may have cancelled UAC prompt");
+                    MessageBox.Show("Service uninstallation cancelled or failed to start.\n\nThis could be because:\n- UAC elevation was cancelled\n- System security policy prevents elevation", "Service Uninstall Error", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError($"Service uninstallation exception: {ex.Message}\n{ex.StackTrace}");
+                MessageBox.Show($"Service uninstallation failed: {ex.Message}", "Service Uninstall Error", 
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -586,11 +1131,52 @@ namespace GCodeSyncGUI
             {
                 txtLogs.Text = "";
                 txtBottomLog.Text = "";
-                OnLogEntryAdded("INFO", "Log cleared by user");
+                
+                // Clear physical log files
+                ClearLogFiles();
+                
+                OnLogEntryAdded("INFO", "Logs cleared by user (UI and files)");
             }
             catch (Exception ex)
             {
                 OnLogEntryAdded("ERROR", $"Failed to clear logs: {ex.Message}");
+            }
+        }
+
+        private void ClearLogFiles()
+        {
+            try
+            {
+                // Get log directory from configuration
+                var logDirectory = Path.GetDirectoryName(_config.LogFilePath);
+                if (!string.IsNullOrEmpty(logDirectory) && Directory.Exists(logDirectory))
+                {
+                    // Clear all GCodeSync log files
+                    var logFiles = Directory.GetFiles(logDirectory, "GCodeSync-*.log");
+                    foreach (var logFile in logFiles)
+                    {
+                        try
+                        {
+                            File.Delete(logFile);
+                        }
+                        catch (Exception ex)
+                        {
+                            // Log file might be in use, try to clear content instead
+                            try
+                            {
+                                File.WriteAllText(logFile, "");
+                            }
+                            catch
+                            {
+                                // Ignore if we can't clear it
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Don't throw, just ignore - this is a nice-to-have feature
             }
         }
         
@@ -1314,6 +1900,165 @@ namespace GCodeSyncGUI
             {
                 // Silently handle preview errors to avoid disrupting navigation
                 WriteToLogFile($"Error previewing FTP folder contents: {ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region System Tray and File Menu Event Handlers
+
+        private void CloseToTray_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                _logService.LogInfo("Closing application to system tray");
+                this.Hide();
+                this.notifyIcon.Visible = true;
+                this.notifyIcon.ShowBalloonTip(3000, "CBWSS-Sync", "Application minimized to system tray. Right-click the tray icon to access service controls.", ToolTipIcon.Info);
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError($"Error closing to tray: {ex.Message}");
+            }
+        }
+
+        private void CloseFully_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                _logService.LogInfo("User requesting full application closure");
+                
+                var result = MessageBox.Show(
+                    "⚠️ WARNING: This will completely close the CBWSS-Sync application.\n\n" +
+                    "This action may affect system processing:\n" +
+                    "• Active file monitoring will stop\n" +
+                    "• File processing operations will be interrupted\n" +
+                    "• FTP uploads in progress may fail\n" +
+                    "• The Windows service (if running) will continue independently\n\n" +
+                    "Are you sure you want to close the application completely?",
+                    "Close Application - Warning",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning);
+                
+                if (result == DialogResult.Yes)
+                {
+                    _logService.LogInfo("User confirmed full application closure");
+                    this.notifyIcon.Visible = false;
+                    Application.Exit();
+                }
+                else
+                {
+                    _logService.LogInfo("User cancelled full application closure");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError($"Error closing application: {ex.Message}");
+            }
+        }
+
+        private void UninstallAndClose_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                _logService.LogInfo("User requesting service uninstall and application closure");
+                
+                var warningResult = MessageBox.Show(
+                    "⚠️ WARNING: This will uninstall the Windows service and completely close the application.\n\n" +
+                    "This action may severely affect system processing:\n" +
+                    "• All file monitoring and processing will stop immediately\n" +
+                    "• Active FTP uploads will be interrupted\n" +
+                    "• The Windows service will be permanently removed\n" +
+                    "• Any ongoing sync operations will fail\n" +
+                    "• You'll need to reinstall the service to resume automatic processing\n\n" +
+                    "Are you sure you want to uninstall the service and close the application?",
+                    "Uninstall Service and Close - Critical Warning",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning);
+                
+                if (warningResult == DialogResult.Yes)
+                {
+                    if (IsServiceInstalled("GCodeSyncService"))
+                    {
+                        var confirmResult = MessageBox.Show(
+                            "Final confirmation: Uninstall the Windows service and close the application?", 
+                            "Confirm Uninstall and Exit", 
+                            MessageBoxButtons.YesNo, 
+                            MessageBoxIcon.Question);
+                        
+                        if (confirmResult == DialogResult.Yes)
+                        {
+                            _logService.LogInfo("User double-confirmed service uninstall and closure");
+                            UninstallService_Click(sender, e); // Use existing uninstall logic
+                            
+                            // Close after uninstall completes
+                            _logService.LogInfo("Service uninstalled, closing application");
+                            this.notifyIcon.Visible = false;
+                            Application.Exit();
+                        }
+                        else
+                        {
+                            _logService.LogInfo("User cancelled at final confirmation");
+                        }
+                    }
+                    else
+                    {
+                        _logService.LogInfo("No service to uninstall, proceeding with application closure");
+                        var closeResult = MessageBox.Show(
+                            "No Windows service is installed. Close the application anyway?",
+                            "No Service Found - Close Application?",
+                            MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Question);
+                            
+                        if (closeResult == DialogResult.Yes)
+                        {
+                            this.notifyIcon.Visible = false;
+                            Application.Exit();
+                        }
+                    }
+                }
+                else
+                {
+                    _logService.LogInfo("User cancelled uninstall and close operation");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError($"Error uninstalling service and closing: {ex.Message}");
+            }
+        }
+
+        private void NotifyIcon_MouseClick(object? sender, MouseEventArgs e)
+        {
+            try
+            {
+                if (e.Button == MouseButtons.Left)
+                {
+                    // Left click shows the main form
+                    TrayShow_Click(sender, EventArgs.Empty);
+                }
+                // Right click automatically shows context menu (handled by ContextMenuStrip)
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError($"Error handling tray icon click: {ex.Message}");
+            }
+        }
+
+        private void TrayShow_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                _logService.LogInfo("Showing application from system tray");
+                this.Show();
+                this.WindowState = FormWindowState.Normal;
+                this.Activate();
+                this.BringToFront();
+                this.notifyIcon.Visible = false;
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError($"Error showing application from tray: {ex.Message}");
             }
         }
 

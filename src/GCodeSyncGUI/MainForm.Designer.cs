@@ -3,6 +3,18 @@ namespace GCodeSyncGUI
     partial class MainForm
     {
         private System.ComponentModel.IContainer components = null;
+        private MenuStrip menuStrip;
+        private ToolStripMenuItem fileToolStripMenuItem;
+        private ToolStripMenuItem closeToTrayToolStripMenuItem;
+        private ToolStripMenuItem closeFullyToolStripMenuItem;
+        private ToolStripMenuItem uninstallAndCloseToolStripMenuItem;
+        private ToolStripMenuItem serviceToolStripMenuItem;
+        private ToolStripMenuItem installServiceToolStripMenuItem;
+        private ToolStripMenuItem uninstallServiceToolStripMenuItem;
+        private ToolStripMenuItem startServiceToolStripMenuItem;
+        private ToolStripMenuItem stopServiceToolStripMenuItem;
+        private NotifyIcon notifyIcon;
+        private ContextMenuStrip trayContextMenu;
         private TabControl tabControl;
         private TabPage tabStatus;
         private TabPage tabConfiguration;
@@ -108,10 +120,103 @@ namespace GCodeSyncGUI
             this.txtBottomLog.BackColor = Color.LightGray;
             this.pnlBottomLog.Controls.Add(this.txtBottomLog);
             
+            // MenuStrip
+            this.menuStrip = new MenuStrip();
+            this.fileToolStripMenuItem = new ToolStripMenuItem();
+            this.closeToTrayToolStripMenuItem = new ToolStripMenuItem();
+            this.closeFullyToolStripMenuItem = new ToolStripMenuItem();
+            this.uninstallAndCloseToolStripMenuItem = new ToolStripMenuItem();
+            this.serviceToolStripMenuItem = new ToolStripMenuItem();
+            this.installServiceToolStripMenuItem = new ToolStripMenuItem();
+            this.uninstallServiceToolStripMenuItem = new ToolStripMenuItem();
+            this.startServiceToolStripMenuItem = new ToolStripMenuItem();
+            this.stopServiceToolStripMenuItem = new ToolStripMenuItem();
+            
+            // NotifyIcon and Tray Context Menu
+            this.notifyIcon = new NotifyIcon(this.components);
+            this.trayContextMenu = new ContextMenuStrip();
+            
+            // File Menu
+            this.fileToolStripMenuItem.Name = "fileToolStripMenuItem";
+            this.fileToolStripMenuItem.Size = new Size(37, 20);
+            this.fileToolStripMenuItem.Text = "&File";
+            this.fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] {
+                this.closeToTrayToolStripMenuItem,
+                this.closeFullyToolStripMenuItem,
+                new ToolStripSeparator(),
+                this.uninstallAndCloseToolStripMenuItem});
+                
+            // Close to Tray Menu Item
+            this.closeToTrayToolStripMenuItem.Name = "closeToTrayToolStripMenuItem";
+            this.closeToTrayToolStripMenuItem.Size = new Size(200, 22);
+            this.closeToTrayToolStripMenuItem.Text = "Close to System &Tray";
+            this.closeToTrayToolStripMenuItem.Click += CloseToTray_Click;
+            
+            // Close Fully Menu Item
+            this.closeFullyToolStripMenuItem.Name = "closeFullyToolStripMenuItem";
+            this.closeFullyToolStripMenuItem.Size = new Size(200, 22);
+            this.closeFullyToolStripMenuItem.Text = "Close &Fully";
+            this.closeFullyToolStripMenuItem.Click += CloseFully_Click;
+            
+            // Uninstall and Close Menu Item
+            this.uninstallAndCloseToolStripMenuItem.Name = "uninstallAndCloseToolStripMenuItem";
+            this.uninstallAndCloseToolStripMenuItem.Size = new Size(200, 22);
+            this.uninstallAndCloseToolStripMenuItem.Text = "&Uninstall Service and Close";
+            this.uninstallAndCloseToolStripMenuItem.Click += UninstallAndClose_Click;
+            
+            // Service Menu
+            this.serviceToolStripMenuItem.Name = "serviceToolStripMenuItem";
+            this.serviceToolStripMenuItem.Size = new Size(56, 20);
+            this.serviceToolStripMenuItem.Text = "&Service";
+            this.serviceToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] {
+                this.installServiceToolStripMenuItem,
+                this.uninstallServiceToolStripMenuItem,
+                new ToolStripSeparator(),
+                this.startServiceToolStripMenuItem,
+                this.stopServiceToolStripMenuItem});
+                
+            // Install Service Menu Item
+            this.installServiceToolStripMenuItem.Name = "installServiceToolStripMenuItem";
+            this.installServiceToolStripMenuItem.Size = new Size(180, 22);
+            this.installServiceToolStripMenuItem.Text = "&Install Service";
+            this.installServiceToolStripMenuItem.Click += InstallService_Click;
+            
+            // Uninstall Service Menu Item
+            this.uninstallServiceToolStripMenuItem.Name = "uninstallServiceToolStripMenuItem";
+            this.uninstallServiceToolStripMenuItem.Size = new Size(180, 22);
+            this.uninstallServiceToolStripMenuItem.Text = "&Uninstall Service";
+            this.uninstallServiceToolStripMenuItem.Click += UninstallService_Click;
+            
+            // Start Service Menu Item
+            this.startServiceToolStripMenuItem.Name = "startServiceToolStripMenuItem";
+            this.startServiceToolStripMenuItem.Size = new Size(180, 22);
+            this.startServiceToolStripMenuItem.Text = "&Start Service";
+            this.startServiceToolStripMenuItem.Click += StartService_Click;
+            
+            // Stop Service Menu Item
+            this.stopServiceToolStripMenuItem.Name = "stopServiceToolStripMenuItem";
+            this.stopServiceToolStripMenuItem.Size = new Size(180, 22);
+            this.stopServiceToolStripMenuItem.Text = "S&top Service";
+            this.stopServiceToolStripMenuItem.Click += StopService_Click;
+            
+            // Add Service menu to MenuStrip
+            this.menuStrip.Items.AddRange(new ToolStripItem[] {
+                this.fileToolStripMenuItem,
+                this.serviceToolStripMenuItem});
+            this.menuStrip.Location = new Point(0, 0);
+            this.menuStrip.Name = "menuStrip";
+            this.menuStrip.Size = new Size(800, 24);
+            this.menuStrip.TabIndex = 0;
+            this.menuStrip.Text = "menuStrip";
+            
+            // Add MenuStrip to form
             // Tab Control
             this.tabControl = new TabControl();
             this.tabControl.Dock = DockStyle.Fill;
             this.Controls.Add(this.tabControl);
+            
+            this.MainMenuStrip = this.menuStrip;
+            this.Controls.Add(this.menuStrip);
             
             // Status Tab
             this.tabStatus = new TabPage("Status");
@@ -487,6 +592,34 @@ namespace GCodeSyncGUI
             this.txtLogs.ReadOnly = true;
             this.txtLogs.BackColor = Color.White;
             this.tabLogs.Controls.Add(this.txtLogs);
+            
+            // NotifyIcon Configuration
+            this.notifyIcon.Text = "CBWSS-Sync Service Manager";
+            this.notifyIcon.Icon = this.Icon; // Use the form's icon
+            this.notifyIcon.Visible = false;
+            this.notifyIcon.MouseClick += NotifyIcon_MouseClick;
+            
+            // Tray Context Menu
+            var trayShowMenuItem = new ToolStripMenuItem("&Show", null, TrayShow_Click);
+            var trayInstallMenuItem = new ToolStripMenuItem("&Install Service", null, InstallService_Click);
+            var trayUninstallMenuItem = new ToolStripMenuItem("&Uninstall Service", null, UninstallService_Click);
+            var trayStartMenuItem = new ToolStripMenuItem("&Start Service", null, StartService_Click);
+            var trayStopMenuItem = new ToolStripMenuItem("S&top Service", null, StopService_Click);
+            var trayExitMenuItem = new ToolStripMenuItem("E&xit", null, CloseFully_Click);
+            
+            this.trayContextMenu.Items.AddRange(new ToolStripItem[] {
+                trayShowMenuItem,
+                new ToolStripSeparator(),
+                trayInstallMenuItem,
+                trayUninstallMenuItem,
+                new ToolStripSeparator(),
+                trayStartMenuItem,
+                trayStopMenuItem,
+                new ToolStripSeparator(),
+                trayExitMenuItem
+            });
+            
+            this.notifyIcon.ContextMenuStrip = this.trayContextMenu;
         }
     }
 }

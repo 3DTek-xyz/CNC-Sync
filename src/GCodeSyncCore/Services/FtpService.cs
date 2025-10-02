@@ -30,23 +30,27 @@ namespace GCodeSyncCore.Services
 
         public async Task<bool> TestConnectionAsync()
         {
+            var ftpStopwatch = System.Diagnostics.Stopwatch.StartNew();
             try
             {
                 var connectionInfo = $"FTP Server: {_config.FtpServer}:{_config.FtpPort}, " +
                                    $"User: {(_config.UseAnonymousFtp ? "anonymous" : _config.FtpUsername)}, " +
                                    $"Mode: {(_config.UseAnonymousFtp ? "Anonymous" : "Authenticated")}";
                 
-                _logger.LogInfo($"Testing FTP connection - {connectionInfo}");
+                _logger.LogInfo($"STARTUP TIMING: Testing FTP connection started at {DateTime.Now:HH:mm:ss.fff} - {connectionInfo}");
 
+                _logger.LogInfo($"STARTUP TIMING: Creating FTP request at {ftpStopwatch.ElapsedMilliseconds}ms");
                 var request = CreateFtpRequest("/", WebRequestMethods.Ftp.ListDirectory);
                 
+                _logger.LogInfo($"STARTUP TIMING: Getting FTP response at {ftpStopwatch.ElapsedMilliseconds}ms");
                 using var response = (FtpWebResponse)await request.GetResponseAsync();
                 using var responseStream = response.GetResponseStream();
                 using var reader = new StreamReader(responseStream);
                 
+                _logger.LogInfo($"STARTUP TIMING: Reading FTP response at {ftpStopwatch.ElapsedMilliseconds}ms");
                 var result = await reader.ReadToEndAsync();
                 
-                _logger.LogInfo($"FTP connection test successful - {connectionInfo}. Status: {response.StatusCode} - {response.StatusDescription}");
+                _logger.LogInfo($"STARTUP TIMING: FTP connection test successful at {ftpStopwatch.ElapsedMilliseconds}ms - {connectionInfo}. Status: {response.StatusCode} - {response.StatusDescription}");
                 return true;
             }
             catch (WebException webEx)

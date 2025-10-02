@@ -12,7 +12,32 @@
     <Version>1.0.0</Version>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="**/*.resources.dll" />
+  </ItemGroup>
+
+  <Target Name="RemoveUnnecessaryLanguageFolders" AfterTargets="Build">
+    <ItemGroup>
+      <UnwantedLanguageFolders Include="$(OutputPath)cs" />
+      <UnwantedLanguageFolders Include="$(OutputPath)de" />
+      <UnwantedLanguageFolders Include="$(OutputPath)es" />
+      <UnwantedLanguageFolders Include="$(OutputPath)fr" />
+      <UnwantedLanguageFolders Include="$(OutputPath)it" />
+      <UnwantedLanguageFolders Include="$(OutputPath)ja" />
+      <UnwantedLanguageFolders Include="$(OutputPath)ko" />
+      <UnwantedLanguageFolders Include="$(OutputPath)pl" />
+      <UnwantedLanguageFolders Include="$(OutputPath)pt-BR" />
+      <UnwantedLanguageFolders Include="$(OutputPath)ru" />
+      <UnwantedLanguageFolders Include="$(OutputPath)tr" />
+      <UnwantedLanguageFolders Include="$(OutputPath)zh-Hans" />
+      <UnwantedLanguageFolders Include="$(OutputPath)zh-Hant" />
+    </ItemGroup>
+    <RemoveDir Directories="@(UnwantedLanguageFolders)" />
+  </Target>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
