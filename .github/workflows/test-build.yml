@@ -1,0 +1,59 @@
+name: Build Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Allow manual triggering
+
+env:
+  DOTNET_VERSION: '9.0.x'
+
+jobs:
+  test-build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Install WiX Toolset
+      run: dotnet tool install --global wix
+      
+    - name: Restore NuGet packages
+      run: dotnet restore
+
+    - name: Build Release configuration
+      run: dotnet build --configuration Release --no-restore
+
+    - name: Build MSI Installer
+      run: dotnet build src/CBWSSSync.Installer/CBWSSSync.Installer.wixproj --configuration Release --no-restore
+
+    - name: Test MSI Creation
+      run: |
+        $msiPath = "bin/Release/CBWSSSync.Installer.msi"
+        if (Test-Path $msiPath) {
+          $msi = Get-Item $msiPath
+          Write-Host "✅ MSI created successfully!"
+          Write-Host "   Path: $msiPath"
+          Write-Host "   Size: $([math]::Round($msi.Length / 1MB, 2)) MB"
+          Write-Host "   Created: $($msi.CreationTime)"
+        } else {
+          Write-Error "❌ MSI file not found!"
+          exit 1
+        }
+      shell: powershell
+
+    - name: Upload Test Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-build-artifacts
+        path: |
+          bin/Release/CBWSSSync.Installer.msi
+        retention-days: 7
