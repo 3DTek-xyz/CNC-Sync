@@ -50,6 +50,9 @@ namespace GCodeSyncGUI
             LoadConfiguration();
             SetupEventHandlers();
             
+            // Auto-detect service status and start standalone if needed
+            _ = Task.Run(AutoDetectAndStartMonitoring);
+            
             // Start minimized to system tray
             this.WindowState = FormWindowState.Minimized;
             this.ShowInTaskbar = false;
@@ -100,6 +103,52 @@ namespace GCodeSyncGUI
 
             lblStatus.Text = $"Status: {status}";
             lblStatus.ForeColor = Color.FromName(color);
+        }
+
+        private async Task AutoDetectAndStartMonitoring()
+        {
+            try
+            {
+                // Wait a bit for the UI to fully initialize
+                await Task.Delay(2000);
+                
+                // Check if Windows Service is running
+                bool serviceRunning = false;
+                try
+                {
+                    using var service = new ServiceController("GCodeSyncService");
+                    serviceRunning = service.Status == ServiceControllerStatus.Running;
+                }
+                catch
+                {
+                    // Service not installed or accessible
+                    serviceRunning = false;
+                }
+
+                if (!serviceRunning)
+                {
+                    _logService.LogInfo("Windows Service not running - starting standalone mode automatically");
+                    
+                    // Start standalone mode on UI thread
+                    if (InvokeRequired)
+                    {
+                        Invoke(new Action(() => StartStandaloneMode()));
+                    }
+                    else
+                    {
+                        StartStandaloneMode();
+                    }
+                }
+                else
+                {
+                    _logService.LogInfo("Windows Service is running - monitoring active via service");
+                    UpdateNotifyIconStatus("Running via Service");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError("Error during auto-detection", ex);
+            }
         }
 
         private void LoadConfiguration()

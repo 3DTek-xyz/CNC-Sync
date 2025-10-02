@@ -1,0 +1,49 @@
+2025-10-02 13:00:04.255 - LoadIconFromFile: Looking for icon at: C:\Users\Emils\Dropbox\CBWSS-SYNC\CBWSS-SYNC\GUI\CBWSS-Logo.png
+2025-10-02 13:00:04.261 - LoadIconFromFile: File exists, loading as bitmap
+2025-10-02 13:00:04.307 - LoadConfiguration: Starting load process
+2025-10-02 13:00:04.308 - LoadConfiguration: Config file path = C:\Users\Emils\AppData\Roaming\GCodeSync\GCodeSyncConfig.json
+2025-10-02 13:00:04.308 - LoadConfiguration: Loaded FtpServer = '192.168.15.90'
+2025-10-02 13:00:04.309 - LoadConfiguration: Loaded FtpPort = 21
+2025-10-02 13:00:04.310 - LoadConfiguration: Loaded WatchFolder = 'C:\Users\Emils\Dropbox\MozaikShared\CUSTOMBUILT\CNCSync\TESTNEWSYNC\GCode'
+2025-10-02 13:00:04.310 - LoadConfiguration: Set txtFtpServer.Text to '192.168.15.90'
+2025-10-02 13:00:04.314 - Initializing local browser to: C:\Users\Emils\Dropbox\MozaikShared\CUSTOMBUILT\CNCSync\TESTNEWSYNC\FTPUpload (Root boundary set)
+2025-10-02 13:00:04.318 - Initializing remote browser with FTP connection
+2025-10-02 13:00:04.321 - Loading FTP directory: /
+2025-10-02 13:00:04.335 - SetVisibleCore: Called with value=True, _allowVisible=False, WindowState=Minimized
+2025-10-02 13:00:04.335 - SetVisibleCore: Blocked visibility - form not allowed to show yet
+2025-10-02 13:00:04.509 - [13:00:04] INFO: FTP connection test successful - FTP Server: 192.168.15.90:21, User: anonymous, Mode: Anonymous. Status: ClosingData - 226 Closing data connection. 
+
+2025-10-02 13:00:04.511 - FTP connection successful, getting directory listing for: /
+2025-10-02 13:00:04.513 - [13:00:04] INFO: Listing FTP directory: /
+2025-10-02 13:00:04.591 - [13:00:04] INFO: Raw FTP list line: '10-01-25  16:05       <DIR>          LOT 3521  72 KEYSTONE WAY THE GABLES-01'
+2025-10-02 13:00:04.594 - [13:00:04] INFO: Parsed FTP item: Name='LOT 3521 72 KEYSTONE WAY THE GABLES-01', IsDirectory=True, FullPath='/LOT 3521 72 KEYSTONE WAY THE GABLES-01'
+2025-10-02 13:00:04.595 - [13:00:04] INFO: Raw FTP list line: '09-10-25  15:30               100314 sync.ffs_db'
+2025-10-02 13:00:04.596 - [13:00:04] INFO: Parsed FTP item: Name='sync.ffs_db', IsDirectory=False, FullPath='/sync.ffs_db'
+2025-10-02 13:00:04.596 - [13:00:04] INFO: Raw FTP list line: '10-02-25  12:00       <DIR>          56 MURRANAR RD TOWRADGI-02'
+2025-10-02 13:00:04.597 - [13:00:04] INFO: Parsed FTP item: Name='56 MURRANAR RD TOWRADGI-02', IsDirectory=True, FullPath='/56 MURRANAR RD TOWRADGI-02'
+2025-10-02 13:00:04.598 - [13:00:04] INFO: Raw FTP list line: '10-01-25  09:40       <DIR>          ARKEN BUILT PARTS-01'
+2025-10-02 13:00:04.598 - [13:00:04] INFO: Parsed FTP item: Name='ARKEN BUILT PARTS-01', IsDirectory=True, FullPath='/ARKEN BUILT PARTS-01'
+2025-10-02 13:00:04.599 - [13:00:04] INFO: Raw FTP list line: '10-02-25  13:09       <DIR>          Ben - Copy-01'
+2025-10-02 13:00:04.600 - [13:00:04] INFO: Parsed FTP item: Name='Ben - Copy-01', IsDirectory=True, FullPath='/Ben - Copy-01'
+2025-10-02 13:00:04.600 - [13:00:04] INFO: Raw FTP list line: '10-01-25  13:56       <DIR>          2 DRAW 960 WIDE-01'
+2025-10-02 13:00:04.601 - [13:00:04] INFO: Parsed FTP item: Name='2 DRAW 960 WIDE-01', IsDirectory=True, FullPath='/2 DRAW 960 WIDE-01'
+2025-10-02 13:00:04.602 - [13:00:04] INFO: Raw FTP list line: '10-01-25  14:49       <DIR>          1206 MULGOA ROAD MULGOA-04'
+2025-10-02 13:00:04.602 - [13:00:04] INFO: Parsed FTP item: Name='1206 MULGOA ROAD MULGOA-04', IsDirectory=True, FullPath='/1206 MULGOA ROAD MULGOA-04'
+2025-10-02 13:00:04.645 - [13:00:04] INFO: Listed 7 items from /
+2025-10-02 13:00:04.645 - Updating breadcrumb to: ftp://192.168.15.90:21/
+2025-10-02 13:00:04.646 - Breadcrumb updated (Direct): txtRemoteAddress='ftp://192.168.15.90:21/'
+2025-10-02 13:00:04.651 - At FTP root '/' - no parent navigation shown
+2025-10-02 13:00:04.713 - Remote browser directory changed to: C:\Users\Emils\AppData\Local\Temp\GCodeSync_FTP_Browser
+2025-10-02 13:00:04.714 - FTP browser navigation detected
+2025-10-02 13:00:04.714 - Checking if localDirPath 'C:\Users\Emils\AppData\Local\Temp\GCodeSync_FTP_Browser' equals tempFtpBaseDir 'C:\Users\Emils\AppData\Local\Temp\GCodeSync_FTP_Browser'
+2025-10-02 13:00:04.715 - Detected parent navigation - moved back to FTP root temp directory
+2025-10-02 13:00:04.715 - Already at FTP root, cannot navigate up further
+2025-10-02 13:00:04.717 - FTP browser showing 7 actual server items from 192.168.15.90
+2025-10-02 13:00:10.976 - ShowForm_Click: Starting to show form
+2025-10-02 13:00:10.978 - ShowForm_Click: Initial state - Location={X=0,Y=0}, Size={Width=800, Height=600}, Bounds={X=0,Y=0,Width=800,Height=600}
+2025-10-02 13:00:10.978 - ShowForm_Click: Set WindowState to Normal
+2025-10-02 13:00:10.979 - ShowForm_Click: Set size and position - Size={Width=800, Height=600}, Location={X=960,Y=510}
+2025-10-02 13:00:10.979 - SetVisibleCore: Called with value=True, _allowVisible=True, WindowState=Normal
+2025-10-02 13:00:11.016 - SetVisibleCore: Called with value=True, _allowVisible=True, WindowState=Normal
+2025-10-02 13:00:11.029 - ShowForm_Click: Final state - Visible=True, WindowState=Normal
+2025-10-02 13:00:11.029 - ShowForm_Click: Final position - Location={X=560,Y=210}, Size={Width=800, Height=600}, Bounds={X=560,Y=210,Width=800,Height=600}
