@@ -2169,6 +2169,44 @@ namespace GCodeSyncGUI
             }
         }
 
+        private void About_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+                var versionString = version != null ? version.ToString() : "Unknown";
+                
+                var aboutMessage = $@"CBWSS-Sync
+Windows G-Code Sync Tool
+
+Version: {versionString}
+Copyright © 2025 Ben Harper 3DTek
+
+A comprehensive Windows application that monitors folders for G-code file changes and automatically processes and uploads them via FTP.
+
+Features:
+• Smart folder monitoring with file completion detection
+• G-code processing with coordinate conversion
+• FTP integration with error handling
+• Windows Service integration
+• Automatic updates
+• System tray operation
+
+Visit: https://3dtek-xyz.github.io/CNC-FTPSync/";
+
+                MessageBox.Show(aboutMessage, "About CBWSS-Sync", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                
+                _logService.LogInfo("About dialog displayed");
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError($"Error showing About dialog: {ex.Message}");
+                MessageBox.Show("Error displaying About information.", "Error", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
         private void CheckForUpdates_Click(object? sender, EventArgs e)
         {
             try

@@ -31,9 +31,10 @@
       <ComponentRef Id="DesktopShortcut" />
     </Feature>
 
-    <!-- WiX UI for installation wizard - simplified version -->
-    <ui:WixUI Id="WixUI_Minimal" />
+    <!-- WiX UI for installation wizard with license agreement -->
+    <ui:WixUI Id="WixUI_InstallDir" />
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <Property Id="WIXUI_LICENSERTF" Value="License.rtf" />
 
     <!-- Installation directory structure -->
     <StandardDirectory Id="ProgramFiles6432Folder">
@@ -51,19 +52,29 @@
     <!-- Desktop -->
     <StandardDirectory Id="DesktopFolder" />
 
-    <!-- Program Menu shortcuts - Move to GCodeSyncGUI component -->
+    <!-- Program Menu shortcut component -->
     <Component Id="ProgramMenuDir" Directory="ApplicationProgramsFolder" Guid="*">
+      <Shortcut Id="ApplicationStartMenuShortcut"
+                Name="CBWSS-Sync"
+                Description="CNC File Transfer and Processing Service"
+                Target="[#GCodeSyncGUI.exe]"
+                WorkingDirectory="INSTALLFOLDER" />
       <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall" />
       <RegistryValue Root="HKCU"
                      Key="Software\3DTek\CBWSS-Sync"
-                     Name="installed"
+                     Name="StartMenuShortcut"
                      Type="integer"
                      Value="1"
                      KeyPath="yes" />
     </Component>
 
-    <!-- Desktop shortcut component - separate from file component -->
+    <!-- Desktop shortcut component -->
     <Component Id="DesktopShortcut" Directory="DesktopFolder" Guid="*">
+      <Shortcut Id="ApplicationDesktopShortcut"
+                Name="CBWSS-Sync"
+                Description="CNC File Transfer and Processing Service"
+                Target="[#GCodeSyncGUI.exe]"
+                WorkingDirectory="INSTALLFOLDER" />
       <RegistryValue Root="HKCU"
                      Key="Software\3DTek\CBWSS-Sync"
                      Name="DesktopShortcut"

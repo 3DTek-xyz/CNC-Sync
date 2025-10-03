@@ -14,6 +14,8 @@ namespace GCodeSyncGUI
         private ToolStripMenuItem uninstallServiceToolStripMenuItem;
         private ToolStripMenuItem startServiceToolStripMenuItem;
         private ToolStripMenuItem stopServiceToolStripMenuItem;
+        private ToolStripMenuItem helpToolStripMenuItem;
+        private ToolStripMenuItem aboutToolStripMenuItem;
         private NotifyIcon notifyIcon;
         private ContextMenuStrip trayContextMenu;
         private TabControl tabControl;
@@ -208,10 +210,11 @@ namespace GCodeSyncGUI
             this.stopServiceToolStripMenuItem.Text = "S&top Service";
             this.stopServiceToolStripMenuItem.Click += StopService_Click;
             
-            // Add Service menu to MenuStrip
+            // Add menus to MenuStrip
             this.menuStrip.Items.AddRange(new ToolStripItem[] {
                 this.fileToolStripMenuItem,
-                this.serviceToolStripMenuItem});
+                this.serviceToolStripMenuItem,
+                this.helpToolStripMenuItem});
             this.menuStrip.Location = new Point(0, 0);
             this.menuStrip.Name = "menuStrip";
             this.menuStrip.Size = new Size(800, 24);
@@ -632,6 +635,28 @@ namespace GCodeSyncGUI
             });
             
             this.notifyIcon.ContextMenuStrip = this.trayContextMenu;
+            
+            // Initialize Help menu
+            InitializeHelpMenu();
+        }
+        
+        private void InitializeHelpMenu()
+        {
+            // Help menu
+            this.helpToolStripMenuItem = new ToolStripMenuItem();
+            this.helpToolStripMenuItem.Name = "helpToolStripMenuItem";
+            this.helpToolStripMenuItem.Size = new Size(44, 20);
+            this.helpToolStripMenuItem.Text = "&Help";
+            
+            // About menu item
+            this.aboutToolStripMenuItem = new ToolStripMenuItem();
+            this.aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
+            this.aboutToolStripMenuItem.Size = new Size(152, 22);
+            this.aboutToolStripMenuItem.Text = "&About CBWSS-Sync...";
+            this.aboutToolStripMenuItem.Click += new EventHandler(this.About_Click);
+            
+            // Add About to Help menu
+            this.helpToolStripMenuItem.DropDownItems.Add(this.aboutToolStripMenuItem);
         }
     }
 }
