@@ -19,7 +19,7 @@ namespace GCodeSyncGUI
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public event EventHandler<ExecuteEventArgs>? ItemExecuted;
 
-        private string? _currentPath;
+        private string _currentPath;
         private bool _isInitialized = false;
 
         public CustomWebView2()

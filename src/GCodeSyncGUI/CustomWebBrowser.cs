@@ -23,7 +23,7 @@ namespace GCodeSyncGUI
         public event EventHandler<ExecuteEventArgs>? ItemExecuted;
 
         private IntPtr m_ShellView;
-        private ExplorerListView? m_Explorer;
+        private ExplorerListView m_Explorer;
 
         // P/Invoke declarations for SendMessage approach
         [DllImport("user32.dll", SetLastError = true)]
@@ -137,10 +137,10 @@ namespace GCodeSyncGUI
     // Event args for item execution
     public class ExecuteEventArgs : EventArgs
     {
-        public string? FilePath { get; set; }
-        public string? FileName { get; set; }
+        public string FilePath { get; set; }
+        public string FileName { get; set; }
         
-        public ExecuteEventArgs(string? filePath, string? fileName)
+        public ExecuteEventArgs(string filePath, string fileName)
         {
             FilePath = filePath;
             FileName = fileName;
@@ -216,7 +216,7 @@ namespace GCodeSyncGUI
                     if (nmhdr.hwndFrom == m_ListView && nmhdr.code == NM_DBLCLK)
                     {
                         // Get selected item text
-                        string? itemText = GetSelectedItemText();
+                        string itemText = GetSelectedItemText();
                         if (!string.IsNullOrEmpty(itemText))
                         {
                             // Cancel the default behavior by not calling base.WndProc for this message
@@ -234,7 +234,7 @@ namespace GCodeSyncGUI
             base.WndProc(ref m);
         }
 
-        private string? GetSelectedItemText()
+        private string GetSelectedItemText()
         {
             try
             {
