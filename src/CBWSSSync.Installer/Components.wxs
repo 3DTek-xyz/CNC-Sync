@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   
-  <!-- Main application components -->
-  <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+  <Fragment>
+    <!-- Main application components -->
+    <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
     
     <!-- GUI Application -->
     <Component Id="GCodeSyncGUI" Guid="*">
       <File Id="GCodeSyncGUI.exe" 
-            Source="$(var.GCodeSyncGUI.TargetPath)" 
+            Source="$(var.GCodeSyncGUI.TargetDir)GCodeSyncGUI.exe" 
             KeyPath="yes" />
       <File Id="GCodeSyncGUI.deps.json" 
             Source="$(var.GCodeSyncGUI.TargetDir)GCodeSyncGUI.deps.json" />
@@ -89,7 +90,7 @@
     <!-- Service Executable -->
     <Component Id="GCodeSyncService" Guid="*">
       <File Id="GCodeSyncService.exe" 
-            Source="$(var.GCodeSyncService.TargetPath)" 
+            Source="$(var.GCodeSyncService.TargetDir)GCodeSyncService.exe" 
             KeyPath="yes" />
       <File Id="GCodeSyncService.deps.json" 
             Source="$(var.GCodeSyncService.TargetDir)GCodeSyncService.deps.json" />
@@ -111,4 +112,5 @@
 
   </ComponentGroup>
 
+  </Fragment>
 </Wix>

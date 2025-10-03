@@ -15,13 +15,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\GCodeSyncGUI\GCodeSyncGUI.csproj">
-      <Properties>Platform=AnyCPU</Properties>
+      <Properties>Platform=x64</Properties>
     </ProjectReference>
     <ProjectReference Include="..\GCodeSyncService\GCodeSyncService.csproj">
-      <Properties>Platform=AnyCPU</Properties>
+      <Properties>Platform=x64</Properties>
     </ProjectReference>
     <ProjectReference Include="..\GCodeSyncCore\GCodeSyncCore.csproj">
-      <Properties>Platform=AnyCPU</Properties>
+      <Properties>Platform=x64</Properties>
     </ProjectReference>
   </ItemGroup>
 

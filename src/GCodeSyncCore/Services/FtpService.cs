@@ -393,8 +393,8 @@ namespace GCodeSyncCore.Services
                 using var responseStream = response.GetResponseStream();
                 using var reader = new StreamReader(responseStream);
                 
-                string line;
-                while ((line = await reader.ReadLineAsync()) != null)
+                string? line;
+                while ((line = await reader.ReadLineAsync()) is not null)
                 {
                     _logger.LogInfo($"Raw FTP list line: '{line}'");
                     var fileInfo = ParseFtpListLine(line, remotePath);

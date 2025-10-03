@@ -1266,7 +1266,7 @@ namespace GCodeSyncGUI
                         {
                             File.Delete(logFile);
                         }
-                        catch (Exception ex)
+                        catch (Exception)
                         {
                             // Log file might be in use, try to clear content instead
                             try
@@ -1281,7 +1281,7 @@ namespace GCodeSyncGUI
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Don't throw, just ignore - this is a nice-to-have feature
             }
@@ -1626,7 +1626,7 @@ namespace GCodeSyncGUI
             }
         }
 
-        private async void OnRemoteBrowserDirectoryChanged(object? sender, string newPath)
+        private void OnRemoteBrowserDirectoryChanged(object? sender, string newPath)
         {
             // Check if this is FTP navigation by looking for FTP markers
             WriteToLogFile($"Remote browser directory changed to: {newPath}");

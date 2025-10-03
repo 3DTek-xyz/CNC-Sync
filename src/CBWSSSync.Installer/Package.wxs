@@ -8,8 +8,7 @@
            Version="1.0.0.0"
            UpgradeCode="12345678-1234-1234-1234-123456789012"
            Compressed="true"
-           InstallerVersion="500"
-           Platform="x64">
+           InstallerVersion="500">
 
     <SummaryInformation Description="CNC File Transfer and Processing Service"
                        Manufacturer="3DTek"
@@ -83,43 +82,11 @@
                      KeyPath="yes" />
     </Component>
 
-    <!-- Service installation custom actions -->
-    <CustomAction Id="InstallService"
-                  ExeCommand="[#GCodeSyncService.exe] --install"
-                  Directory="INSTALLFOLDER"
-                  Execute="deferred"
-                  Impersonate="no"
-                  Return="ignore" />
-
-    <CustomAction Id="UninstallService"
-                  ExeCommand='sc delete "GCodeSync"'
-                  Execute="deferred"
-                  Impersonate="no"
-                  Return="ignore" />
-
-    <CustomAction Id="StartService"
-                  ExeCommand='sc start "GCodeSync"'
-                  Execute="deferred"
-                  Impersonate="no"
-                  Return="ignore" />
-
-    <CustomAction Id="StopService"
-                  ExeCommand='sc stop "GCodeSync"'
-                  Execute="deferred"
-                  Impersonate="no"
-                  Return="ignore" />
-
-    <!-- Installation sequence -->
-    <InstallExecuteSequence>
-      <Custom Action="StopService" Before="RemoveFiles">Installed</Custom>
-      <Custom Action="UninstallService" Before="RemoveFiles">Installed</Custom>
-      <Custom Action="InstallService" After="InstallFiles">NOT Installed</Custom>
-      <Custom Action="StartService" After="InstallService">NOT Installed</Custom>
-    </InstallExecuteSequence>
+    <!-- Note: Service installation will be handled manually by the user -->
+    <!-- The GUI application can manage service installation/removal -->
 
     <!-- Properties for silent installation -->
     <Property Id="MSIUSEREALADMINDETECTION" Value="1" />
-    <Property Id="ALLUSERS" Value="1" />
 
   </Package>
 </Wix>

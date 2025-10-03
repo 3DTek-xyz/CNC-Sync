@@ -34,7 +34,7 @@ namespace GCodeSyncGUI
             // Set up event handlers
             DragEnter += new DragEventHandler((object? sender, DragEventArgs e) =>
             {
-                if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                if (e.Data?.GetDataPresent(DataFormats.FileDrop) == true)
                 {
                     e.Effect = DragDropEffects.Copy;
                 }
@@ -781,7 +781,7 @@ namespace GCodeSyncGUI
                 if (!Directory.Exists(destinationDirectory))
                     return;
 
-                string[]? sourceNames = e.Data.GetData(DataFormats.FileDrop) as string[];
+                string[]? sourceNames = e.Data?.GetData(DataFormats.FileDrop) as string[];
                 if (sourceNames != null)
                 {
                     foreach (string sourceName in sourceNames)
@@ -873,7 +873,7 @@ namespace GCodeSyncGUI
                 if (!Directory.Exists(destinationDirectory))
                     return;
 
-                string[]? sourceNames = e.Data.GetData(DataFormats.FileDrop) as string[];
+                string[]? sourceNames = e.Data?.GetData(DataFormats.FileDrop) as string[];
                 if (sourceNames != null)
                 {
                     foreach (string sourceName in sourceNames)

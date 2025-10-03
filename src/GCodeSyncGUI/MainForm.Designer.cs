@@ -27,7 +27,6 @@ namespace GCodeSyncGUI
         private Button btnStartStandalone;
         private Button btnStopStandalone;
         private Button btnManualProcess;
-        private GroupBox grpServiceControl;
         private GroupBox grpStandaloneControl;
         
         // Configuration Tab Controls

@@ -10,9 +10,9 @@ namespace GCodeSyncGUI
 {
     public class BrowserContainer : SplitContainer
     {
-        private ListViewDirectoryBrowser _directoryBrowser;
-        private ListViewFileBrowser _fileBrowser;
-        private ImageList _imageList;
+        private ListViewDirectoryBrowser _directoryBrowser = null!;
+        private ListViewFileBrowser _fileBrowser = null!;
+        private ImageList _imageList = null!;
         private string _currentDirectory = "";
         private List<string> _navigationHistory = new List<string>();
         private int _navigationIndex = -1;
