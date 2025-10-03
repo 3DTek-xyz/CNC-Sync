@@ -109,4 +109,4 @@ Built with:
 - Review Windows Event Log for service issues
 
 ## 📝 License
-Copyright © 2025. Ben Harper 3DTek.
+Copyright © 2025. Ben Harper 3DTek.# Test build after Icon file cleanup
