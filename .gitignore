@@ -1,39 +1,9 @@
-# Build results
-[Dd]ebug/
-[Dd]ebugPublic/
-[Rr]elease/
-[Rr]eleases/
-x64/
-x86/
-bld/
-[Bb]in/
-[Oo]bj/
-[Ll]og/
-
-# Visual Studio
-.vs/
-*.suo
-*.user
-*.sln.docstates
-
-# NuGet
-packages/
-*.nupkg
-
-# macOS
-.DS_Store
-**/.DS_Store
-
-# Windows
-Thumbs.db
-ehthumbs.db
-
-# IDE
-*.swp
-*.swo
-*~
-
-# macOS metadata
-Icon\?
+# macOS metadata files that cause Windows Git issues
+Icon?
+Icon
 .DS_Store
 ._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+.TemporaryItems
