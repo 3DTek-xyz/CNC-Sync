@@ -32,3 +32,8 @@ ehthumbs.db
 *.swp
 *.swo
 *~
+
+# macOS metadata
+Icon\?
+.DS_Store
+._*
