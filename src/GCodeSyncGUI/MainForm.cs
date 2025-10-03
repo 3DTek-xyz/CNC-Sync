@@ -2,7 +2,6 @@ using GCodeSyncCore.Models;
 using GCodeSyncCore.Services;
 using System.ServiceProcess;
 using System.Diagnostics;
-using GCodeSyncGUI.Resources;
 using AutoUpdaterDotNET;
 
 namespace GCodeSyncGUI

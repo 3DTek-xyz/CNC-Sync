@@ -1,0 +1,55 @@
+{
+  "format": 1,
+  "restore": {
+    "C:\\Users\\Emils\\Dropbox\\CBWSS-SYNC\\src\\CBWSSSync.Installer\\CBWSSSync.Installer.wixproj": {}
+  },
+  "projects": {
+    "C:\\Users\\Emils\\Dropbox\\CBWSS-SYNC\\src\\CBWSSSync.Installer\\CBWSSSync.Installer.wixproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\Emils\\Dropbox\\CBWSS-SYNC\\src\\CBWSSSync.Installer\\CBWSSSync.Installer.wixproj",
+        "projectName": "CBWSSSync.Installer",
+        "projectPath": "C:\\Users\\Emils\\Dropbox\\CBWSS-SYNC\\src\\CBWSSSync.Installer\\CBWSSSync.Installer.wixproj",
+        "packagesPath": "C:\\Users\\Emils\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Emils\\Dropbox\\CBWSS-SYNC\\src\\CBWSSSync.Installer\\obj\\",
+        "projectStyle": "PackageReference",
+        "UsingMicrosoftNETSdk": false,
+        "configFilePaths": [
+          "C:\\Users\\Emils\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "native": {
+            "targetAlias": "net9.0",
+            "projectReferences": {}
+          }
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "native": {
+          "targetAlias": "net9.0",
+          "dependencies": {
+            "WixToolset.UI.wixext": {
+              "target": "Package",
+              "version": "[5.0.1, )"
+            },
+            "WixToolset.Util.wixext": {
+              "target": "Package",
+              "version": "[5.0.1, )"
+            }
+          }
+        }
+      }
+    }
+  }
+}
