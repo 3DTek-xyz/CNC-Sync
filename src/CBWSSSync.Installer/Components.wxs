@@ -9,7 +9,19 @@
     <Component Id="GCodeSyncGUI" Guid="*">
       <File Id="GCodeSyncGUI.exe" 
             Source="$(var.GCodeSyncGUI.TargetDir)GCodeSyncGUI.exe" 
-            KeyPath="yes" />
+            KeyPath="yes">
+        <!-- Shortcuts in same component as the file they reference -->
+        <Shortcut Id="ApplicationStartMenuShortcut"
+                  Directory="ApplicationProgramsFolder"
+                  Name="CBWSS-Sync"
+                  Description="CNC File Transfer and Processing Service"
+                  WorkingDirectory="INSTALLFOLDER" />
+        <Shortcut Id="ApplicationDesktopShortcut"
+                  Directory="DesktopFolder"  
+                  Name="CBWSS-Sync"
+                  Description="CNC File Transfer and Processing Service"
+                  WorkingDirectory="INSTALLFOLDER" />
+      </File>
       <File Id="GCodeSyncGUI.deps.json" 
             Source="$(var.GCodeSyncGUI.TargetDir)GCodeSyncGUI.deps.json" />
       <File Id="GCodeSyncGUI.runtimeconfig.json" 

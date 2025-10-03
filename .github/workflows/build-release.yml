@@ -43,7 +43,7 @@ jobs:
         }
       shell: powershell
 
-    - name: Update version in Package.wxs
+    - name: Update version in Package.wxs  
       run: |
         $packageFile = "src/CBWSSSync.Installer/Package.wxs"
         $content = Get-Content $packageFile -Raw

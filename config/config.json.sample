@@ -1,0 +1,33 @@
+{
+  "WatchFolders": [
+    {
+      "Name": "CNC Output",
+      "LocalPath": "C:\\CNC\\Output",
+      "FtpSettings": {
+        "Host": "ftp.example.com",
+        "Port": 21,
+        "Username": "your_username",
+        "Password": "your_password",
+        "RemotePath": "/upload",
+        "UseSSL": false
+      },
+      "FileFilters": [
+        "*.gcode",
+        "*.nc",
+        "*.cnc"
+      ],
+      "ProcessingOptions": {
+        "ValidateGCode": true,
+        "AddTimestamp": false,
+        "CompressionEnabled": false
+      }
+    }
+  ],
+  "ServiceSettings": {
+    "CheckIntervalSeconds": 30,
+    "MaxRetries": 3,
+    "RetryDelaySeconds": 60,
+    "EnableLogging": true,
+    "LogLevel": "Info"
+  }
+}

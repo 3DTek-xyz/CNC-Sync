@@ -49,6 +49,27 @@ jobs:
     - name: Build MSI Installer
       run: dotnet build src/CBWSSSync.Installer/CBWSSSync.Installer.wixproj --configuration Release
 
+    - name: Generate auto-increment version
+      id: auto_version
+      run: |
+        # Generate version based on date and run number
+        $date = Get-Date -Format "yyyy.MM.dd"
+        $runNumber = $env:GITHUB_RUN_NUMBER
+        if (!$runNumber) { $runNumber = 1 }
+        $version = "$date.$runNumber"
+        echo "AUTO_VERSION=$version" >> $env:GITHUB_OUTPUT
+        echo "Generated version: $version"
+      shell: powershell
+
+    - name: Update version in Package.wxs
+      run: |
+        $packageFile = "src/CBWSSSync.Installer/Package.wxs"
+        $content = Get-Content $packageFile -Raw
+        $newContent = $content -replace 'Version="[\d\.]+"', 'Version="${{ steps.auto_version.outputs.AUTO_VERSION }}"'
+        Set-Content $packageFile $newContent
+        echo "Updated Package.wxs with version ${{ steps.auto_version.outputs.AUTO_VERSION }}"
+      shell: powershell
+
     - name: Copy MSI to docs folder
       run: |
         $msiPath = "bin/Release/CBWSSSync.Installer.msi"
@@ -56,9 +77,9 @@ jobs:
           # Copy to docs/installer with generic name for the download link
           Copy-Item $msiPath "docs/installer/CBWSS-Sync-Setup-Latest.msi" -Force
           
-          # Also copy with timestamped name for version history
-          $timestamp = Get-Date -Format "yyyy-MM-dd-HHmm"
-          Copy-Item $msiPath "docs/installer/CBWSS-Sync-Setup-$timestamp.msi" -Force
+          # Also copy with versioned name for history
+          $version = "${{ steps.auto_version.outputs.AUTO_VERSION }}"
+          Copy-Item $msiPath "docs/installer/CBWSS-Sync-Setup-v$version.msi" -Force
           
           # Get file info for updating index.html
           $msi = Get-Item $msiPath
@@ -70,12 +91,13 @@ jobs:
           $buildDate = Get-Date -Format "yyyy-MM-dd HH:mm UTC"
           
           # Update version info and file size
-          $content = $content -replace 'Version [\d\.]+ • Windows 10/11 • [\d\.]+ ?MB', "Version 1.0.0 • Windows 10/11 • $sizeInMB MB"
+          $content = $content -replace 'Version [\d\.]+ • Windows 10/11 • [\d\.]+ ?MB', "Version $version • Windows 10/11 • $sizeInMB MB"
           $content = $content -replace '<!-- Last updated: .* -->', "<!-- Last updated: $buildDate -->"
           
           Set-Content $indexFile $content
           
           Write-Host "✅ MSI copied successfully!"
+          Write-Host "   Version: $version"
           Write-Host "   Size: $sizeInMB MB"
           Write-Host "   Build: $buildDate"
         } else {
@@ -126,12 +148,40 @@ jobs:
         Write-Host "✅ Installer index created"
       shell: powershell
 
+    - name: Update update.xml for auto-updater
+      shell: powershell
+      run: |
+        $updateFile = "update.xml"
+        $version = "${{ steps.auto_version.outputs.AUTO_VERSION }}"
+        $downloadUrl = "https://3dtek-xyz.github.io/CNC-FTPSync/installer/CBWSS-Sync-Setup-Latest.msi"
+        $changelogUrl = "https://3dtek-xyz.github.io/CNC-FTPSync/"
+        
+        # Generate checksum for the MSI file
+        $msiPath = "bin/Release/CBWSSSync.Installer.msi"
+        $hash = Get-FileHash $msiPath -Algorithm SHA512
+        $checksum = $hash.Hash
+        
+        $updateXml = @"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <item>
+            <version>$version</version>
+            <url>$downloadUrl</url>
+            <changelog>$changelogUrl</changelog>
+            <mandatory>false</mandatory>
+            <args>/QUIET /NORESTART</args>
+            <checksum algorithm="SHA512">$checksum</checksum>
+        </item>
+        "@
+        
+        Set-Content $updateFile $updateXml
+        echo "Updated update.xml with version $version"
+
     - name: Commit updated files
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add docs/
-        git commit -m "Update GitHub Pages with latest MSI installer [skip ci]" || echo "No changes to commit"
+        git add docs/ update.xml
+        git commit -m "Update GitHub Pages with latest MSI installer v${{ steps.auto_version.outputs.AUTO_VERSION }} [skip ci]" || echo "No changes to commit"
         git push origin main || echo "No changes to push"
 
     - name: Setup Pages

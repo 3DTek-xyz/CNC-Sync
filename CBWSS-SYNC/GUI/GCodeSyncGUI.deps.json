@@ -9,6 +9,7 @@
     ".NETCoreApp,Version=v9.0/win-x64": {
       "GCodeSyncGUI/1.0.0": {
         "dependencies": {
+          "Autoupdater.NET.Official": "1.9.2",
           "GCodeSyncCore": "1.0.0",
           "System.ServiceProcess.ServiceController": "9.0.0"
         },
@@ -16,11 +17,43 @@
           "GCodeSyncGUI.dll": {}
         }
       },
+      "Autoupdater.NET.Official/1.9.2": {
+        "dependencies": {
+          "Microsoft.Web.WebView2": "1.0.2592.51"
+        },
+        "runtime": {
+          "lib/net8.0-windows7.0/AutoUpdater.NET.dll": {
+            "assemblyVersion": "1.9.2.0",
+            "fileVersion": "1.9.2.0"
+          }
+        }
+      },
       "Microsoft.Extensions.ObjectPool/6.0.16": {
         "runtime": {
           "lib/net6.0/Microsoft.Extensions.ObjectPool.dll": {
             "assemblyVersion": "6.0.0.0",
             "fileVersion": "6.0.1623.17406"
+          }
+        }
+      },
+      "Microsoft.Web.WebView2/1.0.2592.51": {
+        "runtime": {
+          "lib/netcoreapp3.0/Microsoft.Web.WebView2.Core.dll": {
+            "assemblyVersion": "1.0.2592.51",
+            "fileVersion": "1.0.2592.51"
+          },
+          "lib/netcoreapp3.0/Microsoft.Web.WebView2.WinForms.dll": {
+            "assemblyVersion": "1.0.2592.51",
+            "fileVersion": "1.0.2592.51"
+          },
+          "lib/netcoreapp3.0/Microsoft.Web.WebView2.Wpf.dll": {
+            "assemblyVersion": "1.0.2592.51",
+            "fileVersion": "1.0.2592.51"
+          }
+        },
+        "native": {
+          "runtimes/win-x64/native/WebView2Loader.dll": {
+            "fileVersion": "1.0.2592.51"
           }
         }
       },
@@ -97,12 +130,26 @@
       "serviceable": false,
       "sha512": ""
     },
+    "Autoupdater.NET.Official/1.9.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-wVB0YMk5Dyc2UMUb46t5TVvzipfgkNHtuKh04wp14k/32nY7wMTz8gSMgiaX9WAHesW60K6J8uGz5G8gyGkEPQ==",
+      "path": "autoupdater.net.official/1.9.2",
+      "hashPath": "autoupdater.net.official.1.9.2.nupkg.sha512"
+    },
     "Microsoft.Extensions.ObjectPool/6.0.16": {
       "type": "package",
       "serviceable": true,
       "sha512": "sha512-OVX5tlKg6LY+XKqlUn7i9KY+6Liut0iewWff2DNr7129i/NJ8rpUzbmxavPydZgcLREEWHklXZiPKCS895tNIQ==",
       "path": "microsoft.extensions.objectpool/6.0.16",
       "hashPath": "microsoft.extensions.objectpool.6.0.16.nupkg.sha512"
+    },
+    "Microsoft.Web.WebView2/1.0.2592.51": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-AC9aWCthS2JvddYA1jl4dFpLBW3GsLRInhp5dkcBzaFXsRehfoUN9olIUsrH41eNaNYd7z9NRvmy81aUA5aD1g==",
+      "path": "microsoft.web.webview2/1.0.2592.51",
+      "hashPath": "microsoft.web.webview2.1.0.2592.51.nupkg.sha512"
     },
     "NLog/5.3.4": {
       "type": "package",

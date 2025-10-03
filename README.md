@@ -109,4 +109,4 @@ Built with:
 - Review Windows Event Log for service issues
 
 ## 📝 License
-Copyright © 2025. Based on existing PowerShell automation for CNC G-Code processing workflow.
+Copyright © 2025. Ben Harper 3DTek.

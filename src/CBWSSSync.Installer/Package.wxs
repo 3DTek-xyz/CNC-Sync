@@ -51,13 +51,8 @@
     <!-- Desktop -->
     <StandardDirectory Id="DesktopFolder" />
 
-    <!-- Program Menu shortcuts -->
+    <!-- Program Menu shortcuts - Move to GCodeSyncGUI component -->
     <Component Id="ProgramMenuDir" Directory="ApplicationProgramsFolder" Guid="*">
-      <Shortcut Id="ApplicationStartMenuShortcut"
-                Name="CBWSS-Sync"
-                Description="CNC File Transfer and Processing Service"
-                Target="[#GCodeSyncGUI.exe]"
-                WorkingDirectory="INSTALLFOLDER" />
       <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall" />
       <RegistryValue Root="HKCU"
                      Key="Software\3DTek\CBWSS-Sync"
@@ -67,13 +62,8 @@
                      KeyPath="yes" />
     </Component>
 
-    <!-- Desktop shortcut -->
+    <!-- Desktop shortcut component - separate from file component -->
     <Component Id="DesktopShortcut" Directory="DesktopFolder" Guid="*">
-      <Shortcut Id="ApplicationDesktopShortcut"
-                Name="CBWSS-Sync"
-                Description="CNC File Transfer and Processing Service"
-                Target="[#GCodeSyncGUI.exe]"
-                WorkingDirectory="INSTALLFOLDER" />
       <RegistryValue Root="HKCU"
                      Key="Software\3DTek\CBWSS-Sync"
                      Name="DesktopShortcut"
