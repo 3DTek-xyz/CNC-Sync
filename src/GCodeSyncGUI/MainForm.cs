@@ -48,7 +48,20 @@ namespace GCodeSyncGUI
             _config = _configService.LoadConfiguration();
             
             // Set the application icon
-            this.Icon = IconLoader.LoadApplicationIcon();
+            try
+            {
+                var iconPath = Path.Combine(Application.StartupPath, "CBWSS-Logo.png");
+                if (File.Exists(iconPath))
+                {
+                    using var bitmap = new Bitmap(iconPath);
+                    this.Icon = Icon.FromHandle(bitmap.GetHicon());
+                }
+            }
+            catch (Exception ex)
+            {
+                // Fallback to default icon if loading fails
+                _logService?.LogWarning($"Failed to load application icon: {ex.Message}");
+            }
             
             InitializeNotifyIcon();
             LoadConfiguration();
