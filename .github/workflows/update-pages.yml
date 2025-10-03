@@ -1,0 +1,146 @@
+name: Update GitHub Pages
+
+on:
+  workflow_run:
+    workflows: ["Build Test"]
+    types:
+      - completed
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:  # Manual triggering
+
+env:
+  DOTNET_VERSION: '9.0.x'
+
+jobs:
+  update-pages:
+    runs-on: windows-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+    
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Install WiX Toolset
+      run: dotnet tool install --global wix --version 5.0.1
+      
+    - name: Restore NuGet packages
+      run: dotnet restore
+
+    - name: Build Release configuration
+      run: dotnet build --configuration Release --no-restore
+
+    - name: Restore WiX Installer dependencies
+      run: dotnet restore src/CBWSSSync.Installer/CBWSSSync.Installer.wixproj
+
+    - name: Build MSI Installer
+      run: dotnet build src/CBWSSSync.Installer/CBWSSSync.Installer.wixproj --configuration Release
+
+    - name: Copy MSI to docs folder
+      run: |
+        $msiPath = "bin/Release/CBWSSSync.Installer.msi"
+        if (Test-Path $msiPath) {
+          # Copy to docs/installer with generic name for the download link
+          Copy-Item $msiPath "docs/installer/CBWSS-Sync-Setup-Latest.msi" -Force
+          
+          # Also copy with timestamped name for version history
+          $timestamp = Get-Date -Format "yyyy-MM-dd-HHmm"
+          Copy-Item $msiPath "docs/installer/CBWSS-Sync-Setup-$timestamp.msi" -Force
+          
+          # Get file info for updating index.html
+          $msi = Get-Item $msiPath
+          $sizeInMB = [math]::Round($msi.Length / 1MB, 1)
+          
+          # Update version info in index.html
+          $indexFile = "docs/index.html"
+          $content = Get-Content $indexFile -Raw
+          $buildDate = Get-Date -Format "yyyy-MM-dd HH:mm UTC"
+          
+          # Update version info and file size
+          $content = $content -replace 'Version [\d\.]+ • Windows 10/11 • [\d\.]+ ?MB', "Version 1.0.0 • Windows 10/11 • $sizeInMB MB"
+          $content = $content -replace '<!-- Last updated: .* -->', "<!-- Last updated: $buildDate -->"
+          
+          Set-Content $indexFile $content
+          
+          Write-Host "✅ MSI copied successfully!"
+          Write-Host "   Size: $sizeInMB MB"
+          Write-Host "   Build: $buildDate"
+        } else {
+          Write-Error "❌ MSI file not found!"
+          exit 1
+        }
+      shell: powershell
+
+    - name: Create installer index
+      run: |
+        $installerDir = "docs/installer"
+        $files = Get-ChildItem $installerDir -Filter "*.msi" | Sort-Object LastWriteTime -Descending
+        
+        $htmlContent = @"
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>CBWSS-Sync Installer Downloads</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 40px; background: #f6f8fa; }
+                .container { max-width: 800px; margin: 0 auto; background: white; padding: 2rem; border-radius: 8px; }
+                h1 { color: #0366d6; }
+                .download-item { border: 1px solid #e1e4e8; padding: 1rem; margin: 1rem 0; border-radius: 6px; }
+                .latest { background: #f6ffed; border-color: #52c41a; }
+                a { color: #0366d6; text-decoration: none; font-weight: bold; }
+                a:hover { text-decoration: underline; }
+                .file-info { font-size: 0.9em; color: #666; margin-top: 0.5rem; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>CBWSS-Sync Installer Downloads</h1>
+                <p>Choose your preferred version to download:</p>
+        "@
+        
+        foreach (`$file in `$files) {
+            `$isLatest = `$file.Name -eq "CBWSS-Sync-Setup-Latest.msi"
+            `$sizeKB = [math]::Round(`$file.Length / 1KB, 0)
+            `$class = if (`$isLatest) { "download-item latest" } else { "download-item" }
+            `$recommendedText = if (`$isLatest) { " (RECOMMENDED)" } else { "" }
+            
+            `$htmlContent += "<div class=`"`$class`"><a href=`"./`$(`$file.Name)`" download>`$(`$file.Name)</a>`$recommendedText<div class=`"file-info`">Size: `$sizeKB KB • Modified: `$(`$file.LastWriteTime.ToString('yyyy-MM-dd HH:mm'))</div></div>"
+        }
+        
+        `$htmlContent += "<div style=`"margin-top: 2rem; padding: 1rem; background: #fff3cd; border-radius: 6px;`"><strong>Installation:</strong> Right-click the downloaded MSI file and select `"Run as administrator`"</div></div></body></html>"
+        
+        Set-Content "`$installerDir/index.html" `$htmlContent
+        Write-Host "✅ Installer index created"
+      shell: powershell
+
+    - name: Commit updated files
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add docs/
+        git commit -m "Update GitHub Pages with latest MSI installer [skip ci]" || echo "No changes to commit"
+        git push origin main || echo "No changes to push"
+
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+      
+    - name: Upload to GitHub Pages
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: docs/
+        
+    - name: Deploy to GitHub Pages
+      uses: actions/deploy-pages@v4
