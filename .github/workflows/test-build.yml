@@ -32,8 +32,11 @@ jobs:
     - name: Build Release configuration
       run: dotnet build --configuration Release --no-restore
 
+    - name: Restore WiX Installer dependencies
+      run: dotnet restore src/CBWSSSync.Installer/CBWSSSync.Installer.wixproj
+
     - name: Build MSI Installer
-      run: dotnet build src/CBWSSSync.Installer/CBWSSSync.Installer.wixproj --configuration Release --no-restore
+      run: dotnet build src/CBWSSSync.Installer/CBWSSSync.Installer.wixproj --configuration Release
 
     - name: Test MSI Creation
       run: |
