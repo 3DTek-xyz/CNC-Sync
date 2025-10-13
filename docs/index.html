@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CBWSS-Sync - Windows G-Code Sync Tool</title>
+    <title>CBWSS-Sync - G-Code Processing Tool</title>
     <style>
         * {
             margin: 0;
@@ -15,322 +15,223 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             line-height: 1.6;
             color: #333;
-            background: #f6f8fa;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
         }
         
         .container {
-            max-width: 900px;
+            max-width: 800px;
             margin: 0 auto;
-            padding: 0 20px;
+            padding: 2rem;
         }
         
-        header {
-            background: linear-gradient(135deg, #0366d6, #0969da);
-            color: white;
-            padding: 2rem 0;
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 3rem;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
             text-align: center;
         }
         
         .logo {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 1rem;
-            background: white;
-            border-radius: 12px;
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 2rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
-            font-weight: bold;
-            color: #0366d6;
+            font-size: 3rem;
+            color: white;
         }
         
         h1 {
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
         
         .subtitle {
-            font-size: 1.2rem;
-            opacity: 0.9;
-        }
-        
-        main {
-            background: white;
-            margin: -2rem auto 2rem;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            padding: 2rem;
-            position: relative;
-            z-index: 10;
+            font-size: 1.3rem;
+            color: #666;
+            margin-bottom: 3rem;
         }
         
         .download-section {
-            text-align: center;
-            padding: 2rem;
-            background: linear-gradient(135deg, #28a745, #34d058);
-            border-radius: 12px;
+            background: linear-gradient(135deg, #4CAF50, #45a049);
             color: white;
+            padding: 2rem;
+            border-radius: 12px;
             margin-bottom: 2rem;
         }
         
         .download-btn {
             display: inline-block;
             background: white;
-            color: #28a745;
-            padding: 1rem 2rem;
-            border-radius: 8px;
+            color: #4CAF50;
+            padding: 1.2rem 2.5rem;
+            border-radius: 50px;
             text-decoration: none;
             font-weight: bold;
-            font-size: 1.1rem;
-            margin-top: 1rem;
-            transition: transform 0.2s;
+            font-size: 1.2rem;
+            margin: 1rem 0;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
         
         .download-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
         }
         
         .version-info {
-            font-size: 0.9rem;
+            font-size: 1rem;
             opacity: 0.9;
-            margin-top: 0.5rem;
+            margin-top: 1rem;
         }
         
-        .features {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
+        .quick-start {
+            text-align: left;
             margin: 2rem 0;
+            padding: 2rem;
+            background: #f8f9fa;
+            border-radius: 12px;
         }
         
-        .feature {
-            padding: 1.5rem;
-            background: #f6f8fa;
-            border-radius: 8px;
-            border-left: 4px solid #0366d6;
-        }
-        
-        .feature h3 {
-            color: #0366d6;
-            margin-bottom: 0.5rem;
-        }
-        
-        .installation {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin: 2rem 0;
-        }
-        
-        .installation h2 {
-            color: #856404;
-            margin-bottom: 1rem;
+        .quick-start h2 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: #333;
         }
         
         .step {
             display: flex;
-            align-items: flex-start;
+            align-items: center;
             margin-bottom: 1rem;
+            padding: 0.5rem;
         }
         
         .step-number {
-            background: #0366d6;
+            background: #667eea;
             color: white;
-            width: 24px;
-            height: 24px;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.8rem;
             font-weight: bold;
             margin-right: 1rem;
             flex-shrink: 0;
         }
         
-        .requirements {
-            background: #e1f5fe;
-            border-left: 4px solid #03a9f4;
-            padding: 1rem;
-            margin: 1rem 0;
+        .what-it-does {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 8px;
+            text-align: left;
         }
         
-        .alert {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            color: #856404;
-            padding: 1rem;
-            border-radius: 6px;
-            margin: 1rem 0;
+        .what-it-does h3 {
+            color: #1976D2;
+            margin-bottom: 1rem;
         }
         
-        .alert.info {
-            background: #d1ecf1;
-            border-color: #bee5eb;
-            color: #0c5460;
-        }
-        
-        footer {
-            text-align: center;
-            padding: 2rem;
-            color: #666;
+        .footer-note {
             font-size: 0.9rem;
+            color: #666;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid #eee;
         }
         
-        code {
-            background: #f6f8fa;
-            padding: 0.2rem 0.4rem;
-            border-radius: 4px;
-            font-family: 'Consolas', monospace;
+        .requirements {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            text-align: left;
         }
     </style>
 </head>
 <body>
-    <header>
-        <div class="container">
+    <div class="container">
+        <div class="card">
             <div class="logo">⚡</div>
             <h1>CBWSS-Sync</h1>
-            <p class="subtitle">Windows G-Code Sync Tool</p>
-        </div>
-    </header>
-    
-    <main class="container">
-        <div class="download-section">
-            <h2>🚀 Download Latest Version</h2>
-            <p>Get the complete installer package - everything you need in one file!</p>
-            <a href="./installer/CBWSS-Sync-Setup-Latest.msi" class="download-btn" download>
-                📦 Download CBWSS-Sync Installer
-            </a>
-            <div class="version-info">
-                Version 1.0.0 • Windows 10/11 • 1.8MB
-            </div>
-        </div>
-        
-        <section class="requirements">
-            <h3>📋 System Requirements</h3>
-            <ul>
-                <li>Windows 10 or Windows 11 (64-bit)</li>
-                <li>.NET 9.0 Runtime (included in installer)</li>
-                <li>Administrator privileges for service installation</li>
-                <li>Network access to your FTP server</li>
-            </ul>
-        </section>
-        
-        <section class="installation">
-            <h2>🔧 Installation Steps</h2>
+            <p class="subtitle">Automated G-Code Processing & FTP Upload Tool</p>
             
-            <div class="step">
-                <span class="step-number">1</span>
-                <div>
-                    <strong>Download the installer</strong><br>
-                    Click the download button above to get the MSI installer file.
+            <div class="download-section">
+                <h2>� Download & Install</h2>
+                <p>Complete Windows installer with everything included</p>
+                <a href="./installer/CBWSS-Sync-Setup-Latest.msi" class="download-btn" download>
+                    � Download CBWSS-Sync
+                </a>
+                <div class="version-info">
+                    Latest Version • Windows 10/11 • Professional Tool
+                    <!-- Last updated: 2025-10-13 -->
                 </div>
             </div>
             
-            <div class="step">
-                <span class="step-number">2</span>
-                <div>
-                    <strong>Run as Administrator</strong><br>
-                    Right-click the MSI file and select "Run as administrator" to install the service properly.
+            <div class="quick-start">
+                <h2>� Quick Start</h2>
+                
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <div><strong>Download</strong> the installer above</div>
+                </div>
+                
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <div><strong>Run as Administrator</strong> (right-click → "Run as administrator")</div>
+                </div>
+                
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <div><strong>Launch</strong> from Start Menu → CBWSS-Sync</div>
+                </div>
+                
+                <div class="step">
+                    <span class="step-number">4</span>
+                    <div><strong>Configure</strong> your folders and FTP settings</div>
+                </div>
+                
+                <div class="step">
+                    <span class="step-number">5</span>
+                    <div><strong>Start</strong> automatic monitoring</div>
                 </div>
             </div>
             
-            <div class="step">
-                <span class="step-number">3</span>
-                <div>
-                    <strong>Launch the application</strong><br>
-                    Find "CBWSS-Sync" in your Start Menu or desktop shortcut.
-                </div>
+            <div class="what-it-does">
+                <h3>🎯 What This Tool Does</h3>
+                <p><strong>Automatically monitors folders</strong> for new G-code projects and:</p>
+                <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+                    <li>Processes CYC files (converts coordinates)</li>
+                    <li>Organizes files into proper folders</li>
+                    <li>Converts to UTF-8 encoding</li>
+                    <li>Uploads everything to your FTP server</li>
+                    <li>Provides detailed logs and status</li>
+                </ul>
+                <p><strong>Perfect for:</strong> CNC shops, manufacturing, automated workflows</p>
             </div>
             
-            <div class="step">
-                <span class="step-number">4</span>
-                <div>
-                    <strong>Configure settings</strong><br>
-                    Set up your watch folders, FTP server details, and processing options.
-                </div>
+            <div class="requirements">
+                <strong>Requirements:</strong> Windows 10/11, Admin access for installation, FTP server access
             </div>
             
-            <div class="step">
-                <span class="step-number">5</span>
-                <div>
-                    <strong>Start monitoring</strong><br>
-                    Enable the service to begin automatic G-code file monitoring and processing.
-                </div>
+            <div class="footer-note">
+                <p><strong>Professional Windows Tool</strong> • Runs as Windows Service • Complete automation solution</p>
+                <p>© 2025 Ben Harper 3DTek • Industrial G-Code Processing</p>
             </div>
-        </section>
-        
-        <section class="features">
-            <div class="feature">
-                <h3>🔍 Smart Monitoring</h3>
-                <p>Real-time folder monitoring with intelligent file completion detection. Automatically processes new G-code files as they arrive.</p>
-            </div>
-            
-            <div class="feature">
-                <h3>🚀 Automatic Processing</h3>
-                <p>Processes CYC coordinate updates, organizes files by type, and handles UTF-8 encoding conversion automatically.</p>
-            </div>
-            
-            <div class="feature">
-                <h3>📡 FTP Integration</h3>
-                <p>Seamless FTP upload with error handling, retry logic, and support for anonymous or authenticated connections.</p>
-            </div>
-            
-            <div class="feature">
-                <h3>🖥️ User-Friendly GUI</h3>
-                <p>Windows Forms interface with system tray integration, real-time status updates, and manual processing capabilities.</p>
-            </div>
-            
-            <div class="feature">
-                <h3>🛠️ Windows Service</h3>
-                <p>Runs as a Windows Service in the background, with automatic startup and service management features.</p>
-            </div>
-            
-            <div class="feature">
-                <h3>📝 Comprehensive Logging</h3>
-                <p>Detailed logging with both GUI display and file output for complete visibility into processing operations.</p>
-            </div>
-        </section>
-        
-        <div class="alert info">
-            <strong>💡 Tip:</strong> The installer includes everything you need - .NET runtime, all dependencies, and will automatically configure the Windows Service for you.
         </div>
-        
-        <div class="alert">
-            <strong>⚠️ Note:</strong> Administrator privileges are required for initial installation and service configuration. This is normal for Windows Service applications.
-        </div>
-        
-        <section>
-            <h2>🎯 What It Does</h2>
-            <p>CBWSS-Sync monitors specified folders for new G-code projects, processes them automatically by:</p>
-            <ul>
-                <li>Converting negative Y coordinates to positive values in CYC files</li>
-                <li>Organizing files into structured folders (NC/, AutoStickLabel/)</li>
-                <li>Converting files to UTF-8 encoding for compatibility</li>
-                <li>Uploading processed files to your FTP server</li>
-                <li>Providing detailed logging and status updates</li>
-            </ul>
-        </section>
-        
-        <section>
-            <h2>🆘 Need Help?</h2>
-            <p>If you encounter issues:</p>
-            <ul>
-                <li>Check the application logs through the GUI interface</li>
-                <li>Verify your FTP connection settings using the built-in test feature</li>
-                <li>Ensure the application has proper folder permissions</li>
-                <li>Run the GUI as Administrator if service operations fail</li>
-            </ul>
-        </section>
-    </main>
-    
-    <footer>
-        <div class="container">
-            <p>Copyright © 2025 Ben Harper 3DTek • Professional Windows G-Code Processing Solution</p>
-        </div>
-    </footer>
+    </div>
 </body>
 </html>
