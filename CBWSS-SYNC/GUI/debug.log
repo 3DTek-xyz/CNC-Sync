@@ -855,3 +855,57 @@
 2025-10-03 13:20:28.622 - FormClosing: CloseReason=ApplicationExitCall, _isExiting=True, WindowState=Normal
 2025-10-03 13:20:28.622 - FormClosing: Actually closing and disposing resources
 2025-10-03 13:20:28.624 - [13:20:28] INFO: Folder watcher stopped
+2025-10-13 08:55:46.326 - LoadIconFromFile: Looking for icon at: C:\Users\Emils\Dropbox\CBWSS-SYNC\CBWSS-SYNC\GUI\CBWSS-Logo.png
+2025-10-13 08:55:46.330 - LoadIconFromFile: File exists, loading as bitmap
+2025-10-13 08:55:46.380 - LoadConfiguration: Starting load process
+2025-10-13 08:55:46.381 - LoadConfiguration: Config file path = C:\Users\Emils\AppData\Roaming\GCodeSync\GCodeSyncConfig.json
+2025-10-13 08:55:46.382 - LoadConfiguration: Loaded FtpServer = '192.168.15.90'
+2025-10-13 08:55:46.382 - LoadConfiguration: Loaded FtpPort = 21
+2025-10-13 08:55:46.382 - LoadConfiguration: Loaded WatchFolder = 'C:\Users\Emils\Dropbox\MozaikShared\CUSTOMBUILT\CNCSync\TESTNEWSYNC\GCode'
+2025-10-13 08:55:46.383 - LoadConfiguration: Set txtFtpServer.Text to '192.168.15.90'
+2025-10-13 08:55:46.385 - Initializing local browser to: C:\Users\Emils\Dropbox\MozaikShared\CUSTOMBUILT\CNCSync\TESTNEWSYNC\FTPUpload (Root boundary set)
+2025-10-13 08:55:46.387 - Initializing remote browser with FTP connection
+2025-10-13 08:55:46.389 - Loading FTP directory: /
+2025-10-13 08:55:46.459 - [08:55:46] INFO: AutoUpdater initialized successfully
+2025-10-13 08:55:46.467 - SetVisibleCore: Called with value=True, _allowVisible=False, WindowState=Minimized
+2025-10-13 08:55:46.467 - SetVisibleCore: Blocked visibility - form not allowed to show yet
+2025-10-13 08:55:46.476 - [08:55:46] INFO: STARTUP TIMING: AutoDetectAndStartMonitoring started at 08:55:46.475
+2025-10-13 08:55:46.478 - [08:55:46] INFO: STARTUP TIMING: Starting 2-second UI delay at 1ms
+2025-10-13 08:55:46.939 - [08:55:46] ERROR: Update check failed: The remote server returned an error: (404) Not Found.
+2025-10-13 08:55:48.495 - [08:55:48] INFO: STARTUP TIMING: UI delay completed at 2018ms
+2025-10-13 08:55:48.496 - [08:55:48] INFO: STARTUP TIMING: Starting service status check at 2019ms
+2025-10-13 08:55:48.499 - [08:55:48] INFO: STARTUP TIMING: Service status check failed at 2022ms - Service not installed or accessible: Service 'GCodeSyncService' was not found on computer '.'.
+2025-10-13 08:55:48.500 - [08:55:48] INFO: STARTUP TIMING: Windows Service not running - starting standalone mode at 2023ms
+2025-10-13 08:55:48.501 - [08:55:48] INFO: STARTUP TIMING: StartStandaloneMode started at 08:55:48.501
+2025-10-13 08:55:48.502 - [08:55:48] INFO: STARTUP TIMING: Creating GCodeProcessorService at 0ms
+2025-10-13 08:55:48.503 - [08:55:48] INFO: STARTUP TIMING: GCodeProcessorService created at 1ms
+2025-10-13 08:55:48.504 - [08:55:48] INFO: STARTUP TIMING: Creating FtpService at 2ms
+2025-10-13 08:55:48.504 - [08:55:48] INFO: STARTUP TIMING: FtpService created at 3ms
+2025-10-13 08:55:48.505 - [08:55:48] INFO: STARTUP TIMING: Creating SyncOrchestrator at 4ms
+2025-10-13 08:55:48.507 - [08:55:48] INFO: STARTUP TIMING: SyncOrchestrator created at 6ms
+2025-10-13 08:55:48.508 - [08:55:48] INFO: STARTUP TIMING: Starting orchestrator at 7ms
+2025-10-13 08:55:48.510 - [08:55:48] INFO: STARTUP TIMING: Starting G-Code Sync orchestrator at 08:55:48.509
+2025-10-13 08:55:48.517 - [08:55:48] INFO: STARTUP TIMING: Loading configuration at 6ms
+2025-10-13 08:55:48.518 - [08:55:48] INFO: STARTUP TIMING: Configuration loaded at 8ms
+2025-10-13 08:55:48.519 - [08:55:48] INFO: STARTUP TIMING: Ensuring directories exist at 9ms
+2025-10-13 08:55:48.520 - [08:55:48] INFO: STARTUP TIMING: Directory check completed at 10ms
+2025-10-13 08:55:48.522 - [08:55:48] INFO: STARTUP TIMING: Starting FTP connection test at 11ms
+2025-10-13 08:55:48.529 - [08:55:48] INFO: STARTUP TIMING: Testing FTP connection started at 08:55:48.528 - FTP Server: 192.168.15.90:21, User: anonymous, Mode: Anonymous
+2025-10-13 08:55:48.530 - [08:55:48] INFO: STARTUP TIMING: Creating FTP request at 1ms
+2025-10-13 08:55:48.531 - [08:55:48] INFO: STARTUP TIMING: Getting FTP response at 2ms
+2025-10-13 08:55:48.533 - [08:55:48] INFO: STARTUP TIMING: Standalone mode start initiated at 2057ms
+2025-10-13 08:55:48.534 - [08:55:48] INFO: STARTUP TIMING: AutoDetectAndStartMonitoring completed at 2058ms
+2025-10-13 08:55:49.931 - ShowForm_Click: Starting to show form
+2025-10-13 08:55:49.933 - ShowForm_Click: Initial state - Location={X=0,Y=0}, Size={Width=800, Height=600}, Bounds={X=0,Y=0,Width=800,Height=600}
+2025-10-13 08:55:49.933 - ShowForm_Click: Set WindowState to Normal
+2025-10-13 08:55:49.934 - ShowForm_Click: Set size and position - Size={Width=800, Height=600}, Location={X=960,Y=510}
+2025-10-13 08:55:49.934 - SetVisibleCore: Called with value=True, _allowVisible=True, WindowState=Normal
+2025-10-13 08:55:49.975 - SetVisibleCore: Called with value=True, _allowVisible=True, WindowState=Normal
+2025-10-13 08:55:49.990 - ShowForm_Click: Final state - Visible=True, WindowState=Normal
+2025-10-13 08:55:49.990 - ShowForm_Click: Final position - Location={X=560,Y=210}, Size={Width=800, Height=600}, Bounds={X=560,Y=210,Width=800,Height=600}
+2025-10-13 08:56:07.560 - [08:56:07] INFO: FTP response received - Status: Undefined - 
+2025-10-13 08:56:07.565 - [08:56:07] ERROR: FTP connection failed - FTP Server: 192.168.15.90:21, User: anonymous, Mode: Anonymous. Status: Undefined - 
+2025-10-13 08:56:07.570 - FTP connection test failed
+2025-10-13 08:56:09.580 - [08:56:09] INFO: FTP response received - Status: Undefined - 
+2025-10-13 08:56:09.586 - [08:56:09] ERROR: FTP connection failed - FTP Server: 192.168.15.90:21, User: anonymous, Mode: Anonymous. Status: Undefined - 
+2025-10-13 08:56:09.663 - [08:56:09] ERROR: STARTUP TIMING: Failed to start sync orchestrator at 21082ms - Exception: FTP connection test failed. Please check configuration.

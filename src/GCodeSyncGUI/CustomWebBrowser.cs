@@ -23,7 +23,7 @@ namespace GCodeSyncGUI
         public event EventHandler<ExecuteEventArgs>? ItemExecuted;
 
         private IntPtr m_ShellView;
-        private ExplorerListView m_Explorer;
+        private ExplorerListView? m_Explorer;
 
         // P/Invoke declarations for SendMessage approach
         [DllImport("user32.dll", SetLastError = true)]
@@ -234,7 +234,7 @@ namespace GCodeSyncGUI
             base.WndProc(ref m);
         }
 
-        private string GetSelectedItemText()
+        private string? GetSelectedItemText()
         {
             try
             {

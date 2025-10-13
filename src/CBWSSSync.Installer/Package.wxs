@@ -57,7 +57,7 @@
       <Shortcut Id="ApplicationStartMenuShortcut"
                 Name="CBWSS-Sync"
                 Description="CNC File Transfer and Processing Service"
-                Target="[#GCodeSyncGUI.exe]"
+                Target="[INSTALLFOLDER]GCodeSyncGUI.exe"
                 WorkingDirectory="INSTALLFOLDER" />
       <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall" />
       <RegistryValue Root="HKCU"
@@ -73,7 +73,7 @@
       <Shortcut Id="ApplicationDesktopShortcut"
                 Name="CBWSS-Sync"
                 Description="CNC File Transfer and Processing Service"
-                Target="[#GCodeSyncGUI.exe]"
+                Target="[INSTALLFOLDER]GCodeSyncGUI.exe"
                 WorkingDirectory="INSTALLFOLDER" />
       <RegistryValue Root="HKCU"
                      Key="Software\3DTek\CBWSS-Sync"

@@ -8,10 +8,10 @@ namespace GCodeSyncGUI
 {
     public partial class MainForm : Form
     {
-        private readonly IConfigurationService _configService;
-        private readonly ILogService _logService;
+        private readonly IConfigurationService _configService = null!;
+        private readonly ILogService _logService = null!;
         private ISyncOrchestrator? _orchestrator;
-        private NotifyIcon _notifyIcon;
+        private NotifyIcon? _notifyIcon;
         private SyncConfiguration _config;
         private bool _allowVisible = false;
         private bool _showingExplicitly = false;
@@ -20,7 +20,7 @@ namespace GCodeSyncGUI
         // FTP Browser fields
         private string _currentLocalPath = "";
         private string _currentRemotePath = "/";
-        private FtpService _ftpService;
+        private FtpService? _ftpService;
 
               private void NavigateLocalTo(string path)
         {
