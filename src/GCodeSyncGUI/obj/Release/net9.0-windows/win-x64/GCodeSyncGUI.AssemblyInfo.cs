@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyCopyrightAttribute("Copyright © 2025")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3deefd794628b48774378dc92187e0a084bd8ade")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+90e50e7a0af7c6664e56fef745c44c633eb42a5b")]
 [assembly: System.Reflection.AssemblyProductAttribute("GCodeSyncGUI")]
 [assembly: System.Reflection.AssemblyTitleAttribute("G-Code Sync GUI")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

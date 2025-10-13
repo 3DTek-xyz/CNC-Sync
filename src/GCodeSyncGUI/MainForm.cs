@@ -108,7 +108,8 @@ namespace GCodeSyncGUI
         {
             try
             {
-                // Configure AutoUpdater.NET
+                // Configure AutoUpdater.NET error handling
+                AutoUpdater.ParseUpdateInfoEvent += AutoUpdater_ParseUpdateInfoEvent;
                 AutoUpdater.ApplicationExitEvent += AutoUpdater_ApplicationExitEvent;
                 AutoUpdater.CheckForUpdateEvent += AutoUpdater_CheckForUpdateEvent;
                 
@@ -119,13 +120,42 @@ namespace GCodeSyncGUI
                 AutoUpdater.RemindLaterAt = 24; // Check again in 24 hours
                 
                 // Configure for GitHub releases
-                AutoUpdater.Start("https://3dtek-xyz.github.io/CNC-FTPSync/update.xml");
+                var updateUrl = "https://3dtek-xyz.github.io/CNC-FTPSync/update.xml";
+                _logService.LogInfo($"AutoUpdater checking for updates at: {updateUrl}");
+                AutoUpdater.Start(updateUrl);
                 
                 _logService.LogInfo("AutoUpdater initialized successfully");
             }
             catch (Exception ex)
             {
                 _logService.LogError($"Failed to initialize AutoUpdater: {ex.Message}");
+            }
+        }
+
+        private void AutoUpdater_ParseUpdateInfoEvent(ParseUpdateInfoEventArgs args)
+        {
+            try
+            {
+                if (args.Error == null)
+                {
+                    _logService.LogInfo($"AutoUpdater successfully downloaded update info from: {args.RemoteData}");
+                }
+                else
+                {
+                    _logService.LogError($"AutoUpdater failed to get update info. Error: {args.Error.Message}");
+                    if (args.Error is System.Net.WebException webEx)
+                    {
+                        if (webEx.Response is System.Net.HttpWebResponse response)
+                        {
+                            _logService.LogError($"HTTP Status: {response.StatusCode} ({(int)response.StatusCode})");
+                            _logService.LogError($"Response URL: {response.ResponseUri}");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError($"Error in AutoUpdater_ParseUpdateInfoEvent: {ex.Message}");
             }
         }
 
