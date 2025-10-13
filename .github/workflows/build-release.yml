@@ -45,7 +45,7 @@ jobs:
 
     - name: Update version in Package.wxs  
       run: |
-        $packageFile = "src/CBWSSSync.Installer/Package.wxs"
+        $packageFile = "src/CNCFTPSync.Installer/Package.wxs"
         $content = Get-Content $packageFile -Raw
         $newContent = $content -replace 'Version="[\d\.]+"', 'Version="${{ steps.version.outputs.VERSION }}.0"'
         Set-Content $packageFile $newContent
@@ -55,15 +55,15 @@ jobs:
       run: dotnet build --configuration Release --no-restore
 
     - name: Restore WiX Installer dependencies
-      run: dotnet restore src/CBWSSSync.Installer/CBWSSSync.Installer.wixproj
+      run: dotnet restore src/CNCFTPSync.Installer/CNCFTPSync.Installer.wixproj
 
     - name: Build MSI Installer
-      run: dotnet build src/CBWSSSync.Installer/CBWSSSync.Installer.wixproj --configuration Release
+      run: dotnet build src/CNCFTPSync.Installer/CNCFTPSync.Installer.wixproj --configuration Release
 
     - name: Generate checksums and copy to docs
       id: checksums
       run: |
-        $msiPath = "bin/Release/CBWSSSync.Installer.msi"
+        $msiPath = "bin/Release/CNCFTPSync.Installer.msi"
         if (Test-Path $msiPath) {
           $hash = Get-FileHash $msiPath -Algorithm SHA512
           $checksum = $hash.Hash
@@ -71,7 +71,7 @@ jobs:
           echo "MSI_SIZE=$((Get-Item $msiPath).Length)" >> $env:GITHUB_OUTPUT
           
           # Create versioned filename
-          $versionedName = "CBWSS-Sync-Setup-${{ steps.version.outputs.VERSION_WITH_V }}.msi"
+          $versionedName = "CNC-FTP-SYNC-Setup-${{ steps.version.outputs.VERSION_WITH_V }}.msi"
           
           # Ensure docs/installer directory exists
           if (!(Test-Path "docs/installer")) {
@@ -79,7 +79,7 @@ jobs:
           }
           
           # Copy to docs/installer with both generic and versioned names
-          Copy-Item $msiPath "docs/installer/CBWSS-Sync-Setup-Latest.msi" -Force
+          Copy-Item $msiPath "docs/installer/CNC-FTP-SYNC-Setup-Latest.msi" -Force
           Copy-Item $msiPath "docs/installer/$versionedName" -Force
           
           # Move original to versioned name for release
@@ -134,7 +134,7 @@ jobs:
         $checksum = "${{ steps.checksums.outputs.MSI_CHECKSUM }}"
         
         $releaseNotes = @"
-        # CBWSS-Sync $version
+        # CNC-FTP-SYNC $version
         
         ## 🚀 New Features & Improvements
         
@@ -181,7 +181,7 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ steps.version.outputs.VERSION_WITH_V }}
-        name: CBWSS-Sync ${{ steps.version.outputs.VERSION_WITH_V }}
+        name: CNC-FTP-SYNC ${{ steps.version.outputs.VERSION_WITH_V }}
         body_path: release-notes.md
         draft: false
         prerelease: false
@@ -192,7 +192,7 @@ jobs:
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: cbwss-sync-installer-${{ steps.version.outputs.VERSION_WITH_V }}
+        name: cnc-ftp-sync-installer-${{ steps.version.outputs.VERSION_WITH_V }}
         path: |
           bin/Release/${{ steps.checksums.outputs.MSI_FILENAME }}
           update.xml

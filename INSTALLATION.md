@@ -10,28 +10,28 @@
 
 ### 1. Download and Extract
 1. Download the latest release from the releases page
-2. Extract the ZIP file to a permanent location (e.g., `C:\Program Files\GCodeSync\`)
+2. Extract the ZIP file to a permanent location (e.g., `C:\Program Files\CNC-FTP-SYNC\`)
 
 ### 2. Install as Windows Service (Recommended)
 
 Open Command Prompt as Administrator and navigate to the installation folder:
 
 ```cmd
-cd "C:\Program Files\GCodeSync"
+cd "C:\Program Files\CNC-FTP-SYNC"
 
 # Install the service
-sc create "GCodeSyncService" binPath= "C:\Program Files\GCodeSync\GCodeSyncService.exe" start= auto
+sc create "CNCFTPSyncService" binPath= "C:\Program Files\CNC-FTP-SYNC\CNCFTPSyncService.exe" start= auto
 
 # Set service description
-sc description "GCodeSyncService" "G-Code file monitoring and FTP synchronization service"
+sc description "CNCFTPSyncService" "CNC file monitoring and FTP synchronization service"
 
 # Start the service
-sc start GCodeSyncService
+sc start CNCFTPSyncService
 ```
 
 ### 3. Configure the Application
 
-1. Run `GCodeSyncGUI.exe` as Administrator (first time only)
+1. Run `CNCFTPSyncGUI.exe` as Administrator (first time only)
 2. Go to the Configuration tab
 3. Set up your paths and FTP settings:
    - **Watch Folder**: Folder to monitor for new G-Code projects
@@ -57,7 +57,7 @@ sc start GCodeSyncService
 
 The configuration is stored at:
 ```
-%APPDATA%\GCodeSync\GCodeSyncConfig.json
+%APPDATA%\CNC-FTP-SYNC\CNC-FTP-SYNC-Config.json
 ```
 
 ## Default Folder Structure
@@ -85,15 +85,15 @@ FTP Upload Folder/      # Your configured FTP staging folder
 ### Remove Windows Service
 ```cmd
 # Stop the service
-sc stop GCodeSyncService
+sc stop CNCFTPSyncService
 
 # Delete the service
-sc delete GCodeSyncService
+sc delete CNCFTPSyncService
 ```
 
 ### Remove Files
 1. Delete the installation folder
-2. Delete configuration folder: `%APPDATA%\GCodeSync\`
+2. Delete configuration folder: `%APPDATA%\CNC-FTP-SYNC\`
 
 ## Troubleshooting
 
@@ -101,7 +101,7 @@ sc delete GCodeSyncService
 1. Check Windows Event Log (Application section)
 2. Verify .NET 6.0 Runtime is installed
 3. Check folder permissions
-4. Review logs in `%APPDATA%\GCodeSync\Logs\`
+4. Review logs in `%APPDATA%\CNC-FTP-SYNC\Logs\`
 
 ### Files Not Processing
 1. Check watch folder permissions

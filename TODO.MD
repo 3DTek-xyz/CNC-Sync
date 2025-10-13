@@ -6,7 +6,7 @@
 
 [ ] Add installer Package and also Auto Updater
 
-[ ] Does any environmnet validation need to take place - checking for .Net 9 or similar?
+[ ] Does any environmnet validation need to take place - checking for .Net 9 or similar?  .
 
 
 

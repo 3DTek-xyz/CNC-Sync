@@ -29,14 +29,14 @@ jobs:
       run: dotnet build --configuration Release --no-restore
 
     - name: Restore WiX Installer dependencies
-      run: dotnet restore src/CBWSSSync.Installer/CBWSSSync.Installer.wixproj
+      run: dotnet restore src/CNCFTPSync.Installer/CNCFTPSync.Installer.wixproj
 
     - name: Build MSI Installer
-      run: dotnet build src/CBWSSSync.Installer/CBWSSSync.Installer.wixproj --configuration Release
+      run: dotnet build src/CNCFTPSync.Installer/CNCFTPSync.Installer.wixproj --configuration Release
 
     - name: Test MSI Creation
       run: |
-        $msiPath = "bin/Release/CBWSSSync.Installer.msi"
+        $msiPath = "bin/Release/CNCFTPSync.Installer.msi"
         if (Test-Path $msiPath) {
           $msi = Get-Item $msiPath
           Write-Host "✅ MSI created successfully!"
@@ -54,5 +54,5 @@ jobs:
       with:
         name: test-build-artifacts
         path: |
-          bin/Release/CBWSSSync.Installer.msi
+          bin/Release/CNCFTPSync.Installer.msi
         retention-days: 7

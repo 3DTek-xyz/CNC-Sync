@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "tuVstZhp06o=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\Emils\\Dropbox\\CBWSS-SYNC\\src\\CNCFTPSync.Installer\\CNCFTPSync.Installer.wixproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Emils\\.nuget\\packages\\wixtoolset.ui.wixext\\5.0.1\\wixtoolset.ui.wixext.5.0.1.nupkg.sha512",
+    "C:\\Users\\Emils\\.nuget\\packages\\wixtoolset.util.wixext\\5.0.1\\wixtoolset.util.wixext.5.0.1.nupkg.sha512"
+  ],
+  "logs": []
+}

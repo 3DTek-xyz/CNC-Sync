@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+  
+  <Fragment>
+    <!-- Main application components -->
+    <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+    
+    <!-- GUI Application -->
+    <Component Id="CNCFTPSyncGUI" Guid="4E2816DC-2F4E-4D78-9808-5DC067E74283">
+      <File Id="CNCFTPSyncGUI.exe" 
+            Source="$(var.CNCFTPSyncGUI.TargetDir)CNCFTPSyncGUI.exe" 
+            KeyPath="yes" />
+      <File Id="CNCFTPSyncGUI.dll" 
+            Source="$(var.CNCFTPSyncGUI.TargetDir)CNCFTPSyncGUI.dll" />
+      <File Id="CNCFTPSyncGUI.deps.json" 
+            Source="$(var.CNCFTPSyncGUI.TargetDir)CNCFTPSyncGUI.deps.json" />
+      <File Id="CNCFTPSyncGUI.runtimeconfig.json" 
+            Source="$(var.CNCFTPSyncGUI.TargetDir)CNCFTPSyncGUI.runtimeconfig.json" />
+    </Component>
+
+    <!-- Core Library -->
+    <Component Id="CNCFTPSyncCore" Guid="2907BCBB-08ED-4D6D-862F-AF661ACFEA2F">
+      <File Id="CNCFTPSyncCore.dll" 
+            Source="$(var.CNCFTPSyncGUI.TargetDir)CNCFTPSyncCore.dll" 
+            KeyPath="yes" />
+    </Component>
+
+    <!-- AutoUpdater.NET -->
+    <Component Id="AutoUpdaterNET" Guid="A8F814F3-B0CF-4B5F-B2D7-F22E93C11DE6">
+      <File Id="AutoUpdater.NET.dll" 
+            Source="$(var.CNCFTPSyncGUI.TargetDir)AutoUpdater.NET.dll" 
+            KeyPath="yes" />
+    </Component>
+
+    <!-- WebView2 Runtime Dependencies -->
+    <Component Id="WebView2Dependencies" Guid="319336F2-D5F8-42F2-BB17-8FAEC8F6D892">
+      <File Id="Microsoft.Web.WebView2.Core.dll" 
+            Source="$(var.CNCFTPSyncGUI.TargetDir)Microsoft.Web.WebView2.Core.dll" 
+            KeyPath="yes" />
+      <File Id="Microsoft.Web.WebView2.WinForms.dll" 
+            Source="$(var.CNCFTPSyncGUI.TargetDir)Microsoft.Web.WebView2.WinForms.dll" />
+      <File Id="Microsoft.Web.WebView2.Wpf.dll" 
+            Source="$(var.CNCFTPSyncGUI.TargetDir)Microsoft.Web.WebView2.Wpf.dll" />
+    </Component>
+
+    <!-- NLog Dependencies -->
+    <Component Id="NLog" Guid="6F7A4B1C-2428-4A62-9FD9-921BB064B002">
+      <File Id="NLog.dll" 
+            Source="$(var.CNCFTPSyncGUI.TargetDir)NLog.dll" 
+            KeyPath="yes" />
+    </Component>
+
+    <!-- ServiceController Dependencies -->
+    <Component Id="ServiceController" Guid="8D5C24B5-ADC8-45E8-970D-9F09B88F7853">
+      <File Id="System.ServiceProcess.ServiceController.dll" 
+            Source="$(var.CNCFTPSyncGUI.TargetDir)System.ServiceProcess.ServiceController.dll" 
+            KeyPath="yes" />
+    </Component>
+
+    <!-- Additional Dependencies -->
+    <Component Id="AdditionalDependencies" Guid="CB3C1735-5E82-40D0-A0A9-99722DE888DE">
+      <File Id="Microsoft.Extensions.ObjectPool.dll" 
+            Source="$(var.CNCFTPSyncGUI.TargetDir)Microsoft.Extensions.ObjectPool.dll" 
+            KeyPath="yes" />
+      <File Id="System.ServiceModel.Primitives.dll" 
+            Source="$(var.CNCFTPSyncGUI.TargetDir)System.ServiceModel.Primitives.dll" />
+    </Component>
+
+  </ComponentGroup>
+
+  <!-- Service components -->
+  <ComponentGroup Id="ServiceComponents" Directory="INSTALLFOLDER">
+    
+    <!-- Service Executable -->
+    <Component Id="CNCFTPSyncService" Guid="585260B5-1245-4420-A6B2-00F25AFABCDB">
+      <File Id="CNCFTPSyncService.exe" 
+            Source="$(var.CNCFTPSyncService.TargetDir)CNCFTPSyncService.exe" 
+            KeyPath="yes" />
+      <File Id="CNCFTPSyncService.deps.json" 
+            Source="$(var.CNCFTPSyncService.TargetDir)CNCFTPSyncService.deps.json" />
+      <File Id="CNCFTPSyncService.runtimeconfig.json" 
+            Source="$(var.CNCFTPSyncService.TargetDir)CNCFTPSyncService.runtimeconfig.json" />
+    </Component>
+
+  </ComponentGroup>
+
+  <!-- Configuration components -->
+  <ComponentGroup Id="ConfigurationComponents" Directory="INSTALLFOLDER">
+    
+    <!-- NLog Configuration in main directory -->
+    <Component Id="NLogConfig" Guid="433B02E3-E2D2-42E9-AAD4-D2CA7B9545D6">
+      <File Id="NLog.config" 
+            Source="$(var.CNCFTPSyncCore.ProjectDir)NLog.config" 
+            KeyPath="yes" />
+    </Component>
+
+  </ComponentGroup>
+
+  <!-- Logs folder components -->
+  <ComponentGroup Id="LogsComponents" Directory="LogsFolder">
+    
+    <!-- Create Logs folder with proper permissions -->
+    <Component Id="LogsFolder" Guid="87654321-4321-4321-4321-876543210987">
+      <CreateFolder>
+        <util:PermissionEx User="Users" GenericAll="yes" />
+        <util:PermissionEx User="SYSTEM" GenericAll="yes" />
+        <util:PermissionEx User="Administrators" GenericAll="yes" />
+      </CreateFolder>
+      <RegistryValue Root="HKLM" Key="Software\3DTek\CNC-FTP-SYNC" Name="LogsFolderCreated" Type="integer" Value="1" KeyPath="yes" />
+    </Component>
+
+  </ComponentGroup>
+
+  </Fragment>
+</Wix>

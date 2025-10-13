@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <item>
     <version>1.0.0.0</version>
-    <url>https://3dtek-xyz.github.io/CNC-FTPSync/installer/CBWSS-Sync-Setup-Latest.msi</url>
+    <url>https://3dtek-xyz.github.io/CNC-FTPSync/installer/CNC-FTP-SYNC-Setup-Latest.msi</url>
     <changelog>https://3dtek-xyz.github.io/CNC-FTPSync/</changelog>
     <mandatory>false</mandatory>
     <args>/quiet /norestart</args>

@@ -1,0 +1,65 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyTitle>CNC-FTP-SYNC GUI</AssemblyTitle>
+    <AssemblyDescription>GUI application for CNC file sync configuration and monitoring</AssemblyDescription>
+    <Copyright>Copyright © 2025</Copyright>
+    <Version>1.0.0</Version>
+    <ApplicationIcon>CNCFTPSync.ico</ApplicationIcon>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <PublishSingleFile>false</PublishSingleFile>
+    <SelfContained>false</SelfContained>
+    <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
+    <UseAppHost>true</UseAppHost>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="**/*.resources.dll" />
+  </ItemGroup>
+
+  <Target Name="RemoveUnnecessaryLanguageFolders" AfterTargets="Build"> 
+    <ItemGroup>
+      <UnwantedLanguageFolders Include="$(OutputPath)**" Exclude="$(OutputPath)en/**" />
+      <UnwantedLanguageFolders Include="$(OutputPath)cs" />
+      <UnwantedLanguageFolders Include="$(OutputPath)de" />
+      <UnwantedLanguageFolders Include="$(OutputPath)es" />
+      <UnwantedLanguageFolders Include="$(OutputPath)fr" />
+      <UnwantedLanguageFolders Include="$(OutputPath)it" />
+      <UnwantedLanguageFolders Include="$(OutputPath)ja" />
+      <UnwantedLanguageFolders Include="$(OutputPath)ko" />
+      <UnwantedLanguageFolders Include="$(OutputPath)pl" />
+      <UnwantedLanguageFolders Include="$(OutputPath)pt-BR" />
+      <UnwantedLanguageFolders Include="$(OutputPath)ru" />
+      <UnwantedLanguageFolders Include="$(OutputPath)tr" />
+      <UnwantedLanguageFolders Include="$(OutputPath)zh-Hans" />
+      <UnwantedLanguageFolders Include="$(OutputPath)zh-Hant" />
+    </ItemGroup>
+    <RemoveDir Directories="@(UnwantedLanguageFolders)" />
+  </Target>
+
+  <ItemGroup>
+    <PackageReference Include="Autoupdater.NET.Official" Version="1.9.2" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CNCFTPSyncCore\CNCFTPSyncCore.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="CustomWebView2.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\CNCFTPSyncCore\NLog.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>
