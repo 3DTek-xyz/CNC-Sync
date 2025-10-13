@@ -918,3 +918,182 @@
 2025-10-13 11:09:18.416 - FormClosing: Form hidden successfully, Visible=False
 2025-10-13 11:18:22.487 - FormClosing: CloseReason=ApplicationExitCall, _isExiting=True, WindowState=Normal
 2025-10-13 11:18:22.487 - FormClosing: Actually closing and disposing resources
+2025-10-13 11:19:20.232 - LoadIconFromFile: Looking for icon at: C:\Users\Emils\Dropbox\CBWSS-SYNC\CBWSS-SYNC\GUI\CBWSS-Logo.png
+2025-10-13 11:19:20.235 - LoadIconFromFile: File exists, loading as bitmap
+2025-10-13 11:19:20.285 - LoadConfiguration: Starting load process
+2025-10-13 11:19:20.286 - LoadConfiguration: Config file path = C:\Users\Emils\AppData\Roaming\GCodeSync\GCodeSyncConfig.json
+2025-10-13 11:19:20.287 - LoadConfiguration: Loaded FtpServer = '192.168.15.90'
+2025-10-13 11:19:20.288 - LoadConfiguration: Loaded FtpPort = 21
+2025-10-13 11:19:20.288 - LoadConfiguration: Loaded WatchFolder = 'C:\Users\Emils\Dropbox\MozaikShared\CUSTOMBUILT\CNCSync\TESTNEWSYNC\GCode'
+2025-10-13 11:19:20.289 - LoadConfiguration: Set txtFtpServer.Text to '192.168.15.90'
+2025-10-13 11:19:20.293 - Initializing local browser to: C:\Users\Emils\Dropbox\MozaikShared\CUSTOMBUILT\CNCSync\TESTNEWSYNC\FTPUpload (Root boundary set)
+2025-10-13 11:19:20.297 - Initializing remote browser with FTP connection
+2025-10-13 11:19:20.299 - Loading FTP directory: /
+2025-10-13 11:19:20.325 - [11:19:20] INFO: AutoUpdater initialized successfully
+2025-10-13 11:19:20.329 - [11:19:20] INFO: STARTUP TIMING: AutoDetectAndStartMonitoring started at 11:19:20.328
+2025-10-13 11:19:20.331 - SetVisibleCore: Called with value=True, _allowVisible=False, WindowState=Minimized
+2025-10-13 11:19:20.332 - SetVisibleCore: Blocked visibility - form not allowed to show yet
+2025-10-13 11:19:20.759 - [11:19:20] ERROR: Update check failed: The remote server returned an error: (404) Not Found.
+2025-10-13 11:19:22.372 - [11:19:22] INFO: STARTUP TIMING: UI delay completed at 2042ms
+2025-10-13 11:19:22.390 - [11:19:22] INFO: STARTUP TIMING: Starting service status check at 2045ms
+2025-10-13 11:19:22.412 - [11:19:22] INFO: STARTUP TIMING: Service status check failed at 2070ms - Service not installed or accessible: Service 'GCodeSyncService' was not found on computer '.'.
+2025-10-13 11:19:22.414 - [11:19:22] INFO: STARTUP TIMING: Windows Service not running - starting standalone mode at 2084ms
+2025-10-13 11:19:22.431 - [11:19:22] INFO: STARTUP TIMING: StartStandaloneMode started at 11:19:22.422
+2025-10-13 11:19:22.442 - [11:19:22] INFO: STARTUP TIMING: Creating GCodeProcessorService at 9ms
+2025-10-13 11:19:22.446 - [11:19:22] INFO: STARTUP TIMING: GCodeProcessorService created at 23ms
+2025-10-13 11:19:22.447 - [11:19:22] INFO: STARTUP TIMING: Creating FtpService at 24ms
+2025-10-13 11:19:22.454 - [11:19:22] INFO: STARTUP TIMING: FtpService created at 26ms
+2025-10-13 11:19:22.456 - [11:19:22] INFO: STARTUP TIMING: Creating SyncOrchestrator at 33ms
+2025-10-13 11:19:22.461 - [11:19:22] INFO: STARTUP TIMING: SyncOrchestrator created at 38ms
+2025-10-13 11:19:22.463 - [11:19:22] INFO: STARTUP TIMING: Starting orchestrator at 40ms
+2025-10-13 11:19:22.464 - [11:19:22] INFO: STARTUP TIMING: Starting G-Code Sync orchestrator at 11:19:22.464
+2025-10-13 11:19:22.469 - [11:19:22] INFO: STARTUP TIMING: Loading configuration at 4ms
+2025-10-13 11:19:22.471 - [11:19:22] INFO: STARTUP TIMING: Configuration loaded at 6ms
+2025-10-13 11:19:22.473 - [11:19:22] INFO: STARTUP TIMING: Ensuring directories exist at 8ms
+2025-10-13 11:19:22.474 - [11:19:22] INFO: STARTUP TIMING: Directory check completed at 9ms
+2025-10-13 11:19:22.476 - [11:19:22] INFO: STARTUP TIMING: Starting FTP connection test at 11ms
+2025-10-13 11:19:22.479 - [11:19:22] INFO: STARTUP TIMING: Testing FTP connection started at 11:19:22.478 - FTP Server: 192.168.15.90:21, User: anonymous, Mode: Anonymous
+2025-10-13 11:19:22.480 - [11:19:22] INFO: STARTUP TIMING: Creating FTP request at 1ms
+2025-10-13 11:19:22.481 - [11:19:22] INFO: STARTUP TIMING: Getting FTP response at 2ms
+2025-10-13 11:19:22.486 - [11:19:22] INFO: STARTUP TIMING: Standalone mode start initiated at 2156ms
+2025-10-13 11:19:22.488 - [11:19:22] INFO: STARTUP TIMING: AutoDetectAndStartMonitoring completed at 2158ms
+2025-10-13 11:19:25.379 - ShowForm_Click: Starting to show form
+2025-10-13 11:19:25.382 - ShowForm_Click: Initial state - Location={X=0,Y=0}, Size={Width=800, Height=600}, Bounds={X=0,Y=0,Width=800,Height=600}
+2025-10-13 11:19:25.382 - ShowForm_Click: Set WindowState to Normal
+2025-10-13 11:19:25.384 - ShowForm_Click: Set size and position - Size={Width=800, Height=600}, Location={X=960,Y=510}
+2025-10-13 11:19:25.384 - SetVisibleCore: Called with value=True, _allowVisible=True, WindowState=Normal
+2025-10-13 11:19:25.425 - SetVisibleCore: Called with value=True, _allowVisible=True, WindowState=Normal
+2025-10-13 11:19:25.440 - ShowForm_Click: Final state - Visible=True, WindowState=Normal
+2025-10-13 11:19:25.440 - ShowForm_Click: Final position - Location={X=560,Y=210}, Size={Width=800, Height=600}, Bounds={X=560,Y=210,Width=800,Height=600}
+2025-10-13 11:19:30.726 - [11:19:30] INFO: Manual update check initiated by user
+2025-10-13 11:19:30.770 - [11:19:30] ERROR: Update check failed: The remote server returned an error: (404) Not Found.
+2025-10-13 11:19:41.374 - [11:19:41] INFO: FTP response received - Status: Undefined - 
+2025-10-13 11:19:41.382 - [11:19:41] ERROR: FTP connection failed - FTP Server: 192.168.15.90:21, User: anonymous, Mode: Anonymous. Status: Undefined - 
+2025-10-13 11:19:41.394 - FTP connection test failed
+2025-10-13 11:19:43.523 - [11:19:43] INFO: FTP response received - Status: Undefined - 
+2025-10-13 11:19:43.534 - [11:19:43] ERROR: FTP connection failed - FTP Server: 192.168.15.90:21, User: anonymous, Mode: Anonymous. Status: Undefined - 
+2025-10-13 11:19:43.560 - [11:19:43] ERROR: STARTUP TIMING: Failed to start sync orchestrator at 21080ms - Exception: FTP connection test failed. Please check configuration.
+2025-10-13 11:39:48.854 - [11:39:48] INFO: Logs cleared by user (UI and files)
+2025-10-13 11:39:50.498 - FormClosing: CloseReason=UserClosing, _isExiting=False, WindowState=Normal
+2025-10-13 11:39:50.498 - FormClosing: Hiding to tray instead of closing
+2025-10-13 11:39:50.499 - SetVisibleCore: Called with value=False, _allowVisible=True, WindowState=Normal
+2025-10-13 11:39:50.552 - FormClosing: Form hidden successfully, Visible=False
+2025-10-13 11:39:55.479 - FormClosing: CloseReason=ApplicationExitCall, _isExiting=True, WindowState=Normal
+2025-10-13 11:39:55.480 - FormClosing: Actually closing and disposing resources
+2025-10-13 11:39:59.157 - LoadIconFromFile: Looking for icon at: C:\Users\Emils\Dropbox\CBWSS-SYNC\CBWSS-SYNC\GUI\CBWSS-Logo.png
+2025-10-13 11:39:59.160 - LoadIconFromFile: File exists, loading as bitmap
+2025-10-13 11:39:59.204 - LoadConfiguration: Starting load process
+2025-10-13 11:39:59.204 - LoadConfiguration: Config file path = C:\Users\Emils\AppData\Roaming\GCodeSync\GCodeSyncConfig.json
+2025-10-13 11:39:59.205 - LoadConfiguration: Loaded FtpServer = '192.168.15.90'
+2025-10-13 11:39:59.205 - LoadConfiguration: Loaded FtpPort = 21
+2025-10-13 11:39:59.206 - LoadConfiguration: Loaded WatchFolder = 'C:\Users\Emils\Dropbox\MozaikShared\CUSTOMBUILT\CNCSync\TESTNEWSYNC\GCode'
+2025-10-13 11:39:59.207 - LoadConfiguration: Set txtFtpServer.Text to '192.168.15.90'
+2025-10-13 11:39:59.210 - Initializing local browser to: C:\Users\Emils\Dropbox\MozaikShared\CUSTOMBUILT\CNCSync\TESTNEWSYNC\FTPUpload (Root boundary set)
+2025-10-13 11:39:59.213 - Initializing remote browser with FTP connection
+2025-10-13 11:39:59.214 - Loading FTP directory: /
+2025-10-13 11:39:59.230 - [11:39:59] INFO: AutoUpdater initialized successfully
+2025-10-13 11:39:59.234 - [11:39:59] INFO: STARTUP TIMING: AutoDetectAndStartMonitoring started at 11:39:59.233
+2025-10-13 11:39:59.235 - SetVisibleCore: Called with value=True, _allowVisible=False, WindowState=Minimized
+2025-10-13 11:39:59.235 - SetVisibleCore: Blocked visibility - form not allowed to show yet
+2025-10-13 11:39:59.236 - [11:39:59] INFO: STARTUP TIMING: Starting 2-second UI delay at 1ms
+2025-10-13 11:39:59.575 - [11:39:59] INFO: STARTUP TIMING: Reading FTP response at 358ms
+2025-10-13 11:39:59.610 - [11:39:59] ERROR: Update check failed: The remote server returned an error: (404) Not Found.
+2025-10-13 11:39:59.616 - [11:39:59] INFO: FTP response received - Status: ClosingData - 226 Closing data connection. 
+
+2025-10-13 11:39:59.618 - [11:39:59] INFO: FTP connection successful (WebException with success status) - FTP Server: 192.168.15.90:21, User: anonymous, Mode: Anonymous. Status: ClosingData: 226 Closing data connection. 
+
+2025-10-13 11:39:59.619 - FTP connection successful, getting directory listing for: /
+2025-10-13 11:39:59.621 - [11:39:59] INFO: Listing FTP directory: /
+2025-10-13 11:39:59.688 - [11:39:59] INFO: Raw FTP list line: '10-02-25  15:18       <DIR>          %change_path%-'
+2025-10-13 11:39:59.690 - [11:39:59] INFO: Parsed FTP item: Name='%change_path%-', IsDirectory=True, FullPath='/%change_path%-'
+2025-10-13 11:39:59.692 - [11:39:59] INFO: Raw FTP list line: '10-09-25  10:43       <DIR>          LOT 353 50 OWLPEN LANE FARLEY-01'
+2025-10-13 11:39:59.693 - [11:39:59] INFO: Parsed FTP item: Name='LOT 353 50 OWLPEN LANE FARLEY-01', IsDirectory=True, FullPath='/LOT 353 50 OWLPEN LANE FARLEY-01'
+2025-10-13 11:39:59.694 - [11:39:59] INFO: Raw FTP list line: '09-10-25  15:30               100314 sync.ffs_db'
+2025-10-13 11:39:59.695 - [11:39:59] INFO: Parsed FTP item: Name='sync.ffs_db', IsDirectory=False, FullPath='/sync.ffs_db'
+2025-10-13 11:39:59.696 - [11:39:59] INFO: Raw FTP list line: '10-09-25  15:09       <DIR>          1206 MULGOA ROAD MULGOA-01'
+2025-10-13 11:39:59.697 - [11:39:59] INFO: Parsed FTP item: Name='1206 MULGOA ROAD MULGOA-01', IsDirectory=True, FullPath='/1206 MULGOA ROAD MULGOA-01'
+2025-10-13 11:39:59.697 - [11:39:59] INFO: Raw FTP list line: '10-09-25  10:50       <DIR>          LOT 5405 12 SPARROW DRIVE CALDERWOOD-01'
+2025-10-13 11:39:59.698 - [11:39:59] INFO: Parsed FTP item: Name='LOT 5405 12 SPARROW DRIVE CALDERWOOD-01', IsDirectory=True, FullPath='/LOT 5405 12 SPARROW DRIVE CALDERWOOD-01'
+2025-10-13 11:39:59.699 - [11:39:59] INFO: Raw FTP list line: '10-09-25  10:57       <DIR>          LOT 315 7 POTTERY ST COBBITY-01'
+2025-10-13 11:39:59.700 - [11:39:59] INFO: Parsed FTP item: Name='LOT 315 7 POTTERY ST COBBITY-01', IsDirectory=True, FullPath='/LOT 315 7 POTTERY ST COBBITY-01'
+2025-10-13 11:39:59.701 - [11:39:59] INFO: Raw FTP list line: '10-09-25  11:05       <DIR>          LOT 2042 34 GIOVANNI ST ORAN PARK-02'
+2025-10-13 11:39:59.702 - [11:39:59] INFO: Parsed FTP item: Name='LOT 2042 34 GIOVANNI ST ORAN PARK-02', IsDirectory=True, FullPath='/LOT 2042 34 GIOVANNI ST ORAN PARK-02'
+2025-10-13 11:39:59.703 - [11:39:59] INFO: Raw FTP list line: '10-09-25  11:08       <DIR>          LOT 5400 2 SPARROW DRIVE CALDERWOOD-02'
+2025-10-13 11:39:59.704 - [11:39:59] INFO: Parsed FTP item: Name='LOT 5400 2 SPARROW DRIVE CALDERWOOD-02', IsDirectory=True, FullPath='/LOT 5400 2 SPARROW DRIVE CALDERWOOD-02'
+2025-10-13 11:39:59.705 - [11:39:59] INFO: Raw FTP list line: '10-09-25  11:35       <DIR>          LOT 4239  1 SAILOR STREET JORDAN SPRINGS-01'
+2025-10-13 11:39:59.706 - [11:39:59] INFO: Parsed FTP item: Name='LOT 4239 1 SAILOR STREET JORDAN SPRINGS-01', IsDirectory=True, FullPath='/LOT 4239 1 SAILOR STREET JORDAN SPRINGS-01'
+2025-10-13 11:39:59.741 - [11:39:59] INFO: Raw FTP list line: '10-09-25  11:41       <DIR>          LOT 3139  102 ARMOURY ROAD JORDAN SPRINGS-01'
+2025-10-13 11:39:59.742 - [11:39:59] INFO: Parsed FTP item: Name='LOT 3139 102 ARMOURY ROAD JORDAN SPRINGS-01', IsDirectory=True, FullPath='/LOT 3139 102 ARMOURY ROAD JORDAN SPRINGS-01'
+2025-10-13 11:39:59.743 - [11:39:59] INFO: Raw FTP list line: '10-10-25  13:01       <DIR>          LOT 102 48 THORNCLIFFE AVE THORNTON-01'
+2025-10-13 11:39:59.743 - [11:39:59] INFO: Parsed FTP item: Name='LOT 102 48 THORNCLIFFE AVE THORNTON-01', IsDirectory=True, FullPath='/LOT 102 48 THORNCLIFFE AVE THORNTON-01'
+2025-10-13 11:39:59.744 - [11:39:59] INFO: Raw FTP list line: '10-10-25  13:26       <DIR>          LOT 11 14 DUNCAN ST ARNCLIFFE-01'
+2025-10-13 11:39:59.745 - [11:39:59] INFO: Parsed FTP item: Name='LOT 11 14 DUNCAN ST ARNCLIFFE-01', IsDirectory=True, FullPath='/LOT 11 14 DUNCAN ST ARNCLIFFE-01'
+2025-10-13 11:39:59.746 - [11:39:59] INFO: Raw FTP list line: '10-10-25  13:51       <DIR>          LOT 1706 15 CORDAGE WAY TERALBA-01'
+2025-10-13 11:39:59.747 - [11:39:59] INFO: Parsed FTP item: Name='LOT 1706 15 CORDAGE WAY TERALBA-01', IsDirectory=True, FullPath='/LOT 1706 15 CORDAGE WAY TERALBA-01'
+2025-10-13 11:39:59.748 - [11:39:59] INFO: Raw FTP list line: '10-10-25  13:55       <DIR>          LOT 132 107 MINNESOTA RD HAMLYN TERRACE-01'
+2025-10-13 11:39:59.748 - [11:39:59] INFO: Parsed FTP item: Name='LOT 132 107 MINNESOTA RD HAMLYN TERRACE-01', IsDirectory=True, FullPath='/LOT 132 107 MINNESOTA RD HAMLYN TERRACE-01'
+2025-10-13 11:39:59.750 - [11:39:59] INFO: Raw FTP list line: '10-10-25  14:06       <DIR>          LOT 8 3 UNIT 1 DANDERBONG AVE BANGOR-01'
+2025-10-13 11:39:59.751 - [11:39:59] INFO: Parsed FTP item: Name='LOT 8 3 UNIT 1 DANDERBONG AVE BANGOR-01', IsDirectory=True, FullPath='/LOT 8 3 UNIT 1 DANDERBONG AVE BANGOR-01'
+2025-10-13 11:39:59.752 - [11:39:59] INFO: Raw FTP list line: '10-10-25  14:12       <DIR>          LOT 8 3 UNIT 2 DANDERBONG AVE BANGOR-01'
+2025-10-13 11:39:59.753 - [11:39:59] INFO: Parsed FTP item: Name='LOT 8 3 UNIT 2 DANDERBONG AVE BANGOR-01', IsDirectory=True, FullPath='/LOT 8 3 UNIT 2 DANDERBONG AVE BANGOR-01'
+2025-10-13 11:39:59.754 - [11:39:59] INFO: Raw FTP list line: '10-11-25  09:03       <DIR>          AutoLabel'
+2025-10-13 11:39:59.755 - [11:39:59] INFO: Parsed FTP item: Name='AutoLabel', IsDirectory=True, FullPath='/AutoLabel'
+2025-10-13 11:39:59.755 - [11:39:59] INFO: Raw FTP list line: '10-11-25  09:03       <DIR>          NcTemp'
+2025-10-13 11:39:59.756 - [11:39:59] INFO: Parsed FTP item: Name='NcTemp', IsDirectory=True, FullPath='/NcTemp'
+2025-10-13 11:39:59.801 - [11:39:59] INFO: FTP directory listing completed with success status: / - ClosingData: 226 Closing data connection. 
+
+2025-10-13 11:39:59.801 - Updating breadcrumb to: ftp://192.168.15.90:21/
+2025-10-13 11:39:59.801 - Breadcrumb updated (Direct): txtRemoteAddress='ftp://192.168.15.90:21/'
+2025-10-13 11:39:59.802 - At FTP root '/' - no parent navigation shown
+2025-10-13 11:39:59.871 - Remote browser directory changed to: C:\Users\Emils\AppData\Local\Temp\GCodeSync_FTP_Browser
+2025-10-13 11:39:59.871 - FTP browser navigation detected
+2025-10-13 11:39:59.872 - Checking if localDirPath 'C:\Users\Emils\AppData\Local\Temp\GCodeSync_FTP_Browser' equals tempFtpBaseDir 'C:\Users\Emils\AppData\Local\Temp\GCodeSync_FTP_Browser'
+2025-10-13 11:39:59.872 - Detected parent navigation - moved back to FTP root temp directory
+2025-10-13 11:39:59.872 - Already at FTP root, cannot navigate up further
+2025-10-13 11:39:59.873 - FTP browser showing 18 actual server items from 192.168.15.90
+2025-10-13 11:40:01.249 - [11:40:01] INFO: STARTUP TIMING: UI delay completed at 2014ms
+2025-10-13 11:40:01.250 - [11:40:01] INFO: STARTUP TIMING: Starting service status check at 2015ms
+2025-10-13 11:40:01.253 - [11:40:01] INFO: STARTUP TIMING: Service status check failed at 2018ms - Service not installed or accessible: Service 'GCodeSyncService' was not found on computer '.'.
+2025-10-13 11:40:01.253 - [11:40:01] INFO: STARTUP TIMING: Windows Service not running - starting standalone mode at 2019ms
+2025-10-13 11:40:01.254 - [11:40:01] INFO: STARTUP TIMING: StartStandaloneMode started at 11:40:01.254
+2025-10-13 11:40:01.256 - [11:40:01] INFO: STARTUP TIMING: Creating GCodeProcessorService at 1ms
+2025-10-13 11:40:01.257 - [11:40:01] INFO: STARTUP TIMING: GCodeProcessorService created at 2ms
+2025-10-13 11:40:01.257 - [11:40:01] INFO: STARTUP TIMING: Creating FtpService at 2ms
+2025-10-13 11:40:01.258 - [11:40:01] INFO: STARTUP TIMING: FtpService created at 3ms
+2025-10-13 11:40:01.259 - [11:40:01] INFO: STARTUP TIMING: Creating SyncOrchestrator at 4ms
+2025-10-13 11:40:01.260 - [11:40:01] INFO: STARTUP TIMING: SyncOrchestrator created at 5ms
+2025-10-13 11:40:01.261 - [11:40:01] INFO: STARTUP TIMING: Starting orchestrator at 6ms
+2025-10-13 11:40:01.262 - [11:40:01] INFO: STARTUP TIMING: Starting G-Code Sync orchestrator at 11:40:01.262
+2025-10-13 11:40:01.264 - [11:40:01] INFO: STARTUP TIMING: Loading configuration at 1ms
+2025-10-13 11:40:01.265 - [11:40:01] INFO: STARTUP TIMING: Configuration loaded at 2ms
+2025-10-13 11:40:01.266 - [11:40:01] INFO: STARTUP TIMING: Ensuring directories exist at 3ms
+2025-10-13 11:40:01.267 - [11:40:01] INFO: STARTUP TIMING: Directory check completed at 5ms
+2025-10-13 11:40:01.268 - [11:40:01] INFO: STARTUP TIMING: Starting FTP connection test at 6ms
+2025-10-13 11:40:01.270 - [11:40:01] INFO: STARTUP TIMING: Testing FTP connection started at 11:40:01.269 - FTP Server: 192.168.15.90:21, User: anonymous, Mode: Anonymous
+2025-10-13 11:40:01.270 - [11:40:01] INFO: STARTUP TIMING: Creating FTP request at 0ms
+2025-10-13 11:40:01.271 - [11:40:01] INFO: STARTUP TIMING: Getting FTP response at 1ms
+2025-10-13 11:40:01.273 - [11:40:01] INFO: STARTUP TIMING: Standalone mode start initiated at 2038ms
+2025-10-13 11:40:01.274 - [11:40:01] INFO: STARTUP TIMING: AutoDetectAndStartMonitoring completed at 2039ms
+2025-10-13 11:40:01.328 - [11:40:01] INFO: STARTUP TIMING: Reading FTP response at 58ms
+2025-10-13 11:40:01.431 - [11:40:01] INFO: FTP response received - Status: ClosingData - 226 Closing data connection. 
+
+2025-10-13 11:40:01.432 - [11:40:01] INFO: FTP connection successful (WebException with success status) - FTP Server: 192.168.15.90:21, User: anonymous, Mode: Anonymous. Status: ClosingData: 226 Closing data connection. 
+
+2025-10-13 11:40:01.434 - [11:40:01] INFO: STARTUP TIMING: FTP connection test completed at 171ms
+2025-10-13 11:40:01.435 - [11:40:01] INFO: STARTUP TIMING: Creating folder watcher at 172ms
+2025-10-13 11:40:01.436 - [11:40:01] INFO: STARTUP TIMING: Starting folder watcher at 173ms
+2025-10-13 11:40:01.437 - [11:40:01] INFO: Folder watcher started monitoring: C:\Users\Emils\Dropbox\MozaikShared\CUSTOMBUILT\CNCSync\TESTNEWSYNC\GCode
+2025-10-13 11:40:01.438 - [11:40:01] INFO: STARTUP TIMING: Folder watcher started at 176ms
+2025-10-13 11:40:01.440 - [11:40:01] INFO: STARTUP TIMING: G-Code Sync orchestrator startup completed at 177ms. Monitoring: C:\Users\Emils\Dropbox\MozaikShared\CUSTOMBUILT\CNCSync\TESTNEWSYNC\GCode
+2025-10-13 11:40:01.441 - [11:40:01] INFO: STARTUP TIMING: Orchestrator started at 186ms
+2025-10-13 11:40:01.442 - [11:40:01] INFO: STARTUP TIMING: Standalone mode completed at 187ms
+2025-10-13 11:40:02.770 - ShowForm_Click: Starting to show form
+2025-10-13 11:40:02.772 - ShowForm_Click: Initial state - Location={X=0,Y=0}, Size={Width=800, Height=600}, Bounds={X=0,Y=0,Width=800,Height=600}
+2025-10-13 11:40:02.772 - ShowForm_Click: Set WindowState to Normal
+2025-10-13 11:40:02.772 - ShowForm_Click: Set size and position - Size={Width=800, Height=600}, Location={X=960,Y=510}
+2025-10-13 11:40:02.773 - SetVisibleCore: Called with value=True, _allowVisible=True, WindowState=Normal
+2025-10-13 11:40:02.819 - SetVisibleCore: Called with value=True, _allowVisible=True, WindowState=Normal
+2025-10-13 11:40:02.830 - ShowForm_Click: Final state - Visible=True, WindowState=Normal
+2025-10-13 11:40:02.831 - ShowForm_Click: Final position - Location={X=560,Y=210}, Size={Width=800, Height=600}, Bounds={X=560,Y=210,Width=800,Height=600}
+2025-10-13 11:40:23.508 - [11:40:23] INFO: Manual update check initiated by user
+2025-10-13 11:40:23.560 - [11:40:23] ERROR: Update check failed: The remote server returned an error: (404) Not Found.

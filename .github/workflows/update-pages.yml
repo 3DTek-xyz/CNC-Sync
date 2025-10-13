@@ -1,12 +1,7 @@
 name: Update GitHub Pages
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'docs/**'
-  workflow_dispatch:  # Manual triggering
+  workflow_dispatch:  # Manual triggering only
 
 jobs:
   deploy-pages:
