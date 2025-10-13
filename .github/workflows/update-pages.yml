@@ -11,6 +11,9 @@ on:
 jobs:
   deploy-pages:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     
     permissions:
       contents: read
@@ -30,4 +33,5 @@ jobs:
         path: docs/
         
     - name: Deploy to GitHub Pages
+      id: deployment
       uses: actions/deploy-pages@v4
