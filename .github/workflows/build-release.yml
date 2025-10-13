@@ -60,7 +60,7 @@ jobs:
     - name: Build MSI Installer
       run: dotnet build src/CBWSSSync.Installer/CBWSSSync.Installer.wixproj --configuration Release
 
-    - name: Generate checksums
+    - name: Generate checksums and copy to docs
       id: checksums
       run: |
         $msiPath = "bin/Release/CBWSSSync.Installer.msi"
@@ -70,10 +70,23 @@ jobs:
           echo "MSI_CHECKSUM=$checksum" >> $env:GITHUB_OUTPUT
           echo "MSI_SIZE=$((Get-Item $msiPath).Length)" >> $env:GITHUB_OUTPUT
           
-          # Rename MSI to include version
+          # Create versioned filename
           $versionedName = "CBWSS-Sync-Setup-${{ steps.version.outputs.VERSION_WITH_V }}.msi"
+          
+          # Ensure docs/installer directory exists
+          if (!(Test-Path "docs/installer")) {
+            New-Item -ItemType Directory -Force -Path "docs/installer"
+          }
+          
+          # Copy to docs/installer with both generic and versioned names
+          Copy-Item $msiPath "docs/installer/CBWSS-Sync-Setup-Latest.msi" -Force
+          Copy-Item $msiPath "docs/installer/$versionedName" -Force
+          
+          # Move original to versioned name for release
           Move-Item $msiPath "bin/Release/$versionedName"
           echo "MSI_FILENAME=$versionedName" >> $env:GITHUB_OUTPUT
+          
+          Write-Host "✅ MSI copied to docs/installer/"
         } else {
           echo "MSI file not found!" 
           exit 1
@@ -103,12 +116,12 @@ jobs:
         
         Set-Content $updateFile $updateXml
 
-    - name: Commit updated update.xml
+    - name: Commit updated files
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add update.xml
-        git commit -m "Update version to ${{ steps.version.outputs.VERSION_WITH_V }}" || echo "No changes to commit"
+        git add update.xml docs/installer/
+        git commit -m "Release ${{ steps.version.outputs.VERSION_WITH_V }} - Update installer and version files" || echo "No changes to commit"
         git push origin main || echo "No changes to push"
 
     - name: Create Release Notes

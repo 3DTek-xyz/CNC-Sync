@@ -25,5 +25,5 @@ Intermediate	C:\Users\Emils\Dropbox\CBWSS-SYNC\obj\Release\installer\WixToolset.
 Intermediate	C:\Users\Emils\Dropbox\CBWSS-SYNC\obj\Release\installer\WixToolset.UI.wixext_dMnuV20JXaqJ5XqXvWABqS_C6yA\wix-ir\info.ico
 Intermediate	C:\Users\Emils\Dropbox\CBWSS-SYNC\obj\Release\installer\WixToolset.UI.wixext_dMnuV20JXaqJ5XqXvWABqS_C6yA\wix-ir\license.rtf
 Intermediate	C:\Users\Emils\Dropbox\CBWSS-SYNC\obj\Release\installer\WixToolset.UI.wixext_dMnuV20JXaqJ5XqXvWABqS_C6yA\wix-ir\new.ico
-Intermediate	C:\Users\Emils\Dropbox\CBWSS-SYNC\obj\Release\installer\WixToolset.UI.wixext_dMnuV20JXaqJ5XqXvWABqS_C6yA\wix-ir\uica.dll-1
+Intermediate	C:\Users\Emils\Dropbox\CBWSS-SYNC\obj\Release\installer\WixToolset.UI.wixext_dMnuV20JXaqJ5XqXvWABqS_C6yA\wix-ir\uica.dll-2
 Intermediate	C:\Users\Emils\Dropbox\CBWSS-SYNC\obj\Release\installer\WixToolset.UI.wixext_dMnuV20JXaqJ5XqXvWABqS_C6yA\wix-ir\up.ico

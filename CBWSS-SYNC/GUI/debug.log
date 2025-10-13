@@ -909,3 +909,12 @@
 2025-10-13 08:56:09.580 - [08:56:09] INFO: FTP response received - Status: Undefined - 
 2025-10-13 08:56:09.586 - [08:56:09] ERROR: FTP connection failed - FTP Server: 192.168.15.90:21, User: anonymous, Mode: Anonymous. Status: Undefined - 
 2025-10-13 08:56:09.663 - [08:56:09] ERROR: STARTUP TIMING: Failed to start sync orchestrator at 21082ms - Exception: FTP connection test failed. Please check configuration.
+2025-10-13 11:08:44.059 - [11:08:44] INFO: Manual update check initiated by user
+2025-10-13 11:08:44.341 - [11:08:44] ERROR: Update check failed: The remote server returned an error: (404) Not Found.
+2025-10-13 11:09:18.351 - FormClosing: CloseReason=UserClosing, _isExiting=False, WindowState=Maximized
+2025-10-13 11:09:18.351 - FormClosing: Hiding to tray instead of closing
+2025-10-13 11:09:18.352 - FormClosing: Form is maximized, restoring to Normal before hiding
+2025-10-13 11:09:18.365 - SetVisibleCore: Called with value=False, _allowVisible=True, WindowState=Normal
+2025-10-13 11:09:18.416 - FormClosing: Form hidden successfully, Visible=False
+2025-10-13 11:18:22.487 - FormClosing: CloseReason=ApplicationExitCall, _isExiting=True, WindowState=Normal
+2025-10-13 11:18:22.487 - FormClosing: Actually closing and disposing resources
