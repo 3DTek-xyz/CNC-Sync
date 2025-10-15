@@ -4,6 +4,7 @@ using System.ServiceProcess;
 using System.Diagnostics;
 using AutoUpdaterDotNET;
 
+
 namespace CNCFTPSyncGUI
 {
     public partial class MainForm : Form
@@ -150,50 +151,79 @@ namespace CNCFTPSyncGUI
                 var currentVersionString = currentVersion?.ToString() ?? "Unknown";
                 _logService.LogInfo($"Current application version: {currentVersionString}");
                 
-                // Configure AutoUpdater.NET error handling
-                _logService.LogInfo("Configuring AutoUpdater event handlers...");
-                AutoUpdater.ParseUpdateInfoEvent += AutoUpdater_ParseUpdateInfoEvent;
-                AutoUpdater.ApplicationExitEvent += AutoUpdater_ApplicationExitEvent;
-                AutoUpdater.CheckForUpdateEvent += AutoUpdater_CheckForUpdateEvent;
-                
-                // Configure update settings
-                AutoUpdater.ShowSkipButton = true;
-                AutoUpdater.ShowRemindLaterButton = true;
-                AutoUpdater.RemindLaterTimeSpan = RemindLaterFormat.Hours;
-                AutoUpdater.RemindLaterAt = 24; // Check again in 24 hours
-                _logService.LogInfo("AutoUpdater UI settings configured");
-                
-                // Configure for GitHub releases
-                var updateUrl = "https://3dtek-xyz.github.io/CNC-FTPSync/update.xml";
-                _logService.LogInfo($"=== AutoUpdater URL Configuration ===");
-                _logService.LogInfo($"Update XML URL: {updateUrl}");
-                _logService.LogInfo($"Expected GitHub Pages structure: /installer/[filename].msi");
-                
-                // Wrap AutoUpdater.Start in try-catch to handle .NET 9.0 compatibility issues
+                // Try AutoUpdater.NET first
                 try
                 {
-                    _logService.LogInfo($"Starting AutoUpdater check for URL: {updateUrl}");
+                    _logService.LogInfo("Attempting to use AutoUpdater.NET library...");
+                    
+                    // Configure AutoUpdater.NET settings
+                    AutoUpdater.ApplicationExitEvent += AutoUpdater_ApplicationExitEvent;
+                    AutoUpdater.CheckForUpdateEvent += AutoUpdater_CheckForUpdateEvent;
+                    AutoUpdater.ParseUpdateInfoEvent += AutoUpdater_ParseUpdateInfoEvent;
+                    
+                    // Configure AutoUpdater behavior
+                    AutoUpdater.ShowSkipButton = true;
+                    AutoUpdater.ShowRemindLaterButton = true;
+                    AutoUpdater.RemindLaterTimeSpan = RemindLaterFormat.Hours;
+                    AutoUpdater.RemindLaterAt = 2;
+                    
+                    // Set update URL
+                    var updateUrl = "https://3dtek-xyz.github.io/CNC-FTPSync/update.xml";
+                    _logService.LogInfo($"Update XML URL: {updateUrl}");
+                    
+                    // Start AutoUpdater.NET (background check)
                     AutoUpdater.Start(updateUrl);
-                    _logService.LogInfo("AutoUpdater.Start() completed successfully");
+                    _logService.LogInfo("✅ AutoUpdater.NET initialized successfully");
                 }
                 catch (System.MissingFieldException mfEx)
                 {
-                    _logService.LogWarning($"AutoUpdater.NET version incompatible with .NET 9.0: {mfEx.Message}");
-                    _logService.LogInfo("AutoUpdater disabled due to compatibility issue. Manual updates required.");
+                    _logService.LogWarning($"⚠️ AutoUpdater.NET MissingFieldException (likely .NET 9.0 compatibility issue): {mfEx.Message}");
+                    _logService.LogInfo("🔄 Falling back to custom update checker...");
+                    
+                    // Fall back to custom update checker
+                    UseCustomUpdateChecker();
                 }
                 catch (Exception auEx)
                 {
-                    _logService.LogError($"AutoUpdater.Start() failed: {auEx.Message}");
-                    _logService.LogError($"AutoUpdater exception details: {auEx}");
+                    _logService.LogWarning($"⚠️ AutoUpdater.NET failed: {auEx.Message}");
+                    _logService.LogInfo("🔄 Falling back to custom update checker...");
+                    
+                    // Fall back to custom update checker
+                    UseCustomUpdateChecker();
                 }
                 
                 _logService.LogInfo("=== AutoUpdater Initialization Complete ===");
             }
             catch (Exception ex)
             {
-                _logService.LogError($"Failed to initialize AutoUpdater: {ex.Message}");
-                _logService.LogError($"AutoUpdater initialization exception: {ex}");
+                _logService.LogError($"Failed to initialize update system: {ex.Message}");
+                _logService.LogError($"Update system initialization exception: {ex}");
             }
+        }
+        
+        private void UseCustomUpdateChecker()
+        {
+            var updateUrl = "https://3dtek-xyz.github.io/CNC-FTPSync/update.xml";
+            _logService.LogInfo($"=== Custom Update Checker Configuration ===");
+            _logService.LogInfo($"Update XML URL: {updateUrl}");
+            _logService.LogInfo($"Expected GitHub Pages structure: /installer/[filename].msi");
+            
+            // Use custom update checker
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    _logService.LogInfo($"Starting custom update check for URL: {updateUrl}");
+                    await CheckForUpdatesAsync(updateUrl, false); // Silent background check
+                    _logService.LogInfo("Custom update check completed successfully");
+                }
+                catch (Exception ex)
+                {
+                    _logService.LogError($"Custom update check failed: {ex.Message}");
+                }
+            });
+            
+            _logService.LogInfo("=== Custom Update Checker Initialization Complete ===");
         }
 
         private async void AutoUpdater_ParseUpdateInfoEvent(ParseUpdateInfoEventArgs args)
@@ -2440,63 +2470,17 @@ Visit: https://3dtek-xyz.github.io/CNC-FTPSync/";
             }
         }
 
-        private void CheckForUpdates_Click(object? sender, EventArgs e)
+        private async void CheckForUpdates_Click(object? sender, EventArgs e)
         {
             try
             {
-                _logService.LogInfo("=== Manual Update Check Initiated ===");
+                _logService.LogInfo("=== Custom Update Check Initiated ===");
                 _logService.LogInfo("🔄 User requested manual update check via menu");
                 
-                // Use the same URL as automatic checks for consistency
-                var updateUrl = "https://3dtek-xyz.github.io/CNC-FTPSync/update.xml";
-                _logService.LogInfo($"🔗 Manual check URL: {updateUrl}");
-                
-                // Force a manual update check
-                AutoUpdater.CheckForUpdateEvent += (args) => {
-                    _logService.LogInfo("=== Manual Check Results ===");
-                    
-                    if (args.Error != null)
-                    {
-                        _logService.LogError($"❌ Manual update check failed: {args.Error.Message}");
-                        MessageBox.Show($"Error checking for updates: {args.Error.Message}", 
-                            "Update Check Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        return;
-                    }
-                    
-                    _logService.LogInfo($"✅ Manual check completed - Update Available: {args.IsUpdateAvailable}");
-                    
-                    if (!args.IsUpdateAvailable)
-                    {
-                        _logService.LogInfo("✅ Manual check: Application is up to date");
-                        MessageBox.Show("You have the latest version of CNC-FTP-SYNC!", 
-                            "No Updates Available", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                    else
-                    {
-                        _logService.LogInfo($"🎯 Manual check: Update available from {args.InstalledVersion} to {args.CurrentVersion}");
-                        // If update is available, the normal update dialog will show automatically
-                    }
-                };
-                
-                _logService.LogInfo($"🚀 Starting manual AutoUpdater check...");
-                try
-                {
-                    AutoUpdater.Start(updateUrl);
-                    _logService.LogInfo("✅ Manual AutoUpdater.Start() completed");
-                }
-                catch (System.MissingFieldException mfEx)
-                {
-                    _logService.LogWarning($"❌ Manual AutoUpdater failed - .NET 9.0 compatibility issue: {mfEx.Message}");
-                    MessageBox.Show("AutoUpdater is not compatible with this version of .NET. Please check for updates manually on GitHub.", 
-                        "Update Check Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                }
-                catch (Exception auEx)
-                {
-                    _logService.LogError($"❌ Manual update check failed: {auEx.Message}");
-                    _logService.LogError($"📄 Full Error Details: {auEx}");
-                    MessageBox.Show($"Error checking for updates: {auEx.Message}", 
-                        "Update Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
+                const string updateUrl = "https://3dtek-xyz.github.io/CNC-FTPSync/update.xml";
+                _logService.LogInfo($"🔗 Update check URL: {updateUrl}");
+
+                await CheckForUpdatesAsync(updateUrl, true);
             }
             catch (Exception ex)
             {
@@ -2504,6 +2488,181 @@ Visit: https://3dtek-xyz.github.io/CNC-FTPSync/";
                 _logService.LogError($"Manual check exception: {ex}");
                 MessageBox.Show($"Error checking for updates: {ex.Message}", 
                     "Update Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private async Task CheckForUpdatesAsync(string updateUrl, bool isManualCheck = false)
+        {
+            try
+            {
+                using var httpClient = new System.Net.Http.HttpClient();
+                httpClient.Timeout = TimeSpan.FromSeconds(30);
+                
+                _logService.LogInfo($"🌐 Downloading update information from: {updateUrl}");
+                string xmlContent = await httpClient.GetStringAsync(updateUrl);
+                _logService.LogInfo($"✅ Downloaded {xmlContent.Length} bytes of update data");
+
+                // Parse XML
+                var doc = new System.Xml.XmlDocument();
+                doc.LoadXml(xmlContent);
+                
+                var versionNode = doc.SelectSingleNode("//version");
+                var urlNode = doc.SelectSingleNode("//url");
+                var changelogNode = doc.SelectSingleNode("//changelog");
+                
+                if (versionNode == null || urlNode == null)
+                {
+                    throw new Exception("Invalid update XML - missing version or URL");
+                }
+
+                string remoteVersionStr = versionNode.InnerText.Trim();
+                string downloadUrl = urlNode.InnerText.Trim();
+                string changelogUrl = changelogNode?.InnerText.Trim() ?? "";
+                
+                _logService.LogInfo($"📦 Remote version: {remoteVersionStr}");
+                _logService.LogInfo($"🔗 Download URL: {downloadUrl}");
+
+                // Get current version
+                var currentVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+                var remoteVersion = new Version(remoteVersionStr);
+                
+                _logService.LogInfo($"📋 Current version: {currentVersion}");
+                _logService.LogInfo($"🆚 Comparing versions: {currentVersion} vs {remoteVersion}");
+
+                bool updateAvailable = remoteVersion > currentVersion;
+                
+                if (updateAvailable)
+                {
+                    _logService.LogInfo($"🎯 Update available! {currentVersion} → {remoteVersion}");
+                    
+                    var result = MessageBox.Show(
+                        $"A new version of CNC-FTP-SYNC is available!\n\n" +
+                        $"Current version: {currentVersion}\n" +
+                        $"New version: {remoteVersion}\n\n" +
+                        $"Would you like to download and install the update now?",
+                        "Update Available",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question);
+                        
+                    if (result == DialogResult.Yes)
+                    {
+                        _logService.LogInfo("🚀 User chose to install update");
+                        await DownloadAndInstallUpdateAsync(downloadUrl, changelogUrl);
+                    }
+                    else
+                    {
+                        _logService.LogInfo("⏭️ User chose to skip update");
+                    }
+                }
+                else
+                {
+                    _logService.LogInfo("✅ Application is up to date");
+                    if (isManualCheck)
+                    {
+                        MessageBox.Show("You have the latest version of CNC-FTP-SYNC!", 
+                            "No Updates Available", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError($"❌ Update check failed: {ex.Message}");
+                if (isManualCheck)
+                {
+                    MessageBox.Show($"Failed to check for updates:\n{ex.Message}", 
+                        "Update Check Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
+        private async Task DownloadAndInstallUpdateAsync(string downloadUrl, string changelogUrl)
+        {
+            try
+            {
+                _logService.LogInfo($"⬇️ Starting download from: {downloadUrl}");
+                
+                // Show changelog if available
+                if (!string.IsNullOrEmpty(changelogUrl))
+                {
+                    var showChangelog = MessageBox.Show(
+                        "Would you like to view the release notes before updating?",
+                        "View Release Notes",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question);
+                        
+                    if (showChangelog == DialogResult.Yes)
+                    {
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = changelogUrl,
+                            UseShellExecute = true
+                        });
+                    }
+                }
+                
+                // Create temp directory
+                string tempDir = Path.Combine(Path.GetTempPath(), "CNC-FTP-SYNC-Update");
+                Directory.CreateDirectory(tempDir);
+                
+                string fileName = Path.GetFileName(new Uri(downloadUrl).LocalPath);
+                string tempFile = Path.Combine(tempDir, fileName);
+                
+                _logService.LogInfo($"💾 Downloading to: {tempFile}");
+                
+                using var httpClient = new System.Net.Http.HttpClient();
+                httpClient.Timeout = TimeSpan.FromMinutes(10); // Large file timeout
+                
+                var response = await httpClient.GetAsync(downloadUrl);
+                response.EnsureSuccessStatusCode();
+                
+                await using var fileStream = new FileStream(tempFile, FileMode.Create);
+                await response.Content.CopyToAsync(fileStream);
+                
+                _logService.LogInfo($"✅ Download completed: {new FileInfo(tempFile).Length} bytes");
+                
+                // Verify it's an MSI file
+                if (!fileName.EndsWith(".msi", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new Exception("Downloaded file is not an MSI installer");
+                }
+                
+                // Start the installer
+                _logService.LogInfo("🚀 Starting MSI installer...");
+                
+                var startInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "msiexec",
+                    Arguments = $"/i \"{tempFile}\" /quiet /norestart",
+                    UseShellExecute = true,
+                    Verb = "runas" // Request admin privileges
+                };
+                
+                var process = System.Diagnostics.Process.Start(startInfo);
+                
+                if (process != null)
+                {
+                    _logService.LogInfo("⏳ Waiting for installer to complete...");
+                    MessageBox.Show(
+                        "The update installer is running in the background.\n\n" +
+                        "This application will now close to allow the update to complete.\n" +
+                        "The new version will start automatically after installation.",
+                        "Installing Update",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+                        
+                    _logService.LogInfo("🔄 Closing application for update...");
+                    Application.Exit();
+                }
+                else
+                {
+                    throw new Exception("Failed to start the installer");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError($"❌ Update installation failed: {ex.Message}");
+                MessageBox.Show($"Failed to install update:\n{ex.Message}", 
+                    "Update Installation Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
