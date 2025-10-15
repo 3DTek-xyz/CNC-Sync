@@ -2644,7 +2644,7 @@ Visit: https://3dtek-xyz.github.io/CNC-FTPSync/";
                 var startInfo = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = "msiexec",
-                    Arguments = $"/i \"{tempFile}\" /quiet /norestart",
+                    Arguments = $"/i \"{tempFile}\" /norestart",
                     UseShellExecute = true,
                     Verb = "runas" // Request admin privileges
                 };
