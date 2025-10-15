@@ -2479,8 +2479,24 @@ Visit: https://3dtek-xyz.github.io/CNC-FTPSync/";
                 };
                 
                 _logService.LogInfo($"🚀 Starting manual AutoUpdater check...");
-                AutoUpdater.Start(updateUrl);
-                _logService.LogInfo("✅ Manual AutoUpdater.Start() completed");
+                try
+                {
+                    AutoUpdater.Start(updateUrl);
+                    _logService.LogInfo("✅ Manual AutoUpdater.Start() completed");
+                }
+                catch (System.MissingFieldException mfEx)
+                {
+                    _logService.LogWarning($"❌ Manual AutoUpdater failed - .NET 9.0 compatibility issue: {mfEx.Message}");
+                    MessageBox.Show("AutoUpdater is not compatible with this version of .NET. Please check for updates manually on GitHub.", 
+                        "Update Check Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+                catch (Exception auEx)
+                {
+                    _logService.LogError($"❌ Manual update check failed: {auEx.Message}");
+                    _logService.LogError($"📄 Full Error Details: {auEx}");
+                    MessageBox.Show($"Error checking for updates: {auEx.Message}", 
+                        "Update Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }
             catch (Exception ex)
             {

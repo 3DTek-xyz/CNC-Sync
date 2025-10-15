@@ -99,7 +99,7 @@ jobs:
       run: |
         $updateFile = "docs/update.xml"
         $version = "${{ steps.version.outputs.VERSION }}.0"
-        $downloadUrl = "https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.VERSION_WITH_V }}/${{ steps.checksums.outputs.MSI_FILENAME }}"
+        $downloadUrl = "https://3dtek-xyz.github.io/CNC-FTPSync/installer/${{ steps.checksums.outputs.MSI_FILENAME }}"
         $changelogUrl = "https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.VERSION_WITH_V }}"
         $checksum = "${{ steps.checksums.outputs.MSI_CHECKSUM }}"
         
@@ -190,6 +190,18 @@ jobs:
         files: |
           bin/Release/${{ steps.checksums.outputs.MSI_FILENAME }}
         token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Setup Pages
+      uses: actions/configure-pages@v5
+
+    - name: Upload to GitHub Pages
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: ./docs
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
