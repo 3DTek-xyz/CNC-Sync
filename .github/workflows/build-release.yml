@@ -115,6 +115,7 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
+        git checkout main
         git add docs/
         git commit -m "Release ${{ steps.version.outputs.VERSION_WITH_V }} - Update installer and version files" || echo "No changes to commit"
         git push origin main || echo "No changes to push"
