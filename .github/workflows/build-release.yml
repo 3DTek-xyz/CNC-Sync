@@ -47,7 +47,9 @@ jobs:
       run: |
         $packageFile = "src/CNCFTPSync.Installer/Package.wxs"
         $content = Get-Content $packageFile -Raw
+        # Replace both static version patterns and WiX file binding patterns
         $newContent = $content -replace 'Version="[\d\.]+"', 'Version="${{ steps.version.outputs.VERSION }}.0"'
+        $newContent = $newContent -replace 'Version="!\(bind\.FileVersion\.[^)]+\)"', 'Version="${{ steps.version.outputs.VERSION }}.0"'
         Set-Content $packageFile $newContent
       shell: powershell
 
