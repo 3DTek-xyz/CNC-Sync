@@ -10,9 +10,9 @@
     <AssemblyTitle>G-Code Sync Windows Service</AssemblyTitle>
     <AssemblyDescription>Windows Service for G-Code file monitoring and FTP synchronization</AssemblyDescription>
     <Copyright>Copyright © 2025</Copyright>
-    <Version>1.0.1.1</Version>
-    <AssemblyVersion>1.0.1.1</AssemblyVersion>
-    <FileVersion>1.0.1.1</FileVersion>
+    <Version>$(ProductVersion)</Version>
+    <AssemblyVersion>$(ProductVersion)</AssemblyVersion>
+    <FileVersion>$(ProductVersion)</FileVersion>
     <GenerateAssemblyVersionAttribute>true</GenerateAssemblyVersionAttribute>
     <GenerateAssemblyFileVersionAttribute>true</GenerateAssemblyFileVersionAttribute>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>

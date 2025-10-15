@@ -9,9 +9,9 @@
     <AssemblyTitle>CNC-FTP-SYNC GUI</AssemblyTitle>
     <AssemblyDescription>GUI application for CNC file sync configuration and monitoring</AssemblyDescription>
     <Copyright>Copyright © 2025</Copyright>
-    <Version>1.0.1.1</Version>
-    <AssemblyVersion>1.0.1.1</AssemblyVersion>
-    <FileVersion>1.0.1.1</FileVersion>
+    <Version>$(ProductVersion)</Version>
+    <AssemblyVersion>$(ProductVersion)</AssemblyVersion>
+    <FileVersion>$(ProductVersion)</FileVersion>
     <ApplicationIcon>CNCFTPSync.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <GenerateAssemblyVersionAttribute>true</GenerateAssemblyVersionAttribute>
