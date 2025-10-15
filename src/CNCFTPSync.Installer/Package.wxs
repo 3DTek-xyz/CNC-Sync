@@ -106,9 +106,9 @@
     
     <!-- Custom action to launch GUI after installation -->
     <CustomAction Id="LaunchApplication"
-                  FileKey="CNCFTPSyncGUI.exe"
-                  ExeCommand=""
-                  Execute="immediate"
+                  Directory="INSTALLFOLDER"
+                  ExeCommand="CNCFTPSyncGUI.exe"
+                  Execute="commit"
                   Impersonate="yes"
                   Return="asyncNoWait" />
     
