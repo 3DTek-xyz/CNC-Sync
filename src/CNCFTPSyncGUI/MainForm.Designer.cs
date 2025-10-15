@@ -159,8 +159,6 @@ namespace CNCFTPSyncGUI
                     this.closeToTrayToolStripMenuItem,
                     this.closeFullyToolStripMenuItem,
                     new ToolStripSeparator(),
-                    this.checkForUpdatesToolStripMenuItem,
-                    new ToolStripSeparator(),
                     this.uninstallAndCloseToolStripMenuItem});
             }
             catch (Exception ex)
@@ -735,9 +733,13 @@ namespace CNCFTPSyncGUI
                 this.aboutToolStripMenuItem.Text = "&About CNC-FTP-SYNC...";
                 this.aboutToolStripMenuItem.Click += new EventHandler(this.About_Click);
                 
-                // Add About to Help menu
+                // Add items to Help menu
                 if (this.aboutToolStripMenuItem == null) throw new Exception("aboutToolStripMenuItem is null before Add");
-                this.helpToolStripMenuItem.DropDownItems.Add(this.aboutToolStripMenuItem);
+                if (this.checkForUpdatesToolStripMenuItem == null) throw new Exception("checkForUpdatesToolStripMenuItem is null before Add");
+                this.helpToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] {
+                    this.checkForUpdatesToolStripMenuItem,
+                    new ToolStripSeparator(),
+                    this.aboutToolStripMenuItem});
             }
             catch (Exception ex)
             {
