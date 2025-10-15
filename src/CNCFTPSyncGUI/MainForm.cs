@@ -2661,13 +2661,7 @@ Visit: https://3dtek-xyz.github.io/CNC-FTPSync/";
                 
                 if (process != null)
                 {
-                    _logService.LogInfo("⏳ Waiting for installer to complete...");
-                    MessageBox.Show(
-                        "The update installer is running.\n\n" +
-                        "This application will close and restart automatically with the new version.",
-                        "Installing Update",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information);
+                    _logService.LogInfo("🚀 Installer started, closing application for update...");
                     
                     // Create a batch file to restart the application after update
                     string batchFile = Path.Combine(tempDir, "restart_app.bat");
