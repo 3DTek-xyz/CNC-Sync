@@ -2573,24 +2573,7 @@ Visit: https://3dtek-xyz.github.io/CNC-FTPSync/";
             {
                 _logService.LogInfo($"⬇️ Starting download from: {downloadUrl}");
                 
-                // Show changelog if available
-                if (!string.IsNullOrEmpty(changelogUrl))
-                {
-                    var showChangelog = MessageBox.Show(
-                        "Would you like to view the release notes before updating?",
-                        "View Release Notes",
-                        MessageBoxButtons.YesNo,
-                        MessageBoxIcon.Question);
-                        
-                    if (showChangelog == DialogResult.Yes)
-                    {
-                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                        {
-                            FileName = changelogUrl,
-                            UseShellExecute = true
-                        });
-                    }
-                }
+                // Skip changelog prompt - directly proceed with download
                 
                 // Create temp directory
                 string tempDir = Path.Combine(Path.GetTempPath(), "CNC-FTP-SYNC-Update");
