@@ -101,6 +101,21 @@
     <!-- Properties for silent installation -->
     <Property Id="MSIUSEREALADMINDETECTION" Value="1" />
 
+    <!-- Custom action to launch application after installation -->
+    <CustomAction Id="LaunchApplication"
+                  Impersonate="yes"
+                  Execute="deferred"
+                  Directory="INSTALLFOLDER"
+                  ExeCommand="[INSTALLFOLDER]CNCFTPSyncGUI.exe"
+                  Return="asyncNoWait" />
+
+    <!-- Install sequence - launch app after installation -->
+    <InstallExecuteSequence>
+      <Custom Action="LaunchApplication" After="InstallFinalize">
+        NOT REMOVE
+      </Custom>
+    </InstallExecuteSequence>
+
   </Package>
 
 
