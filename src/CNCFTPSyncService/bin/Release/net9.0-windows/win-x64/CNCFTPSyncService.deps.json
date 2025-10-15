@@ -7,7 +7,7 @@
   "targets": {
     ".NETCoreApp,Version=v9.0": {},
     ".NETCoreApp,Version=v9.0/win-x64": {
-      "CNCFTPSyncService/1.0.0": {
+      "CNCFTPSyncService/1.0.28.0": {
         "dependencies": {
           "CNCFTPSyncCore": "1.0.0",
           "Microsoft.Extensions.Hosting": "9.0.0",
@@ -427,14 +427,7 @@
           "System.Security.Cryptography.ProtectedData": "9.0.0"
         }
       },
-      "System.Diagnostics.EventLog/9.0.0": {
-        "runtime": {
-          "runtimes/win/lib/net9.0/System.Diagnostics.EventLog.Messages.dll": {
-            "assemblyVersion": "9.0.0.0",
-            "fileVersion": "9.0.24.52809"
-          }
-        }
-      },
+      "System.Diagnostics.EventLog/9.0.0": {},
       "System.Formats.Asn1/6.0.0": {},
       "System.Security.AccessControl/6.0.0": {},
       "System.Security.Cryptography.Pkcs/6.0.1": {
@@ -480,15 +473,15 @@
         },
         "runtime": {
           "CNCFTPSyncCore.dll": {
-            "assemblyVersion": "1.0.0.0",
-            "fileVersion": "1.0.0.0"
+            "assemblyVersion": "1.0.28.0",
+            "fileVersion": "1.0.28.0"
           }
         }
       }
     }
   },
   "libraries": {
-    "CNCFTPSyncService/1.0.0": {
+    "CNCFTPSyncService/1.0.28.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

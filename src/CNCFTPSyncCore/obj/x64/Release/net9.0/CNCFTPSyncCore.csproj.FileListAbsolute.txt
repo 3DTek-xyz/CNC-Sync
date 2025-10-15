@@ -11,3 +11,16 @@ C:\Users\Emils\Dropbox\CBWSS-SYNC\src\CNCFTPSyncCore\obj\x64\Release\net9.0\CNCF
 C:\Users\Emils\Dropbox\CBWSS-SYNC\src\CNCFTPSyncCore\obj\x64\Release\net9.0\refint\CNCFTPSyncCore.dll
 C:\Users\Emils\Dropbox\CBWSS-SYNC\src\CNCFTPSyncCore\obj\x64\Release\net9.0\CNCFTPSyncCore.pdb
 C:\Users\Emils\Dropbox\CBWSS-SYNC\src\CNCFTPSyncCore\obj\x64\Release\net9.0\ref\CNCFTPSyncCore.dll
+D:\a\CNC-FTPSync\CNC-FTPSync\src\CNCFTPSyncCore\bin\x64\Release\net9.0\CNCFTPSyncCore.deps.json
+D:\a\CNC-FTPSync\CNC-FTPSync\src\CNCFTPSyncCore\bin\x64\Release\net9.0\CNCFTPSyncCore.dll
+D:\a\CNC-FTPSync\CNC-FTPSync\src\CNCFTPSyncCore\bin\x64\Release\net9.0\CNCFTPSyncCore.pdb
+D:\a\CNC-FTPSync\CNC-FTPSync\src\CNCFTPSyncCore\obj\x64\Release\net9.0\CNCFTPSyncCore.csproj.AssemblyReference.cache
+D:\a\CNC-FTPSync\CNC-FTPSync\src\CNCFTPSyncCore\obj\x64\Release\net9.0\CNCFTPSyncCore.GeneratedMSBuildEditorConfig.editorconfig
+D:\a\CNC-FTPSync\CNC-FTPSync\src\CNCFTPSyncCore\obj\x64\Release\net9.0\CNCFTPSyncCore.AssemblyInfoInputs.cache
+D:\a\CNC-FTPSync\CNC-FTPSync\src\CNCFTPSyncCore\obj\x64\Release\net9.0\CNCFTPSyncCore.AssemblyInfo.cs
+D:\a\CNC-FTPSync\CNC-FTPSync\src\CNCFTPSyncCore\obj\x64\Release\net9.0\CNCFTPSyncCore.csproj.CoreCompileInputs.cache
+D:\a\CNC-FTPSync\CNC-FTPSync\src\CNCFTPSyncCore\obj\x64\Release\net9.0\CNCFTPSyncCore.sourcelink.json
+D:\a\CNC-FTPSync\CNC-FTPSync\src\CNCFTPSyncCore\obj\x64\Release\net9.0\CNCFTPSyncCore.dll
+D:\a\CNC-FTPSync\CNC-FTPSync\src\CNCFTPSyncCore\obj\x64\Release\net9.0\refint\CNCFTPSyncCore.dll
+D:\a\CNC-FTPSync\CNC-FTPSync\src\CNCFTPSyncCore\obj\x64\Release\net9.0\CNCFTPSyncCore.pdb
+D:\a\CNC-FTPSync\CNC-FTPSync\src\CNCFTPSyncCore\obj\x64\Release\net9.0\ref\CNCFTPSyncCore.dll

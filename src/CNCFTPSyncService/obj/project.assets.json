@@ -869,7 +869,7 @@
           }
         }
       },
-      "CNCFTPSyncCore/1.0.0": {
+      "CNCFTPSyncCore/1.0.28": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v9.0",
         "dependencies": {
@@ -1726,7 +1726,7 @@
           "buildTransitive/net8.0/_._": {}
         }
       },
-      "CNCFTPSyncCore/1.0.0": {
+      "CNCFTPSyncCore/1.0.28": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v9.0",
         "dependencies": {
@@ -2954,7 +2954,7 @@
         "useSharedDesignerContext.txt"
       ]
     },
-    "CNCFTPSyncCore/1.0.0": {
+    "CNCFTPSyncCore/1.0.28": {
       "type": "project",
       "path": "../CNCFTPSyncCore/CNCFTPSyncCore.csproj",
       "msbuildProject": "../CNCFTPSyncCore/CNCFTPSyncCore.csproj"
@@ -2962,7 +2962,7 @@
   },
   "projectFileDependencyGroups": {
     "net9.0-windows7.0": [
-      "CNCFTPSyncCore >= 1.0.0",
+      "CNCFTPSyncCore >= 1.0.28",
       "Microsoft.Extensions.Hosting >= 9.0.0",
       "Microsoft.Extensions.Hosting.WindowsServices >= 9.0.0",
       "NLog >= 5.3.4",
@@ -2971,32 +2971,40 @@
     ]
   },
   "packageFolders": {
-    "/Users/benharper/.nuget/packages/": {}
+    "C:\\Users\\runneradmin\\.nuget\\packages\\": {},
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
-    "version": "1.0.0",
+    "version": "1.0.28",
     "restore": {
-      "projectUniqueName": "/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/CNCFTPSyncService/CNCFTPSyncService.csproj",
+      "projectUniqueName": "D:\\a\\CNC-FTPSync\\CNC-FTPSync\\src\\CNCFTPSyncService\\CNCFTPSyncService.csproj",
       "projectName": "CNCFTPSyncService",
-      "projectPath": "/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/CNCFTPSyncService/CNCFTPSyncService.csproj",
-      "packagesPath": "/Users/benharper/.nuget/packages/",
-      "outputPath": "/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/CNCFTPSyncService/obj/",
+      "projectPath": "D:\\a\\CNC-FTPSync\\CNC-FTPSync\\src\\CNCFTPSyncService\\CNCFTPSyncService.csproj",
+      "packagesPath": "C:\\Users\\runneradmin\\.nuget\\packages\\",
+      "outputPath": "D:\\a\\CNC-FTPSync\\CNC-FTPSync\\src\\CNCFTPSyncService\\obj\\",
       "projectStyle": "PackageReference",
+      "fallbackFolders": [
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+      ],
       "configFilePaths": [
-        "/Users/benharper/.nuget/NuGet/NuGet.Config"
+        "C:\\Users\\runneradmin\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
         "net9.0-windows"
       ],
       "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
         "net9.0-windows7.0": {
           "targetAlias": "net9.0-windows",
           "projectReferences": {
-            "/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/CNCFTPSyncCore/CNCFTPSyncCore.csproj": {
-              "projectPath": "/Users/benharper/Dropbox/Ben/SharedDontDelete/CBWSS-SYNC-3DTEK/src/CNCFTPSyncCore/CNCFTPSyncCore.csproj"
+            "D:\\a\\CNC-FTPSync\\CNC-FTPSync\\src\\CNCFTPSyncCore\\CNCFTPSyncCore.csproj": {
+              "projectPath": "D:\\a\\CNC-FTPSync\\CNC-FTPSync\\src\\CNCFTPSyncCore\\CNCFTPSyncCore.csproj"
             }
           }
         }
@@ -3011,7 +3019,7 @@
         "auditLevel": "low",
         "auditMode": "direct"
       },
-      "SdkAnalysisLevel": "9.0.200"
+      "SdkAnalysisLevel": "9.0.300"
     },
     "frameworks": {
       "net9.0-windows7.0": {
@@ -3049,16 +3057,6 @@
         ],
         "assetTargetFallback": true,
         "warn": true,
-        "downloadDependencies": [
-          {
-            "name": "Microsoft.NETCore.App.Host.win-x64",
-            "version": "[9.0.3, 9.0.3]"
-          },
-          {
-            "name": "Microsoft.WindowsDesktop.App.Ref",
-            "version": "[9.0.3, 9.0.3]"
-          }
-        ],
         "frameworkReferences": {
           "Microsoft.NETCore.App": {
             "privateAssets": "all"
@@ -3067,7 +3065,7 @@
             "privateAssets": "none"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.201/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.306/PortableRuntimeIdentifierGraph.json"
       }
     },
     "runtimes": {

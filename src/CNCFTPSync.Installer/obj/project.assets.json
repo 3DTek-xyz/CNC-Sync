@@ -53,25 +53,32 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Emils\\.nuget\\packages\\": {}
+    "C:\\Users\\runneradmin\\.nuget\\packages\\": {},
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Emils\\Dropbox\\CBWSS-SYNC\\src\\CNCFTPSync.Installer\\CNCFTPSync.Installer.wixproj",
+      "projectUniqueName": "D:\\a\\CNC-FTPSync\\CNC-FTPSync\\src\\CNCFTPSync.Installer\\CNCFTPSync.Installer.wixproj",
       "projectName": "CNCFTPSync.Installer",
-      "projectPath": "C:\\Users\\Emils\\Dropbox\\CBWSS-SYNC\\src\\CNCFTPSync.Installer\\CNCFTPSync.Installer.wixproj",
-      "packagesPath": "C:\\Users\\Emils\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Emils\\Dropbox\\CBWSS-SYNC\\src\\CNCFTPSync.Installer\\obj\\",
+      "projectPath": "D:\\a\\CNC-FTPSync\\CNC-FTPSync\\src\\CNCFTPSync.Installer\\CNCFTPSync.Installer.wixproj",
+      "packagesPath": "C:\\Users\\runneradmin\\.nuget\\packages\\",
+      "outputPath": "D:\\a\\CNC-FTPSync\\CNC-FTPSync\\src\\CNCFTPSync.Installer\\obj\\",
       "projectStyle": "PackageReference",
       "UsingMicrosoftNETSdk": false,
+      "fallbackFolders": [
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+      ],
       "configFilePaths": [
-        "C:\\Users\\Emils\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "C:\\Users\\runneradmin\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
         "net9.0"
       ],
       "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {

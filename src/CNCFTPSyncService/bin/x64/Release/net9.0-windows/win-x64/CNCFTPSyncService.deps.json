@@ -7,9 +7,9 @@
   "targets": {
     ".NETCoreApp,Version=v9.0": {},
     ".NETCoreApp,Version=v9.0/win-x64": {
-      "CNCFTPSyncService/1.0.1.1": {
+      "CNCFTPSyncService/1.0.28.0": {
         "dependencies": {
-          "CNCFTPSyncCore": "1.0.1.1",
+          "CNCFTPSyncCore": "1.0.28",
           "Microsoft.Extensions.Hosting": "9.0.0",
           "Microsoft.Extensions.Hosting.WindowsServices": "9.0.0",
           "NLog": "5.3.4",
@@ -465,7 +465,7 @@
           }
         }
       },
-      "CNCFTPSyncCore/1.0.1.1": {
+      "CNCFTPSyncCore/1.0.28": {
         "dependencies": {
           "NLog": "5.3.4",
           "System.Configuration.ConfigurationManager": "9.0.0",
@@ -473,15 +473,15 @@
         },
         "runtime": {
           "CNCFTPSyncCore.dll": {
-            "assemblyVersion": "1.0.1.1",
-            "fileVersion": "1.0.1.1"
+            "assemblyVersion": "1.0.28.0",
+            "fileVersion": "1.0.28.0"
           }
         }
       }
     }
   },
   "libraries": {
-    "CNCFTPSyncService/1.0.1.1": {
+    "CNCFTPSyncService/1.0.28.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
@@ -766,7 +766,7 @@
       "path": "system.serviceprocess.servicecontroller/9.0.0",
       "hashPath": "system.serviceprocess.servicecontroller.9.0.0.nupkg.sha512"
     },
-    "CNCFTPSyncCore/1.0.1.1": {
+    "CNCFTPSyncCore/1.0.28": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
