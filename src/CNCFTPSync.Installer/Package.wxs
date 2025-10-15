@@ -15,7 +15,7 @@
                        Keywords="CNC, File Transfer, FTP, G-Code" />
 
     <!-- Major upgrade configuration for automatic updates -->
-    <MajorUpgrade AllowSameVersionUpgrades="yes"
+    <MajorUpgrade AllowSameVersionUpgrades="no"
                   AllowDowngrades="no"
                   DowngradeErrorMessage="A newer version of [ProductName] is already installed."
                   Schedule="afterInstallInitialize" />
@@ -111,7 +111,7 @@
 
     <!-- Install sequence - launch app after installation -->
     <InstallExecuteSequence>
-      <Custom Action="LaunchApplication" After="InstallFinalize" Condition="NOT REMOVE" />
+      <Custom Action="LaunchApplication" Before="InstallFinalize" Condition="NOT REMOVE" />
     </InstallExecuteSequence>
 
   </Package>
