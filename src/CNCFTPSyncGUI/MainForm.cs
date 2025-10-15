@@ -196,7 +196,7 @@ namespace CNCFTPSyncGUI
             }
         }
 
-        private void AutoUpdater_ParseUpdateInfoEvent(ParseUpdateInfoEventArgs args)
+        private async void AutoUpdater_ParseUpdateInfoEvent(ParseUpdateInfoEventArgs args)
         {
             try
             {
@@ -237,28 +237,28 @@ namespace CNCFTPSyncGUI
                             var downloadUrl = urlNode.InnerText;
                             _logService.LogInfo($"🔍 Validating download URL: {downloadUrl}");
                             
-                            // Test URL accessibility
+                            // Test URL accessibility using modern HttpClient
                             try
                             {
-                                var request = System.Net.WebRequest.Create(downloadUrl);
-                                request.Method = "HEAD"; // Just check headers, don't download
-                                request.Timeout = 10000; // 10 seconds
+                                using var httpClient = new System.Net.Http.HttpClient();
+                                httpClient.Timeout = TimeSpan.FromSeconds(10);
                                 
-                                using var response = request.GetResponse();
-                                if (response is System.Net.HttpWebResponse httpResponse)
+                                var request = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Head, downloadUrl);
+                                using var response = await httpClient.SendAsync(request);
+                                
+                                _logService.LogInfo($"✅ Download URL accessible - Status: {response.StatusCode}");
+                                if (response.Content.Headers.ContentLength.HasValue)
                                 {
-                                    _logService.LogInfo($"✅ Download URL accessible - Status: {httpResponse.StatusCode}");
-                                    _logService.LogInfo($"📏 Content Length: {httpResponse.ContentLength} bytes");
-                                    _logService.LogInfo($"📅 Last Modified: {httpResponse.LastModified}");
+                                    _logService.LogInfo($"� Content Length: {response.Content.Headers.ContentLength} bytes");
+                                }
+                                if (response.Content.Headers.LastModified.HasValue)
+                                {
+                                    _logService.LogInfo($"📅 Last Modified: {response.Content.Headers.LastModified}");
                                 }
                             }
-                            catch (System.Net.WebException webEx)
+                            catch (System.Net.Http.HttpRequestException httpEx)
                             {
-                                _logService.LogError($"❌ Download URL NOT accessible: {webEx.Message}");
-                                if (webEx.Response is System.Net.HttpWebResponse errorResponse)
-                                {
-                                    _logService.LogError($"❌ HTTP Error: {errorResponse.StatusCode} - {errorResponse.StatusDescription}");
-                                }
+                                _logService.LogError($"❌ Download URL NOT accessible: {httpEx.Message}");
                             }
                             catch (Exception urlEx)
                             {
@@ -352,14 +352,9 @@ namespace CNCFTPSyncGUI
                     {
                         _logService.LogInfo($"📝 Changelog URL: {args.ChangelogURL}");
                     }
-                    if (!string.IsNullOrEmpty(args.Checksum))
-                    {
-                        _logService.LogInfo($"🔐 Checksum: {args.Checksum}");
-                    }
-                    if (!string.IsNullOrEmpty(args.HashingAlgorithm))
-                    {
-                        _logService.LogInfo($"🔒 Hash Algorithm: {args.HashingAlgorithm}");
-                    }
+                    // Note: Checksum and HashingAlgorithm properties not available in this version of AutoUpdater.NET
+                    _logService.LogInfo($"🔐 Checksum: Not available in current AutoUpdater.NET version");
+                    _logService.LogInfo($"🔒 Hash Algorithm: Not available in current AutoUpdater.NET version");
                     
                     if (args.IsUpdateAvailable)
                     {
