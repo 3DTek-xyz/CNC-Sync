@@ -9,14 +9,20 @@
     <AssemblyTitle>CNC-FTP-SYNC GUI</AssemblyTitle>
     <AssemblyDescription>GUI application for CNC file sync configuration and monitoring</AssemblyDescription>
     <Copyright>Copyright © 2025</Copyright>
-    <Version>1.0.0</Version>
+    <Version>1.0.1.1</Version>
+    <AssemblyVersion>1.0.1.1</AssemblyVersion>
+    <FileVersion>1.0.1.1</FileVersion>
     <ApplicationIcon>CNCFTPSync.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <GenerateAssemblyVersionAttribute>true</GenerateAssemblyVersionAttribute>
+    <GenerateAssemblyFileVersionAttribute>true</GenerateAssemblyFileVersionAttribute>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <PublishSingleFile>false</PublishSingleFile>
     <SelfContained>false</SelfContained>
     <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
     <UseAppHost>true</UseAppHost>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
 
   <ItemGroup>
@@ -40,12 +46,12 @@
       <UnwantedLanguageFolders Include="$(OutputPath)zh-Hans" />
       <UnwantedLanguageFolders Include="$(OutputPath)zh-Hant" />
     </ItemGroup>
-    <RemoveDir Directories="@(UnwantedLanguageFolders)" />
+    <RemoveDir Directories="@(UnwantedLanguageFolders)" /> 
   </Target>
 
   <ItemGroup>
     <PackageReference Include="Autoupdater.NET.Official" Version="1.9.2" />
-    <PackageReference Include="System.ServiceProcess.ServiceController" Version="9.0.0" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="9.0.9" />
   </ItemGroup>
 
   <ItemGroup>
@@ -60,6 +66,17 @@
     <Content Include="..\CNCFTPSyncCore\NLog.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="CNCFTPSync.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <None Include="app.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <Link>CNCFTPSyncGUI.exe.config</Link>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="CNCFTPSync.ico" />
   </ItemGroup>
 
 </Project>

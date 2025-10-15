@@ -25,7 +25,7 @@ namespace CNCFTPSyncGUI
 {
     public static string FormatTime(DateTime time)
     {
-        return time.ToString("HH:mm:ss");
+        return time.ToString("HH:mm:ss"); 
     }
     
     public static string FormatDateTime(DateTime dateTime)

@@ -42,38 +42,73 @@ namespace CNCFTPSyncGUI
 
         public MainForm()
         {
-            InitializeComponent();
-            _configService = new ConfigurationService();
-            _logService = new LogService();
-            _config = _configService.LoadConfiguration();
+            WriteToLogFile("MainForm constructor started");
             
-            // Set the application icon
             try
             {
-                var iconPath = Path.Combine(Application.StartupPath, "CNCFTPSync.png");
-                if (File.Exists(iconPath))
+                WriteToLogFile("MainForm: InitializeComponent starting");
+                InitializeComponent();
+                WriteToLogFile("MainForm: InitializeComponent completed");
+                
+                WriteToLogFile("MainForm: Creating ConfigurationService");
+                _configService = new ConfigurationService();
+                WriteToLogFile("MainForm: ConfigurationService created");
+                
+                WriteToLogFile("MainForm: Creating LogService");
+                _logService = new LogService();
+                WriteToLogFile("MainForm: LogService created");
+                
+                WriteToLogFile("MainForm: Loading configuration");
+                _config = _configService.LoadConfiguration();
+                WriteToLogFile("MainForm: Configuration loaded");
+            
+                // Load the application icon using our dedicated method
+                WriteToLogFile("MainForm: Loading application icon");
+                try
                 {
-                    using var bitmap = new Bitmap(iconPath);
-                    this.Icon = Icon.FromHandle(bitmap.GetHicon());
+                    this.Icon = LoadIconFromFile("CNCFTPSync.ico");
+                    _logService?.LogInfo("Application icon loaded successfully in constructor");
+                    WriteToLogFile("MainForm: Application icon loaded successfully");
                 }
+                catch (Exception ex)
+                {
+                    _logService?.LogError($"Failed to load application icon in constructor: {ex.Message}");
+                    WriteToLogFile($"MainForm: Failed to load application icon: {ex.Message}");
+                }
+                
+                WriteToLogFile("MainForm: Initializing NotifyIcon");
+                InitializeNotifyIcon();
+                WriteToLogFile("MainForm: NotifyIcon initialized");
+                
+                WriteToLogFile("MainForm: Loading configuration");
+                LoadConfiguration();
+                WriteToLogFile("MainForm: Configuration loaded");
+                
+                WriteToLogFile("MainForm: Setting up event handlers");
+                SetupEventHandlers();
+                WriteToLogFile("MainForm: Event handlers setup complete");
+                
+                WriteToLogFile("MainForm: Initializing AutoUpdater");
+                InitializeAutoUpdater();
+                WriteToLogFile("MainForm: AutoUpdater initialized");
+                
+                WriteToLogFile("MainForm: Starting auto-detect task");
+                // Auto-detect service status and start standalone if needed
+                _ = Task.Run(AutoDetectAndStartMonitoring);
+                WriteToLogFile("MainForm: Auto-detect task started");
+                
+                WriteToLogFile("MainForm: Setting window state");
+                // Start minimized to system tray
+                this.WindowState = FormWindowState.Minimized;
+                this.ShowInTaskbar = false;
+                WriteToLogFile("MainForm: Constructor completed successfully");
             }
             catch (Exception ex)
             {
-                // Fallback to default icon if loading fails
-                _logService?.LogWarning($"Failed to load application icon: {ex.Message}");
+                WriteToLogFile($"MainForm constructor FAILED: {ex.Message}");
+                WriteToLogFile($"MainForm constructor STACK TRACE: {ex.StackTrace}");
+                throw;
             }
-            
-            InitializeNotifyIcon();
-            LoadConfiguration();
-            SetupEventHandlers();
-            InitializeAutoUpdater();
-            
-            // Auto-detect service status and start standalone if needed
-            _ = Task.Run(AutoDetectAndStartMonitoring);
-            
-            // Start minimized to system tray
-            this.WindowState = FormWindowState.Minimized;
-            this.ShowInTaskbar = false;
         }
 
         private void InitializeNotifyIcon()
@@ -82,7 +117,7 @@ namespace CNCFTPSyncGUI
             {
                 Text = "CNC-FTP-SYNC Tool",
                 Visible = true,
-                Icon = LoadIconFromFile("CNCFTPSync.png")
+                Icon = LoadIconFromFile("CNCFTPSync.ico")
             };
 
             // Create context menu for system tray
@@ -122,9 +157,22 @@ namespace CNCFTPSyncGUI
                 // Configure for GitHub releases
                 var updateUrl = "https://3dtek-xyz.github.io/CNC-FTPSync/update.xml";
                 _logService.LogInfo($"AutoUpdater checking for updates at: {updateUrl}");
-                AutoUpdater.Start(updateUrl);
                 
-                _logService.LogInfo("AutoUpdater initialized successfully");
+                // Wrap AutoUpdater.Start in try-catch to handle .NET 9.0 compatibility issues
+                try
+                {
+                    AutoUpdater.Start(updateUrl);
+                    _logService.LogInfo("AutoUpdater initialized successfully");
+                }
+                catch (System.MissingFieldException mfEx)
+                {
+                    _logService.LogWarning($"AutoUpdater.NET version incompatible with .NET 9.0: {mfEx.Message}");
+                    _logService.LogInfo("AutoUpdater disabled due to compatibility issue. Manual updates required.");
+                }
+                catch (Exception auEx)
+                {
+                    _logService.LogError($"AutoUpdater failed to start: {auEx.Message}");
+                }
             }
             catch (Exception ex)
             {
@@ -137,12 +185,42 @@ namespace CNCFTPSyncGUI
             try
             {
                 _logService.LogInfo($"AutoUpdater parsing update info. RemoteData length: {args.RemoteData?.Length ?? 0}");
+                _logService.LogInfo($"AutoUpdater RemoteData content: {args.RemoteData}");
                 
-                // ParseUpdateInfoEventArgs doesn't have Error property
-                // Use CheckForUpdateEvent instead for error handling
                 if (!string.IsNullOrEmpty(args.RemoteData))
                 {
                     _logService.LogInfo("AutoUpdater successfully downloaded update info");
+                    
+                    // Try to manually parse the XML to identify the issue
+                    try
+                    {
+                        var xmlDoc = new System.Xml.XmlDocument();
+                        xmlDoc.LoadXml(args.RemoteData);
+                        
+                        var versionNode = xmlDoc.SelectSingleNode("//version");
+                        var urlNode = xmlDoc.SelectSingleNode("//url");
+                        var changelogNode = xmlDoc.SelectSingleNode("//changelog");
+                        var mandatoryNode = xmlDoc.SelectSingleNode("//mandatory");
+                        var argsNode = xmlDoc.SelectSingleNode("//args");
+                        var checksumNode = xmlDoc.SelectSingleNode("//checksum");
+                        
+                        _logService.LogInfo($"AutoUpdater XML parsed - Version: {versionNode?.InnerText ?? "MISSING"}");
+                        _logService.LogInfo($"AutoUpdater XML parsed - URL: {urlNode?.InnerText ?? "MISSING"}");
+                        _logService.LogInfo($"AutoUpdater XML parsed - Changelog: {changelogNode?.InnerText ?? "MISSING"}");
+                        _logService.LogInfo($"AutoUpdater XML parsed - Mandatory: {mandatoryNode?.InnerText ?? "MISSING"}");
+                        _logService.LogInfo($"AutoUpdater XML parsed - Args: {argsNode?.InnerText ?? "MISSING"}");
+                        _logService.LogInfo($"AutoUpdater XML parsed - Checksum: {checksumNode?.InnerText ?? "MISSING"}");
+                        
+                        // Create UpdateInfoEventArgs manually if AutoUpdater fails
+                        if (versionNode != null && urlNode != null)
+                        {
+                            _logService.LogInfo("AutoUpdater XML contains required fields, proceeding with manual parsing");
+                        }
+                    }
+                    catch (Exception xmlEx)
+                    {
+                        _logService.LogError($"AutoUpdater XML parsing failed: {xmlEx.Message}");
+                    }
                 }
                 else
                 {
@@ -151,7 +229,7 @@ namespace CNCFTPSyncGUI
             }
             catch (Exception ex)
             {
-                _logService.LogError($"Error in AutoUpdater_ParseUpdateInfoEvent: {ex.Message}");
+                _logService.LogError($"Error in AutoUpdater_ParseUpdateInfoEvent: {ex.Message}\n{ex.StackTrace}");
             }
         }
 
@@ -163,14 +241,17 @@ namespace CNCFTPSyncGUI
             // Stop the service if it's running
             try
             {
-                if (IsServiceInstalled("GCodeSyncService"))
+                if (IsServiceInstalled("CNCFTPSyncService"))
                 {
-                    using var service = new ServiceController("GCodeSyncService");
-                    if (service.Status == ServiceControllerStatus.Running)
+                    var currentStatus = GetServiceStatus("CNCFTPSyncService");
+                    if (currentStatus == ServiceControllerStatus.Running)
                     {
                         _logService.LogInfo("Stopping service for update");
+                        using var service = new ServiceController("CNCFTPSyncService");
                         service.Stop();
-                        service.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(30));
+                        
+                        // Wait for service to stop
+                        VerifyServiceStatus("CNCFTPSyncService", ServiceControllerStatus.Stopped, 30);
                     }
                 }
             }
@@ -227,6 +308,12 @@ namespace CNCFTPSyncGUI
                 else
                 {
                     _logService.LogError($"Update check failed: {args.Error.Message}");
+                    _logService.LogError($"Update check error details: {args.Error}");
+                    if (args.Error.InnerException != null)
+                    {
+                        _logService.LogError($"Update check inner exception: {args.Error.InnerException.Message}");
+                        _logService.LogError($"Update check inner exception stack: {args.Error.InnerException.StackTrace}");
+                    }
                 }
             }
             catch (Exception ex)
@@ -262,29 +349,48 @@ namespace CNCFTPSyncGUI
             var startupStopwatch = System.Diagnostics.Stopwatch.StartNew();
             try
             {
+                WriteToLogFile("AutoDetectAndStartMonitoring: Method started");
                 _logService.LogInfo($"STARTUP TIMING: AutoDetectAndStartMonitoring started at {DateTime.Now:HH:mm:ss.fff}");
                 
                 // Wait a bit for the UI to fully initialize
+                WriteToLogFile("AutoDetectAndStartMonitoring: Starting UI delay");
                 _logService.LogInfo($"STARTUP TIMING: Starting 2-second UI delay at {startupStopwatch.ElapsedMilliseconds}ms");
                 await Task.Delay(2000);
+                WriteToLogFile("AutoDetectAndStartMonitoring: UI delay completed");
                 _logService.LogInfo($"STARTUP TIMING: UI delay completed at {startupStopwatch.ElapsedMilliseconds}ms");
                 
                 // Check if Windows Service is running
+                WriteToLogFile("AutoDetectAndStartMonitoring: About to check service status");
                 _logService.LogInfo($"STARTUP TIMING: Starting service status check at {startupStopwatch.ElapsedMilliseconds}ms");
                 bool serviceRunning = false;
                 bool serviceInstalled = false;
                 try
                 {
-                    using var service = new ServiceController("GCodeSyncService");
-                    serviceInstalled = true;
-                    serviceRunning = service.Status == ServiceControllerStatus.Running;
-                    _logService.LogInfo($"STARTUP TIMING: Service status check completed at {startupStopwatch.ElapsedMilliseconds}ms - Installed: {serviceInstalled}, Running: {serviceRunning}, Status: {service.Status}");
+                    WriteToLogFile("AutoDetectAndStartMonitoring: Calling IsServiceInstalled");
+                    serviceInstalled = IsServiceInstalled("CNCFTPSyncService");
+                    WriteToLogFile($"AutoDetectAndStartMonitoring: IsServiceInstalled returned: {serviceInstalled}");
+                    
+                    if (serviceInstalled)
+                    {
+                        WriteToLogFile("AutoDetectAndStartMonitoring: Service installed, getting status");
+                        var currentStatus = GetServiceStatus("CNCFTPSyncService");
+                        WriteToLogFile($"AutoDetectAndStartMonitoring: GetServiceStatus returned: {currentStatus}");
+                        serviceRunning = currentStatus == ServiceControllerStatus.Running;
+                        _logService.LogInfo($"STARTUP TIMING: Service status check completed at {startupStopwatch.ElapsedMilliseconds}ms - Installed: {serviceInstalled}, Running: {serviceRunning}, Status: {currentStatus}");
+                    }
+                    else
+                    {
+                        WriteToLogFile("AutoDetectAndStartMonitoring: Service not installed");
+                        _logService.LogInfo($"STARTUP TIMING: Service status check completed at {startupStopwatch.ElapsedMilliseconds}ms - Service not installed");
+                    }
                 }
                 catch (Exception serviceEx)
                 {
                     // Service not installed or accessible
                     serviceRunning = false;
                     serviceInstalled = false;
+                    WriteToLogFile($"AutoDetectAndStartMonitoring: Service check FAILED: {serviceEx.Message}");
+                    WriteToLogFile($"AutoDetectAndStartMonitoring: Service check STACK TRACE: {serviceEx.StackTrace}");
                     _logService.LogInfo($"STARTUP TIMING: Service status check failed at {startupStopwatch.ElapsedMilliseconds}ms - Service not installed or accessible: {serviceEx.Message}");
                 }
 
@@ -577,7 +683,7 @@ namespace CNCFTPSyncGUI
             {
                 _logService.LogInfo("Attempting to start Windows Service...");
                 
-                if (!IsServiceInstalled("GCodeSyncService"))
+                if (!IsServiceInstalled("CNCFTPSyncService"))
                 {
                     _logService.LogError("Service start failed - service not installed");
                     MessageBox.Show("Service is not installed. Please install the service first using 'Install Service' option.", 
@@ -585,66 +691,28 @@ namespace CNCFTPSyncGUI
                     return;
                 }
 
-                using var service = new ServiceController("GCodeSyncService");
-                _logService.LogInfo($"Current service status: {service.Status}");
+                var currentStatus = GetServiceStatus("CNCFTPSyncService");
+                _logService.LogInfo($"Current service status: {currentStatus}");
                 
-                if (service.Status != ServiceControllerStatus.Running)
+                if (currentStatus != ServiceControllerStatus.Running)
                 {
-                    if (service.Status == ServiceControllerStatus.Stopped)
+                    if (currentStatus == ServiceControllerStatus.Stopped)
                     {
-                        _logService.LogInfo("Starting service with elevated privileges...");
+                        _logService.LogInfo("Starting service...");
                         
-                        // Use sc.exe with UAC elevation to start service
-                        var startProcess = new System.Diagnostics.ProcessStartInfo
-                        {
-                            FileName = "sc.exe",
-                            Arguments = "start GCodeSyncService",
-                            UseShellExecute = true,
-                            CreateNoWindow = false,
-                            Verb = "runas"
-                        };
-
-                        using var process = System.Diagnostics.Process.Start(startProcess);
-                        if (process != null)
-                        {
-                            process.WaitForExit();
-                            _logService.LogInfo($"Service start command exit code: {process.ExitCode}");
-                            
-                            if (process.ExitCode == 0)
-                            {
-                                // Actually verify the service started by checking its status
-                                var actualStatus = VerifyServiceStatus("GCodeSyncService", ServiceControllerStatus.Running, 10);
-                                if (actualStatus == ServiceControllerStatus.Running)
-                                {
-                                    _logService.LogInfo("Windows Service started successfully");
-                                    MessageBox.Show("Service started successfully.", "Service Control", 
-                                        MessageBoxButtons.OK, MessageBoxIcon.Information);
-                                }
-                                else
-                                {
-                                    _logService.LogError($"Service start command succeeded but service is {actualStatus}. Check Event Viewer for details.");
-                                    var recentErrors = GetRecentServiceErrors("GCodeSyncService");
-                                    MessageBox.Show($"Service start command succeeded but service failed to start properly.\n\nActual Status: {actualStatus}\n\nThis usually means:\n- Configuration file is missing or invalid\n- Required folders don't exist\n- FTP settings are incorrect\n- Dependencies are missing\n\nRecent Event Log Entries:\n{recentErrors}", 
-                                        "Service Start Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                                }
-                            }
-                            else
-                            {
-                                _logService.LogError($"Service start failed with exit code {process.ExitCode}");
-                                MessageBox.Show($"Service start failed with exit code {process.ExitCode}.\n\nCheck Windows Event Viewer for detailed error information.", 
-                                    "Service Start Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            }
-                        }
-                        else
-                        {
-                            _logService.LogError("Failed to start sc.exe process for service start - User may have cancelled UAC prompt");
-                            MessageBox.Show("Service start cancelled or failed.\n\nThis could be because UAC elevation was cancelled.", 
-                                "Service Start Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        }
+                        using var service = new ServiceController("CNCFTPSyncService");
+                        service.Start();
+                        
+                        // Wait for service to start
+                        service.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(10));
+                        
+                        _logService.LogInfo("Windows Service started successfully");
+                        MessageBox.Show("Service started successfully.", "Service Control", 
+                            MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                     else
                     {
-                        var statusMsg = $"Service cannot be started. Current status: {service.Status}";
+                        var statusMsg = $"Service cannot be started. Current status: {currentStatus}";
                         _logService.LogWarning(statusMsg);
                         MessageBox.Show(statusMsg, "Service Status", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     }
@@ -670,43 +738,20 @@ namespace CNCFTPSyncGUI
             {
                 _logService.LogInfo("Attempting to stop Windows Service...");
                 
-                using var service = new ServiceController("GCodeSyncService");
-                _logService.LogInfo($"Current service status: {service.Status}");
+                var currentStatus = GetServiceStatus("CNCFTPSyncService");
+                _logService.LogInfo($"Current service status: {currentStatus}");
                 
-                if (service.Status == ServiceControllerStatus.Running)
+                if (currentStatus == ServiceControllerStatus.Running)
                 {
-                    _logService.LogInfo("Stopping service with elevated privileges...");
+                    _logService.LogInfo("Stopping service...");
                     
-                    // Use sc.exe with UAC elevation to stop service
-                    var stopProcess = new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = "sc.exe",
-                        Arguments = "stop GCodeSyncService",
-                        UseShellExecute = true,
-                        CreateNoWindow = false,
-                        Verb = "runas"
-                    };
-
-                    using var process = System.Diagnostics.Process.Start(stopProcess);
-                    if (process != null)
-                    {
-                        process.WaitForExit();
-                        _logService.LogInfo($"Service stop exit code: {process.ExitCode}");
-                        
-                        if (process.ExitCode == 0)
-                        {
-                            _logService.LogInfo("Windows Service stopped successfully");
-                            MessageBox.Show("Service stopped successfully.", "Service Control", 
-                                MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        }
-                        else
-                        {
-                            _logService.LogError($"Service stop failed with exit code {process.ExitCode}");
-                            MessageBox.Show($"Service stop failed with exit code {process.ExitCode}.\n\nCheck Windows Event Viewer for detailed error information.", 
-                                "Service Stop Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        }
-                    }
-                    else
+                    using var service = new ServiceController("CNCFTPSyncService");
+                    service.Stop();
+                    service.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(30));
+                    
+                    _logService.LogInfo("Windows Service stopped successfully");
+                    MessageBox.Show("Service stopped successfully.", "Service Control", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
                     {
                         _logService.LogError("Failed to start sc.exe process for service stop - User may have cancelled UAC prompt");
                         MessageBox.Show("Service stop cancelled or failed.\n\nThis could be because UAC elevation was cancelled.", 
@@ -715,7 +760,7 @@ namespace CNCFTPSyncGUI
                 }
                 else
                 {
-                    var statusMsg = $"Service is not running. Current status: {service.Status}";
+                    var statusMsg = $"Service is not running. Current status: {currentStatus}";
                     _logService.LogInfo(statusMsg);
                     MessageBox.Show(statusMsg, "Service Status", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
@@ -733,7 +778,7 @@ namespace CNCFTPSyncGUI
             try
             {
                 // Check if already installed
-                if (IsServiceInstalled("GCodeSyncService"))
+                if (IsServiceInstalled("CNCFTPSyncService"))
                 {
                     MessageBox.Show("Service is already installed.", "Service Install", 
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -755,6 +800,7 @@ namespace CNCFTPSyncGUI
             }
             catch (Exception ex)
             {
+                _logService?.LogError($"Service installation exception in InstallService_Click: {ex.Message}\n{ex.StackTrace}");
                 MessageBox.Show($"Failed to install service: {ex.Message}", "Service Install Error", 
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -764,7 +810,7 @@ namespace CNCFTPSyncGUI
         {
             try
             {
-                if (!IsServiceInstalled("GCodeSyncService"))
+                if (!IsServiceInstalled("CNCFTPSyncService"))
                 {
                     MessageBox.Show("Service is not installed.", "Service Uninstall", 
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -786,6 +832,7 @@ namespace CNCFTPSyncGUI
             }
             catch (Exception ex)
             {
+                _logService?.LogError($"Service uninstallation exception in UninstallService_Click: {ex.Message}\n{ex.StackTrace}");
                 MessageBox.Show($"Failed to uninstall service: {ex.Message}", "Service Uninstall Error", 
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -795,12 +842,36 @@ namespace CNCFTPSyncGUI
         {
             try
             {
-                using var service = new ServiceController(serviceName);
-                var status = service.Status;
-                return true;
+                WriteToLogFile($"IsServiceInstalled: Checking service '{serviceName}' using sc.exe");
+                
+                // Use sc.exe to check service status as fallback if ServiceController fails
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = "sc.exe",
+                    Arguments = $"query \"{serviceName}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+
+                WriteToLogFile($"IsServiceInstalled: Starting sc.exe process");
+                using var process = Process.Start(startInfo);
+                if (process != null)
+                {
+                    WriteToLogFile($"IsServiceInstalled: Process started, waiting for exit");
+                    process.WaitForExit(5000); // 5 second timeout
+                    WriteToLogFile($"IsServiceInstalled: Process exited with code: {process.ExitCode}");
+                    return process.ExitCode == 0; // 0 = service exists, non-zero = service not found
+                }
+                WriteToLogFile($"IsServiceInstalled: Failed to start process");
+                return false;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                WriteToLogFile($"IsServiceInstalled FAILED: {ex.Message}");
+                WriteToLogFile($"IsServiceInstalled STACK TRACE: {ex.StackTrace}");
+                _logService?.LogError($"IsServiceInstalled failed: {ex.Message}");
                 return false;
             }
         }
@@ -809,38 +880,61 @@ namespace CNCFTPSyncGUI
         {
             try
             {
-                using var service = new ServiceController(serviceName);
+                // Use sc.exe for service status checking
                 var startTime = DateTime.Now;
                 var timeout = TimeSpan.FromSeconds(timeoutSeconds);
 
                 while (DateTime.Now - startTime < timeout)
                 {
-                    service.Refresh();
-                    _logService.LogInfo($"Service status check: {service.Status}");
+                    var currentStatus = GetServiceStatus(serviceName);
+                    _logService.LogInfo($"Service status check: {currentStatus}");
                     
-                    if (service.Status == expectedStatus)
+                    if (currentStatus == expectedStatus)
                     {
-                        return service.Status;
+                        return currentStatus;
                     }
                     
-                    if (service.Status == ServiceControllerStatus.Stopped && expectedStatus == ServiceControllerStatus.Running)
+                    if (currentStatus == ServiceControllerStatus.Stopped && expectedStatus == ServiceControllerStatus.Running)
                     {
                         // Service failed to start - don't wait anymore
                         _logService.LogWarning("Service failed to start - status is Stopped");
-                        return service.Status;
+                        return currentStatus;
                     }
                     
                     System.Threading.Thread.Sleep(1000); // Wait 1 second before checking again
                 }
                 
-                service.Refresh();
-                _logService.LogWarning($"Service status verification timed out. Final status: {service.Status}");
-                return service.Status;
+                var finalStatus = GetServiceStatus(serviceName);
+                _logService.LogWarning($"Service status verification timed out. Final status: {finalStatus}");
+                return finalStatus;
             }
             catch (Exception ex)
             {
                 _logService.LogError($"Error verifying service status: {ex.Message}");
                 return ServiceControllerStatus.Stopped; // Assume stopped if we can't check
+            }
+        }
+
+        private ServiceControllerStatus GetServiceStatus(string serviceName)
+        {
+            try
+            {
+                WriteToLogFile($"GetServiceStatus: About to create ServiceController for '{serviceName}'");
+                using var service = new ServiceController(serviceName);
+                WriteToLogFile($"GetServiceStatus: ServiceController created successfully");
+                
+                WriteToLogFile($"GetServiceStatus: About to get Status property");
+                var status = service.Status;
+                WriteToLogFile($"GetServiceStatus: Status retrieved successfully: {status}");
+                
+                return status;
+            }
+            catch (Exception ex)
+            {
+                WriteToLogFile($"GetServiceStatus FAILED: {ex.Message}");
+                WriteToLogFile($"GetServiceStatus STACK TRACE: {ex.StackTrace}");
+                _logService?.LogError($"GetServiceStatus failed: {ex.Message}");
+                return ServiceControllerStatus.Stopped;
             }
         }
 
@@ -873,63 +967,46 @@ namespace CNCFTPSyncGUI
 
         private void InstallWindowsService()
         {
+            WriteToLogFile("InstallWindowsService: Method entry point");
             try
             {
+                WriteToLogFile("InstallWindowsService: Inside try block");
                 _logService.LogInfo("Starting Windows Service installation...");
                 
-                // Match install_service.bat logic exactly: %~dp0CBWSS-SYNC\Service\GCodeSyncService.exe
-                // Get the directory where this executable is running from
-                var currentDir = Path.GetDirectoryName(Application.ExecutablePath) ?? Environment.CurrentDirectory;
-                _logService.LogInfo($"Current executable directory: {currentDir}");
-                
-                // The GUI is inside CBWSS-SYNC\GUI, so we need to go up one level to find CBWSS-SYNC\Service
-                // Account for nested CBWSS-SYNC structure: project\CBWSS-SYNC\GUI -> project\CBWSS-SYNC\Service
-                var serviceExePath = Path.Combine(Path.GetDirectoryName(currentDir) ?? currentDir, "Service", "GCodeSyncService.exe");
-                _logService.LogInfo($"First search path: {serviceExePath}");
-                
-                // If not found, try other common locations
-                if (!File.Exists(serviceExePath))
+                var serviceExePath = FindServiceExecutable();
+                if (string.IsNullOrEmpty(serviceExePath))
                 {
-                    // Try: current\CBWSS-SYNC\Service (if GUI is in root)
-                    serviceExePath = Path.Combine(currentDir, "CBWSS-SYNC", "Service", "GCodeSyncService.exe");
-                    _logService.LogInfo($"Second search path: {serviceExePath}");
-                }
-                
-                if (!File.Exists(serviceExePath))
-                {
-                    // Try: parent\Service (if GUI is in CBWSS-SYNC\GUI)
-                    var parentDir = Path.GetDirectoryName(currentDir);
-                    if (parentDir != null)
-                    {
-                        serviceExePath = Path.Combine(parentDir, "Service", "GCodeSyncService.exe");
-                        _logService.LogInfo($"Third search path: {serviceExePath}");
-                    }
-                }
-                
-                if (!File.Exists(serviceExePath))
-                {
+                    var currentDir = Path.GetDirectoryName(Application.ExecutablePath) ?? Environment.CurrentDirectory;
                     var errorMsg = $"Service executable not found after searching all locations. Current dir: {currentDir}";
                     _logService.LogError(errorMsg);
                     MessageBox.Show($"Service executable not found.\n\nSearched locations:\n" +
-                                  $"1. {Path.Combine(Path.GetDirectoryName(currentDir) ?? currentDir, "Service", "GCodeSyncService.exe")}\n" +
-                                  $"2. {Path.Combine(currentDir, "CBWSS-SYNC", "Service", "GCodeSyncService.exe")}\n" +
-                                  $"3. Current dir: {currentDir}\n\n" +
-                                  $"Please run build.bat first to create the CBWSS-SYNC deployment structure.", 
+                                  $"1. {Path.Combine(currentDir, "CNCFTPSyncService.exe")}\n" +
+                                  $"2. {Path.Combine(Path.GetDirectoryName(currentDir) ?? currentDir, "Service", "CNCFTPSyncService.exe")}\n" +
+                                  $"3. {Path.Combine(currentDir, "CBWSS-SYNC", "Service", "CNCFTPSyncService.exe")}\n\n" +
+                                  $"The service should be installed in the same folder as the GUI application.", 
                         "Service Install Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
 
                 _logService.LogInfo($"Found service executable at: {serviceExePath}");
-                var command = $"create GCodeSyncService binPath= \"\\\"{serviceExePath}\\\"\" start= auto DisplayName= \"G-Code Sync Service\"";
-                _logService.LogInfo($"Executing sc.exe command: {command}");
-
+                _logService.LogInfo("Installing service using InstallUtil.exe...");
+                
+                // Find InstallUtil.exe path
+                var installUtilPath = GetInstallUtilPath();
+                if (string.IsNullOrEmpty(installUtilPath))
+                {
+                    MessageBox.Show("InstallUtil.exe not found. Please ensure .NET Framework is properly installed.",
+                        "Installation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                
                 var processInfo = new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName = "sc.exe",
-                    Arguments = command,
-                    UseShellExecute = true,  // Required for UAC elevation
-                    CreateNoWindow = false,   // UAC dialog needs to be visible
-                    Verb = "runas"           // Request elevation
+                    FileName = installUtilPath,
+                    Arguments = $"\"{serviceExePath}\"",
+                    UseShellExecute = true,
+                    CreateNoWindow = false,
+                    Verb = "runas"
                 };
 
                 using var process = System.Diagnostics.Process.Start(processInfo);
@@ -941,19 +1018,7 @@ namespace CNCFTPSyncGUI
                     
                     if (process.ExitCode == 0)
                     {
-                        _logService.LogInfo("Service created successfully, setting description...");
-                        
-                        // Set description with elevated permissions
-                        var descProcess = new System.Diagnostics.ProcessStartInfo
-                        {
-                            FileName = "sc.exe",
-                            Arguments = "description GCodeSyncService \"Monitors G-Code project folders and automatically processes and uploads files via FTP\"",
-                            UseShellExecute = true,
-                            CreateNoWindow = false,
-                            Verb = "runas"
-                        };
-                        using var descProc = System.Diagnostics.Process.Start(descProcess);
-                        descProc?.WaitForExit();
+                        _logService.LogInfo("Service installed successfully");
 
                         // Ask user if they want to start the service immediately
                         var startResult = MessageBox.Show(
@@ -968,44 +1033,35 @@ namespace CNCFTPSyncGUI
                         if (startResult == DialogResult.Yes)
                         {
                             _logService.LogInfo("User chose to start the service immediately");
-                            var startProcess = new System.Diagnostics.ProcessStartInfo
+                            try
                             {
-                                FileName = "sc.exe",
-                                Arguments = "start GCodeSyncService",
-                                UseShellExecute = true,
-                                CreateNoWindow = false,
-                                Verb = "runas"
-                            };
-                            using var startProc = System.Diagnostics.Process.Start(startProcess);
-                            if (startProc != null)
-                            {
-                                startProc.WaitForExit();
-                                _logService.LogInfo($"Service start command exit code: {startProc.ExitCode}");
+                                WriteToLogFile("InstallWindowsService: About to create ServiceController for starting service");
+                                using var service = new ServiceController("CNCFTPSyncService");
+                                WriteToLogFile("InstallWindowsService: ServiceController created successfully for starting");
+                                service.Start();
+                                WriteToLogFile("InstallWindowsService: Service.Start() called");
+                                service.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(10));
+                                WriteToLogFile("InstallWindowsService: WaitForStatus completed");
                                 
-                                if (startProc.ExitCode == 0)
+                                if (service.Status == ServiceControllerStatus.Running)
                                 {
-                                    // Actually verify the service started by checking its status
-                                    var actualStatus = VerifyServiceStatus("GCodeSyncService", ServiceControllerStatus.Running, 10);
-                                    if (actualStatus == ServiceControllerStatus.Running)
-                                    {
-                                        _logService.LogInfo("Service installed and started successfully");
-                                        MessageBox.Show("Service installed and started successfully!", "Service Control", 
-                                            MessageBoxButtons.OK, MessageBoxIcon.Information);
-                                    }
-                                    else
-                                    {
-                                        _logService.LogError($"Service start command succeeded but service is {actualStatus}. Check Event Viewer for details.");
-                                        var recentErrors = GetRecentServiceErrors("GCodeSyncService");
-                                        MessageBox.Show($"Service installed but failed to start properly.\n\nActual Status: {actualStatus}\n\nThis usually means:\n- Configuration file is missing or invalid\n- Required folders don't exist\n- FTP settings are incorrect\n- Dependencies are missing\n\nRecent Event Log Entries:\n{recentErrors}\n\nYou can configure settings and then use 'Start Service' when ready.", 
-                                            "Service Install Complete - Start Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                                    }
+                                    _logService.LogInfo("Service installed and started successfully");
+                                    MessageBox.Show("Service installed and started successfully!", "Service Control", 
+                                        MessageBoxButtons.OK, MessageBoxIcon.Information);
                                 }
                                 else
                                 {
-                                    _logService.LogWarning($"Service failed to start (exit code: {startProc.ExitCode})");
-                                    MessageBox.Show($"Service installed but failed to start (exit code: {startProc.ExitCode}).\n\nThis usually means:\n- Configuration is missing or invalid\n- Required folders don't exist\n- FTP settings are incorrect\n\nCheck the Windows Event Log for details, or configure settings first then try 'Start Service' again.", 
-                                        "Service Start Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                    _logService.LogError($"Service start command succeeded but service is {service.Status}. Check Event Viewer for details.");
+                                    var recentErrors = GetRecentServiceErrors("CNCFTPSyncService");
+                                    MessageBox.Show($"Service installed but failed to start properly.\n\nActual Status: {service.Status}\n\nThis usually means:\n- Configuration file is missing or invalid\n- Required folders don't exist\n- FTP settings are incorrect\n- Dependencies are missing\n\nRecent Event Log Entries:\n{recentErrors}\n\nYou can configure settings and then use 'Start Service' when ready.", 
+                                        "Service Install Complete - Start Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                                 }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logService.LogWarning($"Service failed to start: {ex.Message}");
+                                MessageBox.Show($"Service installed but failed to start: {ex.Message}\n\nThis usually means:\n- Configuration is missing or invalid\n- Required folders don't exist\n- FTP settings are incorrect\n\nCheck the Windows Event Log for details, or configure settings first then try 'Start Service' again.", 
+                                    "Service Start Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                             }
                         }
                         else
@@ -1030,7 +1086,7 @@ namespace CNCFTPSyncGUI
                 }
                 else
                 {
-                    _logService.LogError("Failed to start sc.exe process for service installation - User may have cancelled UAC prompt");
+                    _logService.LogError("Failed to start InstallUtil.exe process for service installation - User may have cancelled UAC prompt");
                     MessageBox.Show("Service installation cancelled or failed to start.\n\nThis could be because:\n- UAC elevation was cancelled\n- System security policy prevents elevation", "Service Install Error", 
                         MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
@@ -1043,27 +1099,28 @@ namespace CNCFTPSyncGUI
             }
         }
 
-        private void UninstallWindowsService()
+        private void UninstallWindowsService() 
         {
             try
             {
                 _logService.LogInfo("Starting Windows Service uninstallation...");
                 
                 // Stop service first
-                if (IsServiceInstalled("GCodeSyncService"))
+                if (IsServiceInstalled("CNCFTPSyncService"))
                 {
                     _logService.LogInfo("Service found, checking if running...");
-                    using var service = new ServiceController("GCodeSyncService");
-                    if (service.Status == ServiceControllerStatus.Running)
+                    var currentStatus = GetServiceStatus("CNCFTPSyncService");
+                    if (currentStatus == ServiceControllerStatus.Running)
                     {
                         _logService.LogInfo("Service is running, stopping it...");
+                        using var service = new ServiceController("CNCFTPSyncService");
                         service.Stop();
                         service.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(30));
                         _logService.LogInfo("Service stopped successfully");
                     }
                     else
                     {
-                        _logService.LogInfo($"Service status: {service.Status}");
+                        _logService.LogInfo($"Service status: {currentStatus}");
                     }
                 }
                 else
@@ -1071,14 +1128,33 @@ namespace CNCFTPSyncGUI
                     _logService.LogWarning("Service not found or not installed");
                 }
 
-                _logService.LogInfo("Executing sc.exe delete command with elevated permissions...");
+                // Find the service executable to uninstall
+                var serviceExePath = FindServiceExecutable();
+                if (string.IsNullOrEmpty(serviceExePath))
+                {
+                    MessageBox.Show("Service executable not found for uninstallation.", "Service Uninstall Error", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                
+                _logService.LogInfo("Uninstalling service using InstallUtil.exe...");
+                
+                // Find InstallUtil.exe path
+                var installUtilPath = GetInstallUtilPath();
+                if (string.IsNullOrEmpty(installUtilPath))
+                {
+                    MessageBox.Show("InstallUtil.exe not found. Please ensure .NET Framework is properly installed.",
+                        "Uninstallation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                
                 var processInfo = new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName = "sc.exe",
-                    Arguments = "delete GCodeSyncService",
-                    UseShellExecute = true,  // Required for UAC elevation
-                    CreateNoWindow = false,   // UAC dialog needs to be visible
-                    Verb = "runas"           // Request elevation
+                    FileName = installUtilPath,
+                    Arguments = $"/u \"{serviceExePath}\"",
+                    UseShellExecute = true,
+                    CreateNoWindow = false,
+                    Verb = "runas"
                 };
 
                 using var process = System.Diagnostics.Process.Start(processInfo);
@@ -1105,7 +1181,7 @@ namespace CNCFTPSyncGUI
                 }
                 else
                 {
-                    _logService.LogError("Failed to start sc.exe process for service uninstallation - User may have cancelled UAC prompt");
+                    _logService.LogError("Failed to start InstallUtil.exe process for service uninstallation - User may have cancelled UAC prompt");
                     MessageBox.Show("Service uninstallation cancelled or failed to start.\n\nThis could be because:\n- UAC elevation was cancelled\n- System security policy prevents elevation", "Service Uninstall Error", 
                         MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
@@ -1214,21 +1290,26 @@ namespace CNCFTPSyncGUI
                 
                 if (File.Exists(iconPath))
                 {
-                    WriteToLogFile("LoadIconFromFile: File exists, loading as bitmap");
-                    using (var bitmap = new Bitmap(iconPath))
-                    {
-                        // Resize bitmap to 16x16 for tray icon
-                        using (var resized = new Bitmap(bitmap, new Size(16, 16)))
-                        {
-                            return Icon.FromHandle(resized.GetHicon());
-                        }
-                    }
+                    WriteToLogFile("LoadIconFromFile: File exists, loading as icon");
+                    return new Icon(iconPath, 16, 16); // Load ICO file with 16x16 size for tray
                 }
                 else
                 {
-                    WriteToLogFile("LoadIconFromFile: File not found, using system icon");
-                    // Fallback to system icon if file not found
-                    return SystemIcons.Application;
+                    WriteToLogFile("LoadIconFromFile: File not found, trying embedded resource");
+                    // Try embedded resource as fallback
+                    var resourceName = "CNCFTPSyncGUI.CNCFTPSync.ico";
+                    var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+                    using var stream = assembly.GetManifestResourceStream(resourceName);
+                    if (stream != null)
+                    {
+                        WriteToLogFile("LoadIconFromFile: Loading from embedded resource");
+                        return new Icon(stream, 16, 16);
+                    }
+                    else
+                    {
+                        WriteToLogFile("LoadIconFromFile: No embedded resource found, using system icon");
+                        return SystemIcons.Application;
+                    }
                 }
             }
             catch (Exception ex)
@@ -2059,7 +2140,7 @@ namespace CNCFTPSyncGUI
                 _logService.LogInfo("Closing application to system tray");
                 this.Hide();
                 this.notifyIcon.Visible = true;
-                this.notifyIcon.ShowBalloonTip(3000, "CBWSS-Sync", "Application minimized to system tray. Right-click the tray icon to access service controls.", ToolTipIcon.Info);
+                this.notifyIcon.ShowBalloonTip(3000, "CNC-FTP-SYNC", "Application minimized to system tray. Right-click the tray icon to access service controls.", ToolTipIcon.Info);
             }
             catch (Exception ex)
             {
@@ -2074,7 +2155,7 @@ namespace CNCFTPSyncGUI
                 _logService.LogInfo("User requesting full application closure");
                 
                 var result = MessageBox.Show(
-                    "⚠️ WARNING: This will completely close the CBWSS-Sync application.\n\n" +
+                    "⚠️ WARNING: This will completely close the CNC-FTP-SYNC application.\n\n" +
                     "This action may affect system processing:\n" +
                     "• Active file monitoring will stop\n" +
                     "• File processing operations will be interrupted\n" +
@@ -2123,7 +2204,7 @@ namespace CNCFTPSyncGUI
                 
                 if (warningResult == DialogResult.Yes)
                 {
-                    if (IsServiceInstalled("GCodeSyncService"))
+                    if (IsServiceInstalled("CNCFTPSyncService"))
                     {
                         var confirmResult = MessageBox.Show(
                             "Final confirmation: Uninstall the Windows service and close the application?", 
@@ -2214,7 +2295,7 @@ namespace CNCFTPSyncGUI
                 var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
                 var versionString = version != null ? version.ToString() : "Unknown";
                 
-                var aboutMessage = $@"CBWSS-Sync
+                var aboutMessage = $@"CNC-FTP-SYNC
 Windows G-Code Sync Tool
 
 Version: {versionString}
@@ -2232,7 +2313,7 @@ Features:
 
 Visit: https://3dtek-xyz.github.io/CNC-FTPSync/";
 
-                MessageBox.Show(aboutMessage, "About CBWSS-Sync", 
+                MessageBox.Show(aboutMessage, "About CNC-FTP-SYNC", 
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                 
                 _logService.LogInfo("About dialog displayed");
@@ -2262,7 +2343,7 @@ Visit: https://3dtek-xyz.github.io/CNC-FTPSync/";
                     
                     if (!args.IsUpdateAvailable)
                     {
-                        MessageBox.Show("You have the latest version of CBWSS-Sync!", 
+                        MessageBox.Show("You have the latest version of CNC-FTP-SYNC!", 
                             "No Updates Available", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                     // If update is available, the normal update dialog will show
@@ -2278,8 +2359,79 @@ Visit: https://3dtek-xyz.github.io/CNC-FTPSync/";
             }
         }
 
+        private string FindServiceExecutable()
+        {
+            // Per WiX installer: service is installed in the same folder as GUI (INSTALLFOLDER)
+            var currentDir = Path.GetDirectoryName(Application.ExecutablePath) ?? Environment.CurrentDirectory;
+            _logService.LogInfo($"Current executable directory: {currentDir}");
+            
+            // First try: same directory as GUI application (WiX INSTALLFOLDER)
+            var serviceExePath = Path.Combine(currentDir, "CNCFTPSyncService.exe");
+            _logService.LogInfo($"First search path: {serviceExePath}");
+            
+            if (!File.Exists(serviceExePath))
+            {
+                // Legacy fallback: old CBWSS-SYNC\Service structure  
+                serviceExePath = Path.Combine(Path.GetDirectoryName(currentDir) ?? currentDir, "Service", "CNCFTPSyncService.exe");
+                _logService.LogInfo($"Second search path: {serviceExePath}");
+            }
+            
+            if (!File.Exists(serviceExePath))
+            {
+                // Another legacy fallback
+                serviceExePath = Path.Combine(currentDir, "CBWSS-SYNC", "Service", "CNCFTPSyncService.exe");
+                _logService.LogInfo($"Third search path: {serviceExePath}");
+            }
+            
+            if (!File.Exists(serviceExePath))
+            {
+                return string.Empty;
+            }
+            
+            return serviceExePath;
+        }
+
+        private string GetInstallUtilPath()
+        {
+            // Common paths where InstallUtil.exe might be found
+            var possiblePaths = new[]
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Microsoft.NET", "Framework64", "v4.0.30319", "InstallUtil.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Microsoft.NET", "Framework", "v4.0.30319", "InstallUtil.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", "shared", "Microsoft.WindowsDesktop.App", "*", "InstallUtil.exe")
+            };
+            
+            foreach (var path in possiblePaths)
+            {
+                if (File.Exists(path))
+                {
+                    return path;
+                }
+                
+                // For dotnet paths with wildcards, search directories
+                if (path.Contains("*"))
+                {
+                    var basePath = path.Substring(0, path.LastIndexOf('*') - 1);
+                    if (Directory.Exists(basePath))
+                    {
+                        var dirs = Directory.GetDirectories(basePath);
+                        foreach (var dir in dirs.OrderByDescending(d => d))
+                        {
+                            var fullPath = Path.Combine(dir, "InstallUtil.exe");
+                            if (File.Exists(fullPath))
+                            {
+                                return fullPath;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            return string.Empty;
+        }
+
         #endregion
 
         #endregion
     }
-}
+} 

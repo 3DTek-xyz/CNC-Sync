@@ -10,13 +10,20 @@
     <Component Id="CNCFTPSyncGUI" Guid="4E2816DC-2F4E-4D78-9808-5DC067E74283">
       <File Id="CNCFTPSyncGUI.exe" 
             Source="$(var.CNCFTPSyncGUI.TargetDir)CNCFTPSyncGUI.exe" 
-            KeyPath="yes" />
+            KeyPath="yes"
+            Checksum="yes" />
       <File Id="CNCFTPSyncGUI.dll" 
-            Source="$(var.CNCFTPSyncGUI.TargetDir)CNCFTPSyncGUI.dll" />
+            Source="$(var.CNCFTPSyncGUI.TargetDir)CNCFTPSyncGUI.dll"
+            Checksum="yes" />
+      <File Id="CNCFTPSyncGUI.exe.config" 
+            Source="$(var.CNCFTPSyncGUI.TargetDir)CNCFTPSyncGUI.exe.config"
+            Checksum="yes" />
       <File Id="CNCFTPSyncGUI.deps.json" 
             Source="$(var.CNCFTPSyncGUI.TargetDir)CNCFTPSyncGUI.deps.json" />
       <File Id="CNCFTPSyncGUI.runtimeconfig.json" 
             Source="$(var.CNCFTPSyncGUI.TargetDir)CNCFTPSyncGUI.runtimeconfig.json" />
+      <File Id="CNCFTPSync.ico" 
+            Source="$(var.CNCFTPSyncGUI.TargetDir)CNCFTPSync.ico" />
     </Component>
 
     <!-- Core Library -->
@@ -76,7 +83,8 @@
     <Component Id="CNCFTPSyncService" Guid="585260B5-1245-4420-A6B2-00F25AFABCDB">
       <File Id="CNCFTPSyncService.exe" 
             Source="$(var.CNCFTPSyncService.TargetDir)CNCFTPSyncService.exe" 
-            KeyPath="yes" />
+            KeyPath="yes"
+            Checksum="yes" />
       <File Id="CNCFTPSyncService.deps.json" 
             Source="$(var.CNCFTPSyncService.TargetDir)CNCFTPSyncService.deps.json" />
       <File Id="CNCFTPSyncService.runtimeconfig.json" 

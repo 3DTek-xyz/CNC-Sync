@@ -869,7 +869,7 @@
           }
         }
       },
-      "CNCFTPSyncCore/1.0.0": {
+      "CNCFTPSyncCore/1.0.1.1": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v9.0",
         "dependencies": {
@@ -2097,7 +2097,7 @@
         "useSharedDesignerContext.txt"
       ]
     },
-    "CNCFTPSyncCore/1.0.0": {
+    "CNCFTPSyncCore/1.0.1.1": {
       "type": "project",
       "path": "../CNCFTPSyncCore/CNCFTPSyncCore.csproj",
       "msbuildProject": "../CNCFTPSyncCore/CNCFTPSyncCore.csproj"
@@ -2105,7 +2105,7 @@
   },
   "projectFileDependencyGroups": {
     "net9.0-windows7.0": [
-      "CNCFTPSyncCore >= 1.0.0",
+      "CNCFTPSyncCore >= 1.0.1.1",
       "Microsoft.Extensions.Hosting >= 9.0.0",
       "Microsoft.Extensions.Hosting.WindowsServices >= 9.0.0",
       "NLog >= 5.3.4",
@@ -2116,7 +2116,7 @@
     "C:\\Users\\Emils\\.nuget\\packages\\": {}
   },
   "project": {
-    "version": "1.0.0",
+    "version": "1.0.1.1",
     "restore": {
       "projectUniqueName": "C:\\Users\\Emils\\Dropbox\\CBWSS-SYNC\\src\\CNCFTPSyncService\\CNCFTPSyncService.csproj",
       "projectName": "CNCFTPSyncService",

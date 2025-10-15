@@ -527,7 +527,7 @@
     "C:\\Users\\Emils\\.nuget\\packages\\": {}
   },
   "project": {
-    "version": "1.0.0",
+    "version": "1.0.1.1",
     "restore": {
       "projectUniqueName": "C:\\Users\\Emils\\Dropbox\\CBWSS-SYNC\\src\\CNCFTPSyncCore\\CNCFTPSyncCore.csproj",
       "projectName": "CNCFTPSyncCore",

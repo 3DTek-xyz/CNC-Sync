@@ -5,7 +5,7 @@
   
   <Package Name="CNC-FTP-SYNC"
            Manufacturer="3DTek"
-           Version="1.0.0.0"
+           Version="!(bind.FileVersion.CNCFTPSyncGUI.exe)"
            UpgradeCode="12345678-1234-1234-1234-123456789012"
            Compressed="true"
            InstallerVersion="500">
@@ -15,15 +15,16 @@
                        Keywords="CNC, File Transfer, FTP, G-Code" />
 
     <!-- Major upgrade configuration for automatic updates -->
-    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed."
+    <MajorUpgrade AllowSameVersionUpgrades="yes"
                   AllowDowngrades="no"
-                  AllowSameVersionUpgrades="no" />
+                  DowngradeErrorMessage="A newer version of [ProductName] is already installed."
+                  Schedule="afterInstallInitialize" />
 
     <!-- Media and cabinet configuration -->
     <Media Id="1" Cabinet="cbwss.cab" EmbedCab="true" /> 
 
     <!-- Feature tree -->
-    <Feature Id="ProductFeature" Title="CNC-FTP-SYNC Application" Level="1">
+    <Feature Id="ProductFeature" Title="CNC-FTP-SYNC Application" Level="1"> 
       <ComponentGroupRef Id="ProductComponents" />
       <ComponentGroupRef Id="ServiceComponents" />
       <ComponentGroupRef Id="ConfigurationComponents" />

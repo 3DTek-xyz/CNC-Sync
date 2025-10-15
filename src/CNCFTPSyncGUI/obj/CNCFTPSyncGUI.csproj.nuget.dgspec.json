@@ -5,7 +5,7 @@
   },
   "projects": {
     "C:\\Users\\Emils\\Dropbox\\CBWSS-SYNC\\src\\CNCFTPSyncCore\\CNCFTPSyncCore.csproj": {
-      "version": "1.0.0",
+      "version": "1.0.1.1",
       "restore": {
         "projectUniqueName": "C:\\Users\\Emils\\Dropbox\\CBWSS-SYNC\\src\\CNCFTPSyncCore\\CNCFTPSyncCore.csproj",
         "projectName": "CNCFTPSyncCore",
@@ -78,7 +78,7 @@
       }
     },
     "C:\\Users\\Emils\\Dropbox\\CBWSS-SYNC\\src\\CNCFTPSyncGUI\\CNCFTPSyncGUI.csproj": {
-      "version": "1.0.0",
+      "version": "1.0.1.1",
       "restore": {
         "projectUniqueName": "C:\\Users\\Emils\\Dropbox\\CBWSS-SYNC\\src\\CNCFTPSyncGUI\\CNCFTPSyncGUI.csproj",
         "projectName": "CNCFTPSyncGUI",
@@ -127,7 +127,7 @@
             },
             "System.ServiceProcess.ServiceController": {
               "target": "Package",
-              "version": "[9.0.0, )"
+              "version": "[9.0.9, )"
             }
           },
           "imports": [
@@ -150,6 +150,11 @@
             }
           },
           "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
+        }
+      },
+      "runtimes": {
+        "win-x64": {
+          "#import": []
         }
       }
     }

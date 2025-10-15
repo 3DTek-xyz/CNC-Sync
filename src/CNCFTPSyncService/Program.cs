@@ -1,4 +1,4 @@
-using GCodeSyncService;
+using CNCFTPSyncService;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -14,11 +14,11 @@ try
     var builder = Host.CreateDefaultBuilder(args)
         .UseWindowsService(options =>
         {
-            options.ServiceName = "GCodeSyncService";
+            options.ServiceName = "CNCFTPSyncService";
         })
         .ConfigureServices(services =>
         {
-            services.AddHostedService<GCodeSyncWorkerService>();
+            services.AddHostedService<CNCFTPSyncWorkerService>();
         })
         .ConfigureLogging((context, logging) =>
         {
