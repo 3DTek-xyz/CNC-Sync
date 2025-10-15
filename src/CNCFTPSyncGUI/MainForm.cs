@@ -2590,10 +2590,35 @@ Visit: https://3dtek-xyz.github.io/CNC-FTPSync/";
                 var response = await httpClient.GetAsync(downloadUrl);
                 response.EnsureSuccessStatusCode();
                 
-                await using var fileStream = new FileStream(tempFile, FileMode.Create);
-                await response.Content.CopyToAsync(fileStream);
+                // Download file and ensure it's fully written
+                await using (var fileStream = new FileStream(tempFile, FileMode.Create))
+                {
+                    await response.Content.CopyToAsync(fileStream);
+                    await fileStream.FlushAsync();
+                } // FileStream is disposed here
                 
-                _logService.LogInfo($"✅ Download completed: {new FileInfo(tempFile).Length} bytes");
+                // Wait a moment for file system to complete write
+                await Task.Delay(1000);
+                
+                // Verify file exists and is accessible
+                for (int retry = 0; retry < 5; retry++)
+                {
+                    try
+                    {
+                        using (var testStream = File.OpenRead(tempFile))
+                        {
+                            // File is accessible
+                            break;
+                        }
+                    }
+                    catch (IOException)
+                    {
+                        if (retry == 4) throw;
+                        await Task.Delay(500);
+                    }
+                }
+                
+                _logService.LogInfo($"✅ Download completed and verified: {new FileInfo(tempFile).Length} bytes");
                 
                 // Verify it's an MSI file
                 if (!fileName.EndsWith(".msi", StringComparison.OrdinalIgnoreCase))
