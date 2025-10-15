@@ -143,7 +143,15 @@ namespace CNCFTPSyncGUI
         {
             try
             {
+                _logService.LogInfo("=== AutoUpdater Initialization Starting ===");
+                
+                // Get current application version for comparison
+                var currentVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+                var currentVersionString = currentVersion?.ToString() ?? "Unknown";
+                _logService.LogInfo($"Current application version: {currentVersionString}");
+                
                 // Configure AutoUpdater.NET error handling
+                _logService.LogInfo("Configuring AutoUpdater event handlers...");
                 AutoUpdater.ParseUpdateInfoEvent += AutoUpdater_ParseUpdateInfoEvent;
                 AutoUpdater.ApplicationExitEvent += AutoUpdater_ApplicationExitEvent;
                 AutoUpdater.CheckForUpdateEvent += AutoUpdater_CheckForUpdateEvent;
@@ -153,16 +161,20 @@ namespace CNCFTPSyncGUI
                 AutoUpdater.ShowRemindLaterButton = true;
                 AutoUpdater.RemindLaterTimeSpan = RemindLaterFormat.Hours;
                 AutoUpdater.RemindLaterAt = 24; // Check again in 24 hours
+                _logService.LogInfo("AutoUpdater UI settings configured");
                 
                 // Configure for GitHub releases
                 var updateUrl = "https://3dtek-xyz.github.io/CNC-FTPSync/update.xml";
-                _logService.LogInfo($"AutoUpdater checking for updates at: {updateUrl}");
+                _logService.LogInfo($"=== AutoUpdater URL Configuration ===");
+                _logService.LogInfo($"Update XML URL: {updateUrl}");
+                _logService.LogInfo($"Expected GitHub Pages structure: /installer/[filename].msi");
                 
                 // Wrap AutoUpdater.Start in try-catch to handle .NET 9.0 compatibility issues
                 try
                 {
+                    _logService.LogInfo($"Starting AutoUpdater check for URL: {updateUrl}");
                     AutoUpdater.Start(updateUrl);
-                    _logService.LogInfo("AutoUpdater initialized successfully");
+                    _logService.LogInfo("AutoUpdater.Start() completed successfully");
                 }
                 catch (System.MissingFieldException mfEx)
                 {
@@ -171,12 +183,16 @@ namespace CNCFTPSyncGUI
                 }
                 catch (Exception auEx)
                 {
-                    _logService.LogError($"AutoUpdater failed to start: {auEx.Message}");
+                    _logService.LogError($"AutoUpdater.Start() failed: {auEx.Message}");
+                    _logService.LogError($"AutoUpdater exception details: {auEx}");
                 }
+                
+                _logService.LogInfo("=== AutoUpdater Initialization Complete ===");
             }
             catch (Exception ex)
             {
                 _logService.LogError($"Failed to initialize AutoUpdater: {ex.Message}");
+                _logService.LogError($"AutoUpdater initialization exception: {ex}");
             }
         }
 
@@ -184,14 +200,15 @@ namespace CNCFTPSyncGUI
         {
             try
             {
-                _logService.LogInfo($"AutoUpdater parsing update info. RemoteData length: {args.RemoteData?.Length ?? 0}");
-                _logService.LogInfo($"AutoUpdater RemoteData content: {args.RemoteData}");
+                _logService.LogInfo("=== AutoUpdater XML Parse Event ===");
+                _logService.LogInfo($"📄 RemoteData length: {args.RemoteData?.Length ?? 0} bytes");
                 
                 if (!string.IsNullOrEmpty(args.RemoteData))
                 {
-                    _logService.LogInfo("AutoUpdater successfully downloaded update info");
+                    _logService.LogInfo("✅ Update XML downloaded successfully");
+                    _logService.LogInfo($"📄 Raw XML Content:\n{args.RemoteData}");
                     
-                    // Try to manually parse the XML to identify the issue
+                    // Try to manually parse the XML to identify any issues
                     try
                     {
                         var xmlDoc = new System.Xml.XmlDocument();
@@ -203,33 +220,79 @@ namespace CNCFTPSyncGUI
                         var mandatoryNode = xmlDoc.SelectSingleNode("//mandatory");
                         var argsNode = xmlDoc.SelectSingleNode("//args");
                         var checksumNode = xmlDoc.SelectSingleNode("//checksum");
+                        var algorithmAttr = checksumNode?.Attributes?["algorithm"];
                         
-                        _logService.LogInfo($"AutoUpdater XML parsed - Version: {versionNode?.InnerText ?? "MISSING"}");
-                        _logService.LogInfo($"AutoUpdater XML parsed - URL: {urlNode?.InnerText ?? "MISSING"}");
-                        _logService.LogInfo($"AutoUpdater XML parsed - Changelog: {changelogNode?.InnerText ?? "MISSING"}");
-                        _logService.LogInfo($"AutoUpdater XML parsed - Mandatory: {mandatoryNode?.InnerText ?? "MISSING"}");
-                        _logService.LogInfo($"AutoUpdater XML parsed - Args: {argsNode?.InnerText ?? "MISSING"}");
-                        _logService.LogInfo($"AutoUpdater XML parsed - Checksum: {checksumNode?.InnerText ?? "MISSING"}");
+                        _logService.LogInfo("=== XML Content Analysis ===");
+                        _logService.LogInfo($"📦 Version: {versionNode?.InnerText ?? "❌ MISSING"}");
+                        _logService.LogInfo($"🔗 Download URL: {urlNode?.InnerText ?? "❌ MISSING"}");
+                        _logService.LogInfo($"📝 Changelog URL: {changelogNode?.InnerText ?? "❌ MISSING"}");
+                        _logService.LogInfo($"⚠️  Mandatory: {mandatoryNode?.InnerText ?? "❌ MISSING"}");
+                        _logService.LogInfo($"⚙️  Install Args: {argsNode?.InnerText ?? "❌ MISSING"}");
+                        _logService.LogInfo($"🔐 Checksum: {checksumNode?.InnerText ?? "❌ MISSING"}");
+                        _logService.LogInfo($"🔒 Hash Algorithm: {algorithmAttr?.Value ?? "❌ MISSING"}");
                         
-                        // Create UpdateInfoEventArgs manually if AutoUpdater fails
+                        // Validate download URL accessibility
+                        if (urlNode != null && !string.IsNullOrEmpty(urlNode.InnerText))
+                        {
+                            var downloadUrl = urlNode.InnerText;
+                            _logService.LogInfo($"🔍 Validating download URL: {downloadUrl}");
+                            
+                            // Test URL accessibility
+                            try
+                            {
+                                var request = System.Net.WebRequest.Create(downloadUrl);
+                                request.Method = "HEAD"; // Just check headers, don't download
+                                request.Timeout = 10000; // 10 seconds
+                                
+                                using var response = request.GetResponse();
+                                if (response is System.Net.HttpWebResponse httpResponse)
+                                {
+                                    _logService.LogInfo($"✅ Download URL accessible - Status: {httpResponse.StatusCode}");
+                                    _logService.LogInfo($"📏 Content Length: {httpResponse.ContentLength} bytes");
+                                    _logService.LogInfo($"📅 Last Modified: {httpResponse.LastModified}");
+                                }
+                            }
+                            catch (System.Net.WebException webEx)
+                            {
+                                _logService.LogError($"❌ Download URL NOT accessible: {webEx.Message}");
+                                if (webEx.Response is System.Net.HttpWebResponse errorResponse)
+                                {
+                                    _logService.LogError($"❌ HTTP Error: {errorResponse.StatusCode} - {errorResponse.StatusDescription}");
+                                }
+                            }
+                            catch (Exception urlEx)
+                            {
+                                _logService.LogError($"❌ Error testing download URL: {urlEx.Message}");
+                            }
+                        }
+                        
+                        // Validate XML structure
                         if (versionNode != null && urlNode != null)
                         {
-                            _logService.LogInfo("AutoUpdater XML contains required fields, proceeding with manual parsing");
+                            _logService.LogInfo("✅ XML contains minimum required fields (version + url)");
+                        }
+                        else
+                        {
+                            _logService.LogError("❌ XML missing required fields - AutoUpdater may fail");
                         }
                     }
                     catch (Exception xmlEx)
                     {
-                        _logService.LogError($"AutoUpdater XML parsing failed: {xmlEx.Message}");
+                        _logService.LogError($"❌ XML parsing failed: {xmlEx.Message}");
+                        _logService.LogError($"XML exception details: {xmlEx}");
                     }
                 }
                 else
                 {
-                    _logService.LogWarning("AutoUpdater received empty update data");
+                    _logService.LogWarning("❌ AutoUpdater received empty or null update data");
                 }
+                
+                _logService.LogInfo("=== XML Parse Event Complete ===");
             }
             catch (Exception ex)
             {
-                _logService.LogError($"Error in AutoUpdater_ParseUpdateInfoEvent: {ex.Message}\n{ex.StackTrace}");
+                _logService.LogError($"❌ Fatal error in AutoUpdater_ParseUpdateInfoEvent: {ex.Message}");
+                _logService.LogError($"Parse exception details: {ex}");
             }
         }
 
@@ -268,11 +331,39 @@ namespace CNCFTPSyncGUI
         {
             try
             {
+                _logService.LogInfo("=== AutoUpdater Check Results ===");
+                
                 if (args.Error == null)
                 {
+                    _logService.LogInfo("✅ Update XML downloaded successfully");
+                    
+                    // Log version comparison details
+                    _logService.LogInfo($"📋 Version Comparison:");
+                    _logService.LogInfo($"   • Current (Installed): {args.InstalledVersion}");
+                    _logService.LogInfo($"   • Available (XML): {args.CurrentVersion}");
+                    _logService.LogInfo($"   • Update Available: {args.IsUpdateAvailable}");
+                    
+                    // Log additional update info
+                    if (!string.IsNullOrEmpty(args.DownloadURL))
+                    {
+                        _logService.LogInfo($"🔗 Download URL: {args.DownloadURL}");
+                    }
+                    if (!string.IsNullOrEmpty(args.ChangelogURL))
+                    {
+                        _logService.LogInfo($"📝 Changelog URL: {args.ChangelogURL}");
+                    }
+                    if (!string.IsNullOrEmpty(args.Checksum))
+                    {
+                        _logService.LogInfo($"🔐 Checksum: {args.Checksum}");
+                    }
+                    if (!string.IsNullOrEmpty(args.HashingAlgorithm))
+                    {
+                        _logService.LogInfo($"🔒 Hash Algorithm: {args.HashingAlgorithm}");
+                    }
+                    
                     if (args.IsUpdateAvailable)
                     {
-                        _logService.LogInfo($"Update available: Version {args.CurrentVersion} -> {args.InstalledVersion}");
+                        _logService.LogInfo($"🎯 Update Available: Version {args.InstalledVersion} -> {args.CurrentVersion}");
                         
                         var result = MessageBox.Show(
                             $"A new version ({args.CurrentVersion}) is available!\n\n" +
@@ -288,37 +379,65 @@ namespace CNCFTPSyncGUI
                         {
                             try
                             {
+                                _logService.LogInfo($"🔄 Starting download from: {args.DownloadURL}");
                                 if (AutoUpdater.DownloadUpdate(args))
                                 {
+                                    _logService.LogInfo("✅ Update downloaded successfully, exiting application");
                                     Application.Exit();
+                                }
+                                else
+                                {
+                                    _logService.LogWarning("❌ Update download returned false - download may have failed");
                                 }
                             }
                             catch (Exception ex)
                             {
-                                _logService.LogError($"Error downloading update: {ex.Message}");
+                                _logService.LogError($"❌ Error downloading update: {ex.Message}");
+                                _logService.LogError($"Download exception details: {ex}");
                                 MessageBox.Show($"Failed to download update: {ex.Message}", "Update Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                             }
+                        }
+                        else
+                        {
+                            _logService.LogInfo("❌ User declined update installation");
                         }
                     }
                     else
                     {
-                        _logService.LogInfo("No updates available - application is up to date");
+                        _logService.LogInfo("✅ No updates available - application is up to date");
                     }
                 }
                 else
                 {
-                    _logService.LogError($"Update check failed: {args.Error.Message}");
-                    _logService.LogError($"Update check error details: {args.Error}");
+                    _logService.LogError("=== AutoUpdater Error Details ===");
+                    _logService.LogError($"❌ Update check failed: {args.Error.Message}");
+                    _logService.LogError($"🔍 Error Type: {args.Error.GetType().Name}");
+                    _logService.LogError($"📄 Full Error Details: {args.Error}");
+                    
                     if (args.Error.InnerException != null)
                     {
-                        _logService.LogError($"Update check inner exception: {args.Error.InnerException.Message}");
-                        _logService.LogError($"Update check inner exception stack: {args.Error.InnerException.StackTrace}");
+                        _logService.LogError($"🔗 Inner Exception: {args.Error.InnerException.Message}");
+                        _logService.LogError($"📄 Inner Exception Details: {args.Error.InnerException}");
+                    }
+                    
+                    // Try to extract more specific error information
+                    if (args.Error is System.Net.WebException webEx)
+                    {
+                        _logService.LogError($"🌐 WebException Status: {webEx.Status}");
+                        if (webEx.Response is System.Net.HttpWebResponse httpResponse)
+                        {
+                            _logService.LogError($"🌐 HTTP Status Code: {httpResponse.StatusCode}");
+                            _logService.LogError($"🌐 HTTP Status Description: {httpResponse.StatusDescription}");
+                        }
                     }
                 }
+                
+                _logService.LogInfo("=== AutoUpdater Check Complete ===");
             }
             catch (Exception ex)
             {
-                _logService.LogError($"Error during update check: {ex.Message}");
+                _logService.LogError($"❌ Fatal error during update check: {ex.Message}");
+                _logService.LogError($"Fatal exception details: {ex}");
             }
         }
 
@@ -752,11 +871,6 @@ namespace CNCFTPSyncGUI
                     _logService.LogInfo("Windows Service stopped successfully");
                     MessageBox.Show("Service stopped successfully.", "Service Control", 
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    {
-                        _logService.LogError("Failed to start sc.exe process for service stop - User may have cancelled UAC prompt");
-                        MessageBox.Show("Service stop cancelled or failed.\n\nThis could be because UAC elevation was cancelled.", 
-                            "Service Stop Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
                 }
                 else
                 {
@@ -977,36 +1091,40 @@ namespace CNCFTPSyncGUI
                 if (string.IsNullOrEmpty(serviceExePath))
                 {
                     var currentDir = Path.GetDirectoryName(Application.ExecutablePath) ?? Environment.CurrentDirectory;
-                    var errorMsg = $"Service executable not found after searching all locations. Current dir: {currentDir}";
+                    var errorMsg = $"Service executable not found in expected location: {currentDir}";
                     _logService.LogError(errorMsg);
-                    MessageBox.Show($"Service executable not found.\n\nSearched locations:\n" +
-                                  $"1. {Path.Combine(currentDir, "CNCFTPSyncService.exe")}\n" +
-                                  $"2. {Path.Combine(Path.GetDirectoryName(currentDir) ?? currentDir, "Service", "CNCFTPSyncService.exe")}\n" +
-                                  $"3. {Path.Combine(currentDir, "CBWSS-SYNC", "Service", "CNCFTPSyncService.exe")}\n\n" +
-                                  $"The service should be installed in the same folder as the GUI application.", 
+                    MessageBox.Show($"Service executable not found.\n\nExpected location:\n" +
+                                  $"{Path.Combine(currentDir, "CNCFTPSyncService.exe")}\n\n" +
+                                  $"The service must be installed in the same folder as the GUI application.", 
                         "Service Install Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
 
-                _logService.LogInfo($"Found service executable at: {serviceExePath}");
-                _logService.LogInfo("Installing service using InstallUtil.exe...");
-                
-                // Find InstallUtil.exe path
-                var installUtilPath = GetInstallUtilPath();
-                if (string.IsNullOrEmpty(installUtilPath))
+                // Check if service already exists
+                if (IsServiceInstalled("CNCFTPSyncService"))
                 {
-                    MessageBox.Show("InstallUtil.exe not found. Please ensure .NET Framework is properly installed.",
-                        "Installation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    _logService.LogInfo("Service is already installed");
+                    MessageBox.Show("Service is already installed.\n\nUse 'Uninstall Service' first if you need to reinstall.", 
+                        "Service Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
+
+                _logService.LogInfo($"Found service executable at: {serviceExePath}");
+                _logService.LogInfo("Installing service using sc.exe...");
+                
+                // Build sc.exe create command for .NET 9.0 service
+                var command = $"create CNCFTPSyncService binPath= \"\\\"{serviceExePath}\\\"\" start= auto DisplayName= \"CNC FTP Sync Service\"";
+                _logService.LogInfo($"Executing sc.exe command: {command}");
                 
                 var processInfo = new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName = installUtilPath,
-                    Arguments = $"\"{serviceExePath}\"",
+                    FileName = "sc.exe",
+                    Arguments = command,
                     UseShellExecute = true,
                     CreateNoWindow = false,
-                    Verb = "runas"
+                    Verb = "runas",
+                    RedirectStandardOutput = false,
+                    RedirectStandardError = false
                 };
 
                 using var process = System.Diagnostics.Process.Start(processInfo);
@@ -1018,6 +1136,20 @@ namespace CNCFTPSyncGUI
                     
                     if (process.ExitCode == 0)
                     {
+                        _logService.LogInfo("Service created successfully, setting description...");
+                        
+                        // Set service description
+                        var descProcess = new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = "sc.exe",
+                            Arguments = "description CNCFTPSyncService \"Monitors CNC project folders and automatically processes and uploads files via FTP\"",
+                            UseShellExecute = true,
+                            CreateNoWindow = false,
+                            Verb = "runas"
+                        };
+                        using var descProc = System.Diagnostics.Process.Start(descProcess);
+                        descProc?.WaitForExit();
+
                         _logService.LogInfo("Service installed successfully");
 
                         // Ask user if they want to start the service immediately
@@ -1074,19 +1206,24 @@ namespace CNCFTPSyncGUI
                     }
                     else
                     {
-                        var errorMsg = $"Service installation failed with exit code {process.ExitCode}. Check Windows Event Viewer for details.";
+                        var errorMsg = $"Service installation failed with exit code {process.ExitCode}.";
                         _logService.LogError(errorMsg);
-                        MessageBox.Show($"Service installation failed with exit code {process.ExitCode}.\n\nThis usually indicates:\n" +
-                                      $"- Administrative privileges are required\n" +
-                                      $"- Service already exists\n" +
-                                      $"- Invalid service path\n\n" +
-                                      $"Check the Windows Event Viewer for detailed error information.", "Service Install Error", 
-                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        
+                        string errorDetails = process.ExitCode switch
+                        {
+                            5 => "Access denied - Administrator privileges required",
+                            1073 => "Service already exists",
+                            1060 => "Service does not exist or invalid path",
+                            _ => "Unknown error - Check Windows Event Viewer for details"
+                        };
+                        
+                        MessageBox.Show($"Service installation failed.\n\nError Code: {process.ExitCode}\nDetails: {errorDetails}\n\nTroubleshooting:\n- Ensure you're running as Administrator\n- Check that the service path is correct\n- Verify no conflicting services exist", 
+                            "Service Install Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
                 else
                 {
-                    _logService.LogError("Failed to start InstallUtil.exe process for service installation - User may have cancelled UAC prompt");
+                    _logService.LogError("Failed to start sc.exe process for service installation - User may have cancelled UAC prompt");
                     MessageBox.Show("Service installation cancelled or failed to start.\n\nThis could be because:\n- UAC elevation was cancelled\n- System security policy prevents elevation", "Service Install Error", 
                         MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
@@ -1128,30 +1265,12 @@ namespace CNCFTPSyncGUI
                     _logService.LogWarning("Service not found or not installed");
                 }
 
-                // Find the service executable to uninstall
-                var serviceExePath = FindServiceExecutable();
-                if (string.IsNullOrEmpty(serviceExePath))
-                {
-                    MessageBox.Show("Service executable not found for uninstallation.", "Service Uninstall Error", 
-                        MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
-                
-                _logService.LogInfo("Uninstalling service using InstallUtil.exe...");
-                
-                // Find InstallUtil.exe path
-                var installUtilPath = GetInstallUtilPath();
-                if (string.IsNullOrEmpty(installUtilPath))
-                {
-                    MessageBox.Show("InstallUtil.exe not found. Please ensure .NET Framework is properly installed.",
-                        "Uninstallation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
+                _logService.LogInfo("Uninstalling service using sc.exe delete...");
                 
                 var processInfo = new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName = installUtilPath,
-                    Arguments = $"/u \"{serviceExePath}\"",
+                    FileName = "sc.exe",
+                    Arguments = "delete CNCFTPSyncService",
                     UseShellExecute = true,
                     CreateNoWindow = false,
                     Verb = "runas"
@@ -1181,7 +1300,7 @@ namespace CNCFTPSyncGUI
                 }
                 else
                 {
-                    _logService.LogError("Failed to start InstallUtil.exe process for service uninstallation - User may have cancelled UAC prompt");
+                    _logService.LogError("Failed to start sc.exe process for service uninstallation - User may have cancelled UAC prompt");
                     MessageBox.Show("Service uninstallation cancelled or failed to start.\n\nThis could be because:\n- UAC elevation was cancelled\n- System security policy prevents elevation", "Service Uninstall Error", 
                         MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
@@ -2330,30 +2449,48 @@ Visit: https://3dtek-xyz.github.io/CNC-FTPSync/";
         {
             try
             {
-                _logService.LogInfo("Manual update check initiated by user");
+                _logService.LogInfo("=== Manual Update Check Initiated ===");
+                _logService.LogInfo("🔄 User requested manual update check via menu");
+                
+                // Use the same URL as automatic checks for consistency
+                var updateUrl = "https://3dtek-xyz.github.io/CNC-FTPSync/update.xml";
+                _logService.LogInfo($"🔗 Manual check URL: {updateUrl}");
                 
                 // Force a manual update check
                 AutoUpdater.CheckForUpdateEvent += (args) => {
+                    _logService.LogInfo("=== Manual Check Results ===");
+                    
                     if (args.Error != null)
                     {
+                        _logService.LogError($"❌ Manual update check failed: {args.Error.Message}");
                         MessageBox.Show($"Error checking for updates: {args.Error.Message}", 
                             "Update Check Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
                     
+                    _logService.LogInfo($"✅ Manual check completed - Update Available: {args.IsUpdateAvailable}");
+                    
                     if (!args.IsUpdateAvailable)
                     {
+                        _logService.LogInfo("✅ Manual check: Application is up to date");
                         MessageBox.Show("You have the latest version of CNC-FTP-SYNC!", 
                             "No Updates Available", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
-                    // If update is available, the normal update dialog will show
+                    else
+                    {
+                        _logService.LogInfo($"🎯 Manual check: Update available from {args.InstalledVersion} to {args.CurrentVersion}");
+                        // If update is available, the normal update dialog will show automatically
+                    }
                 };
                 
-                AutoUpdater.Start("https://raw.githubusercontent.com/3DTek-xyz/CNC-FTPSync/main/update.xml");
+                _logService.LogInfo($"🚀 Starting manual AutoUpdater check...");
+                AutoUpdater.Start(updateUrl);
+                _logService.LogInfo("✅ Manual AutoUpdater.Start() completed");
             }
             catch (Exception ex)
             {
-                _logService.LogError($"Error during manual update check: {ex.Message}");
+                _logService.LogError($"❌ Fatal error during manual update check: {ex.Message}");
+                _logService.LogError($"Manual check exception: {ex}");
                 MessageBox.Show($"Error checking for updates: {ex.Message}", 
                     "Update Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -2365,70 +2502,20 @@ Visit: https://3dtek-xyz.github.io/CNC-FTPSync/";
             var currentDir = Path.GetDirectoryName(Application.ExecutablePath) ?? Environment.CurrentDirectory;
             _logService.LogInfo($"Current executable directory: {currentDir}");
             
-            // First try: same directory as GUI application (WiX INSTALLFOLDER)
+            // Service must be in same directory as GUI application (WiX INSTALLFOLDER)
             var serviceExePath = Path.Combine(currentDir, "CNCFTPSyncService.exe");
-            _logService.LogInfo($"First search path: {serviceExePath}");
+            _logService.LogInfo($"Expected service path: {serviceExePath}");
             
             if (!File.Exists(serviceExePath))
             {
-                // Legacy fallback: old CBWSS-SYNC\Service structure  
-                serviceExePath = Path.Combine(Path.GetDirectoryName(currentDir) ?? currentDir, "Service", "CNCFTPSyncService.exe");
-                _logService.LogInfo($"Second search path: {serviceExePath}");
-            }
-            
-            if (!File.Exists(serviceExePath))
-            {
-                // Another legacy fallback
-                serviceExePath = Path.Combine(currentDir, "CBWSS-SYNC", "Service", "CNCFTPSyncService.exe");
-                _logService.LogInfo($"Third search path: {serviceExePath}");
-            }
-            
-            if (!File.Exists(serviceExePath))
-            {
+                _logService.LogError($"Service executable not found at expected location: {serviceExePath}");
                 return string.Empty;
             }
             
             return serviceExePath;
         }
 
-        private string GetInstallUtilPath()
-        {
-            // Common paths where InstallUtil.exe might be found
-            var possiblePaths = new[]
-            {
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Microsoft.NET", "Framework64", "v4.0.30319", "InstallUtil.exe"),
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Microsoft.NET", "Framework", "v4.0.30319", "InstallUtil.exe"),
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", "shared", "Microsoft.WindowsDesktop.App", "*", "InstallUtil.exe")
-            };
-            
-            foreach (var path in possiblePaths)
-            {
-                if (File.Exists(path))
-                {
-                    return path;
-                }
-                
-                // For dotnet paths with wildcards, search directories
-                if (path.Contains("*"))
-                {
-                    var basePath = path.Substring(0, path.LastIndexOf('*') - 1);
-                    if (Directory.Exists(basePath))
-                    {
-                        var dirs = Directory.GetDirectories(basePath);
-                        foreach (var dir in dirs.OrderByDescending(d => d))
-                        {
-                            var fullPath = Path.Combine(dir, "InstallUtil.exe");
-                            if (File.Exists(fullPath))
-                            {
-                                return fullPath;
-                            }
-                        }
-                    }
-                }
-            }
-            
-            return string.Empty;
-        }
+
 
         #endregion
 

@@ -20,9 +20,9 @@ namespace CNCFTPSyncCore.Services
 
         public ConfigurationService()
         {
-            // Store configuration in user's AppData folder
+            // Store configuration in shared ProgramData folder accessible to both GUI and Service
             _configDirectory = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                 "CNC-FTP-SYNC"
             );
 

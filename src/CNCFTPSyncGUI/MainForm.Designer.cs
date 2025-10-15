@@ -90,7 +90,7 @@ namespace CNCFTPSyncGUI
             this.components = new System.ComponentModel.Container();
             
             // Main Form
-            this.Text = "CBWSS G-Code Sync Tool";
+            this.Text = "CNC-FTP-SYNC G-Code Processing Tool";
             this.Size = new Size(800, 600);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.FormClosing += MainForm_FormClosing;
@@ -641,7 +641,7 @@ namespace CNCFTPSyncGUI
             this.tabLogs.Controls.Add(this.txtLogs);
             
             // NotifyIcon Configuration
-            this.notifyIcon.Text = "CBWSS-Sync Service Manager";
+            this.notifyIcon.Text = "CNC-FTP-SYNC Service Manager";
             this.notifyIcon.Icon = this.Icon; // Use the form's icon
             this.notifyIcon.Visible = false;
             this.notifyIcon.MouseClick += NotifyIcon_MouseClick;
@@ -693,7 +693,7 @@ namespace CNCFTPSyncGUI
                 this.aboutToolStripMenuItem = new ToolStripMenuItem();
                 this.aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
                 this.aboutToolStripMenuItem.Size = new Size(152, 22);
-                this.aboutToolStripMenuItem.Text = "&About CBWSS-Sync...";
+                this.aboutToolStripMenuItem.Text = "&About CNC-FTP-SYNC...";
                 this.aboutToolStripMenuItem.Click += new EventHandler(this.About_Click);
                 
                 // Add About to Help menu

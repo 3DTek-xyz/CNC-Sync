@@ -79,16 +79,102 @@
   <!-- Service components -->
   <ComponentGroup Id="ServiceComponents" Directory="INSTALLFOLDER">
     
-    <!-- Service Executable -->
+    <!-- Service Executable and Core -->
     <Component Id="CNCFTPSyncService" Guid="585260B5-1245-4420-A6B2-00F25AFABCDB">
       <File Id="CNCFTPSyncService.exe" 
             Source="$(var.CNCFTPSyncService.TargetDir)CNCFTPSyncService.exe" 
             KeyPath="yes"
             Checksum="yes" />
+      <File Id="CNCFTPSyncService.dll" 
+            Source="$(var.CNCFTPSyncService.TargetDir)CNCFTPSyncService.dll" />
       <File Id="CNCFTPSyncService.deps.json" 
             Source="$(var.CNCFTPSyncService.TargetDir)CNCFTPSyncService.deps.json" />
       <File Id="CNCFTPSyncService.runtimeconfig.json" 
             Source="$(var.CNCFTPSyncService.TargetDir)CNCFTPSyncService.runtimeconfig.json" />
+
+    </Component>
+
+    <!-- Microsoft Extensions Dependencies for Service -->
+    <Component Id="ServiceExtensionsDeps" Guid="7A2B1F3E-8C4D-4E5F-9A6B-2C3D4E5F6A7B">
+      <File Id="Microsoft.Extensions.Configuration.Abstractions.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.Configuration.Abstractions.dll" 
+            KeyPath="yes" />
+      <File Id="Microsoft.Extensions.Configuration.Binder.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.Configuration.Binder.dll" />
+      <File Id="Microsoft.Extensions.Configuration.CommandLine.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.Configuration.CommandLine.dll" />
+      <File Id="Microsoft.Extensions.Configuration.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.Configuration.dll" />
+      <File Id="Microsoft.Extensions.Configuration.EnvironmentVariables.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.Configuration.EnvironmentVariables.dll" />
+      <File Id="Microsoft.Extensions.Configuration.FileExtensions.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.Configuration.FileExtensions.dll" />
+      <File Id="Microsoft.Extensions.Configuration.Json.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.Configuration.Json.dll" />
+      <File Id="Microsoft.Extensions.Configuration.UserSecrets.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.Configuration.UserSecrets.dll" />
+    </Component>
+
+    <!-- Dependency Injection and Hosting -->
+    <Component Id="ServiceHostingDeps" Guid="8B3C2F4E-9D5E-4F6A-AB7C-3D4E5F6A7B8C">
+      <File Id="Microsoft.Extensions.DependencyInjection.Abstractions.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.DependencyInjection.Abstractions.dll" 
+            KeyPath="yes" />
+      <File Id="Microsoft.Extensions.DependencyInjection.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.DependencyInjection.dll" />
+      <File Id="Microsoft.Extensions.Hosting.Abstractions.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.Hosting.Abstractions.dll" />
+      <File Id="Microsoft.Extensions.Hosting.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.Hosting.dll" />
+      <File Id="Microsoft.Extensions.Hosting.WindowsServices.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.Hosting.WindowsServices.dll" />
+      <File Id="Microsoft.Extensions.Diagnostics.Abstractions.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.Diagnostics.Abstractions.dll" />
+      <File Id="Microsoft.Extensions.Diagnostics.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.Diagnostics.dll" />
+    </Component>
+
+    <!-- File Providers and Options -->
+    <Component Id="ServiceOptionsDeps" Guid="9C4D3F5E-AE6F-4A7B-BC8D-4E5F6A7B8C9D">
+      <File Id="Microsoft.Extensions.FileProviders.Abstractions.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.FileProviders.Abstractions.dll" 
+            KeyPath="yes" />
+      <File Id="Microsoft.Extensions.FileProviders.Physical.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.FileProviders.Physical.dll" />
+      <File Id="Microsoft.Extensions.FileSystemGlobbing.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.FileSystemGlobbing.dll" />
+      <File Id="Microsoft.Extensions.Options.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.Options.dll" />
+      <File Id="Microsoft.Extensions.Options.ConfigurationExtensions.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.Options.ConfigurationExtensions.dll" />
+      <File Id="Microsoft.Extensions.Primitives.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.Primitives.dll" />
+    </Component>
+
+    <!-- Logging Dependencies -->
+    <Component Id="ServiceLoggingDeps" Guid="AD5E4F6A-BF7A-4B8C-CD9E-5F6A7B8C9D0E">
+      <File Id="Microsoft.Extensions.Logging.Abstractions.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.Logging.Abstractions.dll" 
+            KeyPath="yes" />
+      <File Id="Microsoft.Extensions.Logging.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.Logging.dll" />
+      <File Id="Microsoft.Extensions.Logging.Configuration.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.Logging.Configuration.dll" />
+      <File Id="Microsoft.Extensions.Logging.Console.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.Logging.Console.dll" />
+      <File Id="Microsoft.Extensions.Logging.Debug.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.Logging.Debug.dll" />
+      <File Id="Microsoft.Extensions.Logging.EventLog.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.Logging.EventLog.dll" />
+      <File Id="Microsoft.Extensions.Logging.EventSource.dll.Service" 
+            Source="$(var.CNCFTPSyncService.TargetDir)Microsoft.Extensions.Logging.EventSource.dll" />
+    </Component>
+
+    <!-- Service-Only Dependencies -->
+    <Component Id="ServiceNLogDeps" Guid="BE6F5A7B-CA8B-4C9D-DE0F-6A7B8C9D0E1F">
+      <File Id="ServiceNLog.Extensions.Logging.dll" 
+            Source="$(var.CNCFTPSyncService.TargetDir)NLog.Extensions.Logging.dll" 
+            KeyPath="yes" />
     </Component>
 
   </ComponentGroup>
@@ -116,6 +202,21 @@
         <util:PermissionEx User="Administrators" GenericAll="yes" />
       </CreateFolder>
       <RegistryValue Root="HKLM" Key="Software\3DTek\CNC-FTP-SYNC" Name="LogsFolderCreated" Type="integer" Value="1" KeyPath="yes" />
+    </Component>
+
+  </ComponentGroup>
+
+  <!-- Config folder components in ProgramData -->
+  <ComponentGroup Id="ConfigComponents" Directory="ProgramDataConfigFolder">
+    
+    <!-- Create ProgramData\CNC-FTP-SYNC folder with proper permissions -->
+    <Component Id="ConfigFolder" Guid="A9B8C7D6-E5F4-4A3B-8C7D-9E8F1A2B3C4D">
+      <CreateFolder>
+        <util:PermissionEx User="Users" GenericAll="yes" />
+        <util:PermissionEx User="SYSTEM" GenericAll="yes" />
+        <util:PermissionEx User="Administrators" GenericAll="yes" />
+      </CreateFolder>
+      <RegistryValue Root="HKLM" Key="Software\3DTek\CNC-FTP-SYNC" Name="ConfigFolderCreated" Type="integer" Value="1" KeyPath="yes" />
     </Component>
 
   </ComponentGroup>

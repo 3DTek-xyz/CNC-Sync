@@ -29,6 +29,7 @@
       <ComponentGroupRef Id="ServiceComponents" />
       <ComponentGroupRef Id="ConfigurationComponents" />
       <ComponentGroupRef Id="LogsComponents" />
+      <ComponentGroupRef Id="ConfigComponents" />
       <ComponentRef Id="ProgramMenuDir" />
       <ComponentRef Id="DesktopShortcut" />
     </Feature>
@@ -48,6 +49,11 @@
         <Directory Id="ConfigFolder" Name="config" />
         <Directory Id="LogsFolder" Name="logs" />
       </Directory>
+    </StandardDirectory>
+
+    <!-- ProgramData directory for shared configuration -->
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="ProgramDataConfigFolder" Name="CNC-FTP-SYNC" />
     </StandardDirectory>
 
     <!-- Start Menu -->
