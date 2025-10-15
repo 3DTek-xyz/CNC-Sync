@@ -586,6 +586,8 @@ namespace CNCFTPSyncGUI
                 txtFtpPassword.Text = _config.FtpPassword;
                 numStabilityDelay.Value = _config.FileStabilityDelaySeconds;
                 chkAutoUpload.Checked = _config.AutoUploadAfterProcessing;
+                chkUseExternalProcessor.Checked = _config.UseExternalProcessor;
+                txtExternalProcessorPath.Text = _config.ExternalProcessorPath;
 
                 WriteToLogFile($"LoadConfiguration: Set txtFtpServer.Text to '{txtFtpServer.Text}'");
                 UpdateFtpCredentialsVisibility();
@@ -616,6 +618,8 @@ namespace CNCFTPSyncGUI
                 _config.FtpPassword = txtFtpPassword.Text;
                 _config.FileStabilityDelaySeconds = (int)numStabilityDelay.Value;
                 _config.AutoUploadAfterProcessing = chkAutoUpload.Checked;
+                _config.UseExternalProcessor = chkUseExternalProcessor.Checked;
+                _config.ExternalProcessorPath = txtExternalProcessorPath.Text;
 
                 WriteToLogFile($"SaveConfiguration: About to save FtpServer = '{_config.FtpServer}'");
                 WriteToLogFile($"SaveConfiguration: About to save FtpPort = {_config.FtpPort}");
@@ -1487,6 +1491,31 @@ namespace CNCFTPSyncGUI
             {
                 txtFtpUploadFolder.Text = dialog.SelectedPath;
             }
+        }
+
+        private void btnBrowseExternalProcessor_Click(object sender, EventArgs e)
+        {
+            using var dialog = new OpenFileDialog();
+            dialog.Filter = "Executable Files (*.exe;*.bat;*.cmd;*.ps1)|*.exe;*.bat;*.cmd;*.ps1|All Files (*.*)|*.*";
+            dialog.Title = "Select External Processor Script";
+            dialog.FileName = txtExternalProcessorPath.Text;
+            
+            if (dialog.ShowDialog() == DialogResult.OK)
+            {
+                txtExternalProcessorPath.Text = dialog.FileName;
+            }
+        }
+
+        private void chkUseExternalProcessor_CheckedChanged(object sender, EventArgs e)
+        {
+            bool useExternal = chkUseExternalProcessor.Checked;
+            
+            // Enable/disable related controls
+            lblExternalProcessorPath.Enabled = useExternal;
+            txtExternalProcessorPath.Enabled = useExternal;
+            btnBrowseExternalProcessor.Enabled = useExternal;
+            
+            _logService.LogInfo($"External processor usage changed to: {(useExternal ? "Enabled" : "Disabled")}");
         }
 
         private void btnSaveConfig_Click(object sender, EventArgs e) => SaveConfiguration();

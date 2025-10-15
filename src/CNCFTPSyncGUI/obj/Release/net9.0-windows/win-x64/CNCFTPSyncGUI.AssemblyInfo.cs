@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyCopyrightAttribute("Copyright © 2025")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7d342393f4ba7679cfe415ba01d9facfa6c404e4")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1d00258cbae34b7872001fae173e8aae15bd4a92")]
 [assembly: System.Reflection.AssemblyProductAttribute("CNCFTPSyncGUI")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CNC-FTP-SYNC GUI")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

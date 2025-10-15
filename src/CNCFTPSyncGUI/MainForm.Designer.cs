@@ -50,6 +50,10 @@ namespace CNCFTPSyncGUI
         private Label lblStabilityDelay;
         private NumericUpDown numStabilityDelay;
         private CheckBox chkAutoUpload;
+        private CheckBox chkUseExternalProcessor;
+        private Label lblExternalProcessorPath;
+        private TextBox txtExternalProcessorPath;
+        private Button btnBrowseExternalProcessor;
         private Button btnSaveConfig;
         private Button btnTestFtp;
         
@@ -450,6 +454,41 @@ namespace CNCFTPSyncGUI
             this.chkAutoUpload.Size = new Size(200, 20);
             this.chkAutoUpload.Checked = true;
             this.tabConfiguration.Controls.Add(this.chkAutoUpload);
+            
+            yPos += 40;
+            
+            // Use External Processor
+            this.chkUseExternalProcessor = new CheckBox();
+            this.chkUseExternalProcessor.Text = "Use external script for processing (instead of built-in processing)";
+            this.chkUseExternalProcessor.Location = new Point(20, yPos);
+            this.chkUseExternalProcessor.Size = new Size(400, 20);
+            this.chkUseExternalProcessor.Checked = false;
+            this.chkUseExternalProcessor.CheckedChanged += chkUseExternalProcessor_CheckedChanged;
+            this.tabConfiguration.Controls.Add(this.chkUseExternalProcessor);
+            
+            yPos += 30;
+            
+            // External Processor Path
+            this.lblExternalProcessorPath = new Label();
+            this.lblExternalProcessorPath.Text = "External Script Path:";
+            this.lblExternalProcessorPath.Location = new Point(20, yPos);
+            this.lblExternalProcessorPath.Size = new Size(120, 20);
+            this.lblExternalProcessorPath.Enabled = false;
+            this.tabConfiguration.Controls.Add(this.lblExternalProcessorPath);
+            
+            this.txtExternalProcessorPath = new TextBox();
+            this.txtExternalProcessorPath.Location = new Point(150, yPos);
+            this.txtExternalProcessorPath.Size = new Size(480, 20);
+            this.txtExternalProcessorPath.Enabled = false;
+            this.tabConfiguration.Controls.Add(this.txtExternalProcessorPath);
+            
+            this.btnBrowseExternalProcessor = new Button();
+            this.btnBrowseExternalProcessor.Text = "Browse";
+            this.btnBrowseExternalProcessor.Location = new Point(640, yPos - 2);
+            this.btnBrowseExternalProcessor.Size = new Size(70, 24);
+            this.btnBrowseExternalProcessor.Enabled = false;
+            this.btnBrowseExternalProcessor.Click += btnBrowseExternalProcessor_Click;
+            this.tabConfiguration.Controls.Add(this.btnBrowseExternalProcessor);
             
             yPos += 40;
             
