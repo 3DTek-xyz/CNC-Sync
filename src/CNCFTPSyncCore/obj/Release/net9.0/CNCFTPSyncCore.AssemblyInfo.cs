@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyCopyrightAttribute("Copyright © 2025")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+949a1eb2775b5fe264254596c9832f5e2bc4df9f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7d342393f4ba7679cfe415ba01d9facfa6c404e4")]
 [assembly: System.Reflection.AssemblyProductAttribute("CNCFTPSyncCore")]
 [assembly: System.Reflection.AssemblyTitleAttribute("G-Code Sync Core Library")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

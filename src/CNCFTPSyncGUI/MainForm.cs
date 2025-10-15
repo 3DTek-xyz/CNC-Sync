@@ -2626,6 +2626,26 @@ Visit: https://3dtek-xyz.github.io/CNC-FTPSync/";
                     throw new Exception("Downloaded file is not an MSI installer");
                 }
                 
+                // Stop the service before updating
+                try
+                {
+                    if (IsServiceInstalled("CNCFTPSyncService"))
+                    {
+                        var currentStatus = GetServiceStatus("CNCFTPSyncService");
+                        if (currentStatus == ServiceControllerStatus.Running)
+                        {
+                            _logService.LogInfo("🛑 Stopping service for update...");
+                            using var service = new ServiceController("CNCFTPSyncService");
+                            service.Stop();
+                            VerifyServiceStatus("CNCFTPSyncService", ServiceControllerStatus.Stopped, 30);
+                        }
+                    }
+                }
+                catch (Exception serviceEx)
+                {
+                    _logService.LogWarning($"⚠️ Could not stop service: {serviceEx.Message}");
+                }
+                
                 // Start the installer
                 _logService.LogInfo("🚀 Starting MSI installer...");
                 
@@ -2643,14 +2663,50 @@ Visit: https://3dtek-xyz.github.io/CNC-FTPSync/";
                 {
                     _logService.LogInfo("⏳ Waiting for installer to complete...");
                     MessageBox.Show(
-                        "The update installer is running in the background.\n\n" +
-                        "This application will now close to allow the update to complete.\n" +
-                        "The new version will start automatically after installation.",
+                        "The update installer is running.\n\n" +
+                        "This application will close and restart automatically with the new version.",
                         "Installing Update",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Information);
-                        
-                    _logService.LogInfo("🔄 Closing application for update...");
+                    
+                    // Create a batch file to restart the application after update
+                    string batchFile = Path.Combine(tempDir, "restart_app.bat");
+                    string appPath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? "";
+                    
+                    var batchContent = $@"@echo off
+echo Waiting for installer to complete and application to close...
+timeout /t 5 /nobreak >nul
+
+:wait_for_install
+tasklist /fi ""imagename eq msiexec.exe"" 2>nul | find /i ""msiexec.exe"" >nul
+if not errorlevel 1 (
+    timeout /t 2 /nobreak >nul
+    goto wait_for_install
+)
+
+echo Installer completed, starting application...
+timeout /t 2 /nobreak >nul
+start """" ""{appPath}""
+
+echo Cleaning up temporary files...
+timeout /t 2 /nobreak >nul
+rd /s /q ""{tempDir}"" 2>nul
+";
+                    
+                    File.WriteAllText(batchFile, batchContent);
+                    _logService.LogInfo($"📝 Created restart script: {batchFile}");
+                    
+                    // Start the restart script
+                    var restartInfo = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = batchFile,
+                        UseShellExecute = true,
+                        WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden
+                    };
+                    
+                    System.Diagnostics.Process.Start(restartInfo);
+                    _logService.LogInfo("🔄 Started restart script, closing application for update...");
+                    
                     Application.Exit();
                 }
                 else
