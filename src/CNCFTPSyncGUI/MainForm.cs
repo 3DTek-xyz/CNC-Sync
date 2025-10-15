@@ -152,7 +152,7 @@ namespace CNCFTPSyncGUI
                 _logService.LogInfo($"Current application version: {currentVersionString}");
                 
                 // Use custom update checker only (AutoUpdater.NET has .NET 9.0 compatibility issues)
-                _logService.LogInfo("Using custom update checker - v1.0.17 test version");
+                _logService.LogInfo("Using custom update checker - v1.0.19 installer UI test");
                 UseCustomUpdateChecker();
                 
                 _logService.LogInfo("=== AutoUpdater Initialization Complete ===");
