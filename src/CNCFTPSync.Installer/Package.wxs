@@ -111,9 +111,7 @@
 
     <!-- Install sequence - launch app after installation -->
     <InstallExecuteSequence>
-      <Custom Action="LaunchApplication" After="InstallFinalize">
-        NOT REMOVE
-      </Custom>
+      <Custom Action="LaunchApplication" After="InstallFinalize" Condition="NOT REMOVE" />
     </InstallExecuteSequence>
 
   </Package>
