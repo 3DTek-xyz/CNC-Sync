@@ -6,6 +6,12 @@ on:
       - 'v*.*.*'  # Triggers on version tags like v1.0.0, v1.2.3, etc.
   workflow_dispatch:  # Allows manual triggering
 
+# Grant permissions for GitHub Pages deployment
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
 env:
   DOTNET_VERSION: '9.0.x'
 
