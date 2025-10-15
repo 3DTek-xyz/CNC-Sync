@@ -1,18 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <item>
-<<<<<<< Updated upstream
-    <version>1.0.27.0</version>
-    <url>https://3dtek-xyz.github.io/CNC-FTPSync/installer/CNC-FTP-SYNC-Setup-v1.0.27.msi</url>
-    <changelog>https://github.com/3DTek-xyz/CNC-FTPSync/releases/tag/v1.0.27</changelog>
-    <mandatory>false</mandatory>
-    <args>/QUIET /NORESTART</args>
-    <checksum algorithm="SHA512">99A15BABAB63F0E1F6A8EF82C332D3C3144392DD63E4B063F001433B0A56A6428EC7DBCD3A55400ED766A1DAD59E59AB0F88997638BE9AA98EB0150D831AE300</checksum>
-=======
     <version>1.0.28.0</version>
     <url>https://3dtek-xyz.github.io/CNC-FTPSync/installer/CNC-FTP-SYNC-Setup-v1.0.28.msi</url>
     <changelog>https://github.com/3DTek-xyz/CNC-FTPSync/releases/tag/v1.0.28</changelog>
     <mandatory>false</mandatory>
     <args>/QUIET /NORESTART</args>
     <checksum algorithm="SHA512">38B6079E15726DCE4D528CCCF60FE4E02B9867410F99F6A3061D60C283FE81ACD000540819F9A21D2EAFD4F3A39BC5A21CBCBB92357C5573F08646E6B22E087D</checksum>
->>>>>>> Stashed changes
 </item>
