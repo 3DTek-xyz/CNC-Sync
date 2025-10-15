@@ -309,6 +309,7 @@ namespace CNCFTPSyncGUI
             
             // Configuration Tab
             this.tabConfiguration = new TabPage("Configuration");
+            this.tabConfiguration.AutoScroll = true;
             this.tabControl.TabPages.Add(this.tabConfiguration);
             
             int yPos = 20;
@@ -508,6 +509,7 @@ namespace CNCFTPSyncGUI
             
             // FTP Tab
             this.tabFtp = new TabPage("FTP Browser");
+            this.tabFtp.AutoScroll = true;
             this.tabControl.TabPages.Add(this.tabFtp);
             
             // Split container for dual panes
