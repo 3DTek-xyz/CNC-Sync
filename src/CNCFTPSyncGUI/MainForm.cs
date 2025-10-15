@@ -151,46 +151,9 @@ namespace CNCFTPSyncGUI
                 var currentVersionString = currentVersion?.ToString() ?? "Unknown";
                 _logService.LogInfo($"Current application version: {currentVersionString}");
                 
-                // Try AutoUpdater.NET first
-                try
-                {
-                    _logService.LogInfo("Attempting to use AutoUpdater.NET library...");
-                    
-                    // Configure AutoUpdater.NET settings
-                    AutoUpdater.ApplicationExitEvent += AutoUpdater_ApplicationExitEvent;
-                    AutoUpdater.CheckForUpdateEvent += AutoUpdater_CheckForUpdateEvent;
-                    AutoUpdater.ParseUpdateInfoEvent += AutoUpdater_ParseUpdateInfoEvent;
-                    
-                    // Configure AutoUpdater behavior
-                    AutoUpdater.ShowSkipButton = true;
-                    AutoUpdater.ShowRemindLaterButton = true;
-                    AutoUpdater.RemindLaterTimeSpan = RemindLaterFormat.Hours;
-                    AutoUpdater.RemindLaterAt = 2;
-                    
-                    // Set update URL
-                    var updateUrl = "https://3dtek-xyz.github.io/CNC-FTPSync/update.xml";
-                    _logService.LogInfo($"Update XML URL: {updateUrl}");
-                    
-                    // Start AutoUpdater.NET (background check)
-                    AutoUpdater.Start(updateUrl);
-                    _logService.LogInfo("✅ AutoUpdater.NET initialized successfully");
-                }
-                catch (System.MissingFieldException mfEx)
-                {
-                    _logService.LogWarning($"⚠️ AutoUpdater.NET MissingFieldException (likely .NET 9.0 compatibility issue): {mfEx.Message}");
-                    _logService.LogInfo("🔄 Falling back to custom update checker...");
-                    
-                    // Fall back to custom update checker
-                    UseCustomUpdateChecker();
-                }
-                catch (Exception auEx)
-                {
-                    _logService.LogWarning($"⚠️ AutoUpdater.NET failed: {auEx.Message}");
-                    _logService.LogInfo("🔄 Falling back to custom update checker...");
-                    
-                    // Fall back to custom update checker
-                    UseCustomUpdateChecker();
-                }
+                // Use custom update checker only (AutoUpdater.NET has .NET 9.0 compatibility issues)
+                _logService.LogInfo("Using custom update checker due to .NET 9.0 compatibility...");
+                UseCustomUpdateChecker();
                 
                 _logService.LogInfo("=== AutoUpdater Initialization Complete ===");
             }
