@@ -14,6 +14,7 @@ namespace CNCFTPSyncGUI
         private ToolStripMenuItem uninstallServiceToolStripMenuItem;
         private ToolStripMenuItem startServiceToolStripMenuItem;
         private ToolStripMenuItem stopServiceToolStripMenuItem;
+        private ToolStripMenuItem serviceStatusToolStripMenuItem;
         private ToolStripMenuItem helpToolStripMenuItem;
         private ToolStripMenuItem aboutToolStripMenuItem;
         private NotifyIcon notifyIcon;
@@ -138,6 +139,7 @@ namespace CNCFTPSyncGUI
             this.uninstallServiceToolStripMenuItem = new ToolStripMenuItem();
             this.startServiceToolStripMenuItem = new ToolStripMenuItem();
             this.stopServiceToolStripMenuItem = new ToolStripMenuItem();
+            this.serviceStatusToolStripMenuItem = new ToolStripMenuItem();
             
             // NotifyIcon and Tray Context Menu
             this.notifyIcon = new NotifyIcon(this.components);
@@ -201,7 +203,8 @@ namespace CNCFTPSyncGUI
                     this.uninstallServiceToolStripMenuItem,
                     new ToolStripSeparator(),
                     this.startServiceToolStripMenuItem,
-                    this.stopServiceToolStripMenuItem});
+                    this.stopServiceToolStripMenuItem,
+                    this.serviceStatusToolStripMenuItem});
             }
             catch (Exception ex)
             {
@@ -231,6 +234,12 @@ namespace CNCFTPSyncGUI
             this.stopServiceToolStripMenuItem.Size = new Size(180, 22);
             this.stopServiceToolStripMenuItem.Text = "S&top Service";
             this.stopServiceToolStripMenuItem.Click += StopService_Click;
+            
+            // Service Status Menu Item
+            this.serviceStatusToolStripMenuItem.Name = "serviceStatusToolStripMenuItem";
+            this.serviceStatusToolStripMenuItem.Size = new Size(180, 22);
+            this.serviceStatusToolStripMenuItem.Text = "Service &Status";
+            this.serviceStatusToolStripMenuItem.Click += ServiceStatus_Click;
             
             // Initialize Help menu first
             InitializeHelpMenu();

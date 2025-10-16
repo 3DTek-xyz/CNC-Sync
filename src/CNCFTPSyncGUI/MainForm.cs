@@ -139,6 +139,7 @@ namespace CNCFTPSyncGUI
             contextMenu.Items.Add("-");
             contextMenu.Items.Add("Start Service", null, StartService_Click);
             contextMenu.Items.Add("Stop Service", null, StopService_Click);
+            contextMenu.Items.Add("Service Status", null, ServiceStatus_Click);
             contextMenu.Items.Add("-");
             contextMenu.Items.Add("Install Service", null, InstallService_Click);
             contextMenu.Items.Add("Uninstall Service", null, UninstallService_Click);
@@ -975,6 +976,69 @@ namespace CNCFTPSyncGUI
             {
                 _logService?.LogError($"Service uninstallation exception in UninstallService_Click: {ex.Message}\n{ex.StackTrace}");
                 MessageBox.Show($"Failed to uninstall service: {ex.Message}", "Service Uninstall Error", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void ServiceStatus_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                string serviceName = "CNCFTPSyncService";
+                bool isInstalled = IsServiceInstalled(serviceName);
+                string statusText;
+                
+                if (isInstalled)
+                {
+                    try
+                    {
+                        using var service = new ServiceController(serviceName);
+                        service.Refresh();
+                        
+                        string statusDescription = service.Status switch
+                        {
+                            ServiceControllerStatus.Running => "Running",
+                            ServiceControllerStatus.Stopped => "Stopped",
+                            ServiceControllerStatus.Paused => "Paused",
+                            ServiceControllerStatus.StartPending => "Starting...",
+                            ServiceControllerStatus.StopPending => "Stopping...",
+                            ServiceControllerStatus.ContinuePending => "Resuming...",
+                            ServiceControllerStatus.PausePending => "Pausing...",
+                            _ => "Unknown"
+                        };
+                        
+                        statusText = $"CNC-FTP-SYNC Service Status\n\n" +
+                                   $"✅ Service Installed: Yes\n" +
+                                   $"📊 Current Status: {statusDescription}\n" +
+                                   $"🔧 Service Name: {serviceName}\n" +
+                                   $"📝 Display Name: {service.DisplayName}\n\n" +
+                                   $"The service can be managed using the Service menu options or system tray context menu.";
+                    }
+                    catch (Exception serviceEx)
+                    {
+                        _logService?.LogError($"Error checking service status: {serviceEx.Message}");
+                        statusText = $"CNC-FTP-SYNC Service Status\n\n" +
+                                   $"✅ Service Installed: Yes\n" +
+                                   $"❌ Status Check Failed: {serviceEx.Message}\n\n" +
+                                   $"The service is installed but status could not be determined.\n" +
+                                   $"This may be due to permissions or the service being in an unstable state.";
+                    }
+                }
+                else
+                {
+                    statusText = $"CNC-FTP-SYNC Service Status\n\n" +
+                               $"❌ Service Installed: No\n" +
+                               $"📊 Current Status: Not Installed\n\n" +
+                               $"The Windows Service is not installed on this system.\n" +
+                               $"Use 'Install Service' from the Service menu to install it.";
+                }
+                
+                MessageBox.Show(statusText, "Service Status", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                _logService?.LogError($"Service status check exception: {ex.Message}");
+                MessageBox.Show($"Failed to check service status: {ex.Message}", "Service Status Error", 
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }

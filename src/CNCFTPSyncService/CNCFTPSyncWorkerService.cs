@@ -166,11 +166,38 @@ namespace CNCFTPSyncService
         {
             try
             {
-                // Check if GUI is already running
+                // Check if GUI is already running and responsive
                 var existingProcesses = Process.GetProcessesByName("CNCFTPSyncGUI");
-                if (existingProcesses.Length > 0)
+                bool hasRunningGUI = false;
+                
+                foreach (var guiProcess in existingProcesses)
                 {
-                    _logService?.LogInfo("GUI is already running, skipping launch");
+                    try
+                    {
+                        // Check if process is still alive and responsive
+                        if (!guiProcess.HasExited && guiProcess.Responding)
+                        {
+                            // Additional check: see if the main window exists
+                            if (guiProcess.MainWindowHandle != IntPtr.Zero)
+                            {
+                                hasRunningGUI = true;
+                                _logService?.LogInfo($"Found responsive GUI process (PID: {guiProcess.Id}) with main window, skipping launch");
+                                break;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logService?.LogDebug($"Error checking GUI process {guiProcess.Id}: {ex.Message}");
+                    }
+                    finally
+                    {
+                        guiProcess.Dispose();
+                    }
+                }
+                
+                if (hasRunningGUI)
+                {
                     return;
                 }
 
