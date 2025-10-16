@@ -221,5 +221,27 @@
 
   </ComponentGroup>
 
+  <!-- UserScripts folder components -->
+  <ComponentGroup Id="UserScriptsComponents" Directory="UserScriptsFolder">
+    
+    <!-- Create UserScripts folder with proper permissions -->
+    <Component Id="UserScriptsFolder" Guid="E1F2A3B4-C5D6-7E8F-9A0B-1C2D3E4F5A6B">
+      <CreateFolder>
+        <util:PermissionEx User="Users" GenericAll="yes" />
+        <util:PermissionEx User="SYSTEM" GenericAll="yes" />
+        <util:PermissionEx User="Administrators" GenericAll="yes" />
+      </CreateFolder>
+      <RegistryValue Root="HKLM" Key="Software\3DTek\CNC-FTP-SYNC" Name="UserScriptsFolderCreated" Type="integer" Value="1" KeyPath="yes" />
+    </Component>
+    
+    <!-- Demo PowerShell script -->
+    <Component Id="DemoScript" Guid="F2A3B4C5-D6E7-8F90-AB12-2D3E4F5A6B7C">
+      <File Id="SimpleFolderCopy.ps1" 
+            Source="SimpleFolderCopy.ps1" 
+            KeyPath="yes" />
+    </Component>
+
+  </ComponentGroup>
+
   </Fragment>
 </Wix>

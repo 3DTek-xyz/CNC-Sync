@@ -30,6 +30,7 @@
       <ComponentGroupRef Id="ConfigurationComponents" />
       <ComponentGroupRef Id="LogsComponents" />
       <ComponentGroupRef Id="ConfigComponents" />
+      <ComponentGroupRef Id="UserScriptsComponents" />
       <ComponentRef Id="ProgramMenuDir" />
       <ComponentRef Id="DesktopShortcut" />
       <ComponentRef Id="ServiceManagement" />
@@ -49,6 +50,7 @@
       <Directory Id="INSTALLFOLDER" Name="CNC-FTP-SYNC">
         <Directory Id="ConfigFolder" Name="config" />
         <Directory Id="LogsFolder" Name="logs" />
+        <Directory Id="UserScriptsFolder" Name="UserScripts" />
       </Directory>
     </StandardDirectory>
 

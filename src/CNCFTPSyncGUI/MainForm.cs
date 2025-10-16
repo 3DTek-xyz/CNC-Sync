@@ -1514,9 +1514,33 @@ namespace CNCFTPSyncGUI
         private void btnBrowseExternalProcessor_Click(object sender, EventArgs e)
         {
             using var dialog = new OpenFileDialog();
-            dialog.Filter = "Executable Files (*.exe;*.bat;*.cmd;*.ps1)|*.exe;*.bat;*.cmd;*.ps1|All Files (*.*)|*.*";
+            dialog.Filter = "PowerShell Scripts (*.ps1)|*.ps1|Batch Files (*.bat;*.cmd)|*.bat;*.cmd|Executable Files (*.exe)|*.exe|All Files (*.*)|*.*";
             dialog.Title = "Select External Processor Script";
             dialog.FileName = txtExternalProcessorPath.Text;
+            
+            // Set default directory to UserScripts folder
+            try
+            {
+                var userScriptsPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                    "CNC-FTP-SYNC",
+                    "UserScripts"
+                );
+                
+                if (Directory.Exists(userScriptsPath))
+                {
+                    dialog.InitialDirectory = userScriptsPath;
+                    _logService?.LogInfo($"Browse dialog defaulting to UserScripts: {userScriptsPath}");
+                }
+                else
+                {
+                    _logService?.LogInfo($"UserScripts folder not found at: {userScriptsPath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService?.LogError("Error setting browse dialog initial directory", ex);
+            }
             
             if (dialog.ShowDialog() == DialogResult.OK)
             {
