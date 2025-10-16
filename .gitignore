@@ -6,6 +6,11 @@ obj/
 *.pdb
 *.msi
 
+# WiX Installer build artifacts
+*.wixpdb
+*.cab
+*.wixobj
+
 # Visual Studio / MSBuild
 .vs/
 *.user
