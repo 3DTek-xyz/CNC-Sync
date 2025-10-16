@@ -1398,7 +1398,15 @@ namespace CNCFTPSyncGUI
         {
             try
             {
-                string logPath = Path.Combine(Application.StartupPath, "debug.log");
+                // Use unified shared logging directory
+                var sharedDataDirectory = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                    "CNC-FTP-SYNC"
+                );
+                var logDirectory = Path.Combine(sharedDataDirectory, "Logs");
+                Directory.CreateDirectory(logDirectory);
+                
+                string logPath = Path.Combine(logDirectory, $"CNCFTPSyncGUI-Debug-{DateTime.Now:yyyy-MM-dd}.log");
                 string logEntry = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - {message}{Environment.NewLine}";
                 File.AppendAllText(logPath, logEntry);
             }
@@ -1525,31 +1533,55 @@ namespace CNCFTPSyncGUI
         {
             try
             {
-                // Get log directory from configuration
-                var logDirectory = Path.GetDirectoryName(_config.LogFilePath);
-                if (!string.IsNullOrEmpty(logDirectory) && Directory.Exists(logDirectory))
+                // Use unified shared logging directory
+                var sharedDataDirectory = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                    "CNC-FTP-SYNC"
+                );
+                var logDirectory = Path.Combine(sharedDataDirectory, "Logs");
+                
+                if (Directory.Exists(logDirectory))
                 {
-                    // Clear all GCodeSync log files
-                    var logFiles = Directory.GetFiles(logDirectory, "GCodeSync-*.log");
-                    foreach (var logFile in logFiles)
+                    // Clear all CNC-FTP-SYNC log files (GUI, Service, Core, Debug)
+                    var logPatterns = new[] { "CNCFTPSyncGUI*.log", "CNCFTPSyncService*.log", "CNCFTPSyncCore*.log", "CNCFTPSync*.log" };
+                    
+                    foreach (var pattern in logPatterns)
                     {
-                        try
+                        var logFiles = Directory.GetFiles(logDirectory, pattern);
+                        foreach (var logFile in logFiles)
                         {
-                            File.Delete(logFile);
-                        }
-                        catch (Exception)
-                        {
-                            // Log file might be in use, try to clear content instead
                             try
                             {
-                                File.WriteAllText(logFile, "");
+                                File.Delete(logFile);
                             }
-                            catch
+                            catch (Exception)
                             {
-                                // Ignore if we can't clear it
+                                // Log file might be in use, try to clear content instead
+                                try
+                                {
+                                    File.WriteAllText(logFile, "");
+                                }
+                                catch
+                                {
+                                    // Ignore if we can't clear it
+                                }
                             }
                         }
                     }
+                }
+                
+                // Also clean up old debug.log from Program Files directory (legacy cleanup)
+                try
+                {
+                    string oldDebugLogPath = Path.Combine(Application.StartupPath, "debug.log");
+                    if (File.Exists(oldDebugLogPath))
+                    {
+                        File.Delete(oldDebugLogPath);
+                    }
+                }
+                catch
+                {
+                    // Ignore if we can't delete old debug.log
                 }
             }
             catch (Exception)
