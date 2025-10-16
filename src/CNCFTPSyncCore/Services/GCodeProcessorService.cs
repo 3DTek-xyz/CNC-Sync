@@ -53,16 +53,57 @@ namespace CNCFTPSyncCore.Services
                 _logger.LogInfo($"Calling external processor: {_config.ExternalProcessorPath}");
                 _logger.LogInfo($"Arguments: \"{projectPath}\" \"{ftpUploadDirectory}\" \"{currentLogFile}\"");
 
-                // Prepare process arguments - source path, upload directory, and log file path
-                var processInfo = new System.Diagnostics.ProcessStartInfo
+                // Determine how to execute the script based on file extension
+                var scriptExtension = Path.GetExtension(_config.ExternalProcessorPath).ToLowerInvariant();
+                
+                System.Diagnostics.ProcessStartInfo processInfo;
+                
+                switch (scriptExtension)
                 {
-                    FileName = _config.ExternalProcessorPath,
-                    Arguments = $"\"{projectPath}\" \"{ftpUploadDirectory}\" \"{currentLogFile}\"",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                };
+                    case ".ps1":
+                        // PowerShell script
+                        processInfo = new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = "powershell.exe",
+                            Arguments = $"-ExecutionPolicy Bypass -File \"{_config.ExternalProcessorPath}\" \"{projectPath}\" \"{ftpUploadDirectory}\" \"{currentLogFile}\"",
+                            UseShellExecute = false,
+                            RedirectStandardOutput = true,
+                            RedirectStandardError = true,
+                            CreateNoWindow = true
+                        };
+                        _logger.LogInfo($"Executing PowerShell script via: powershell.exe -ExecutionPolicy Bypass -File \"{_config.ExternalProcessorPath}\"");
+                        break;
+                        
+                    case ".bat":
+                    case ".cmd":
+                        // Batch file
+                        processInfo = new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = "cmd.exe",
+                            Arguments = $"/c \"\"{_config.ExternalProcessorPath}\" \"{projectPath}\" \"{ftpUploadDirectory}\" \"{currentLogFile}\"\"",
+                            UseShellExecute = false,
+                            RedirectStandardOutput = true,
+                            RedirectStandardError = true,
+                            CreateNoWindow = true
+                        };
+                        _logger.LogInfo($"Executing batch file via: cmd.exe /c \"{_config.ExternalProcessorPath}\"");
+                        break;
+                        
+                    case ".exe":
+                    default:
+                        // Executable or unknown - try direct execution
+                        processInfo = new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = _config.ExternalProcessorPath,
+                            Arguments = $"\"{projectPath}\" \"{ftpUploadDirectory}\" \"{currentLogFile}\"",
+                            UseShellExecute = false,
+                            RedirectStandardOutput = true,
+                            RedirectStandardError = true,
+                            CreateNoWindow = true
+                        };
+                        _logger.LogInfo($"Executing directly: \"{_config.ExternalProcessorPath}\"");
+                        break;
+                }
 
                 // Execute external script
                 using var process = new System.Diagnostics.Process { StartInfo = processInfo };

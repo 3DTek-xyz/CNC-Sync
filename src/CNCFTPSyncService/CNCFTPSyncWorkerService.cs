@@ -230,8 +230,6 @@ namespace CNCFTPSyncService
                     {
                         using (var pipeServer = new NamedPipeServerStream(pipeName, PipeDirection.Out, 10, PipeTransmissionMode.Message))
                         {
-                            _logService?.LogDebug("Waiting for GUI connection on pipe: " + pipeName);
-                            
                             // Wait for a client to connect
                             await pipeServer.WaitForConnectionAsync(cancellationToken);
                             
