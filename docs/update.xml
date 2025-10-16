@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <item>
-    <version>1.0.43.0</version>
-    <url>https://3dtek-xyz.github.io/CNC-FTPSync/installer/CNC-FTP-SYNC-Setup-v1.0.43.msi</url>
-    <changelog>https://github.com/3DTek-xyz/CNC-FTPSync/releases/tag/v1.0.43</changelog>
+    <version>1.0.44.0</version>
+    <url>https://3dtek-xyz.github.io/CNC-FTPSync/installer/CNC-FTP-SYNC-Setup-v1.0.44.msi</url>
+    <changelog>https://github.com/3DTek-xyz/CNC-FTPSync/releases/tag/v1.0.44</changelog>
     <mandatory>false</mandatory>
     <args>/QUIET /NORESTART</args>
-    <checksum algorithm="SHA512">5234878B77D83E2AA1E32016B2A8E65FA06FDCA987A28EF63BB929E4110E7F536CEA421CD48C0E8E5B1249809E1E38852BB81004E47CD2351F3D1D806257DC6C</checksum>
+    <checksum algorithm="SHA512">65BFF3D72A766E3ABFE740FC1B7A94B52FDFAB8200DCA9A8803AC272305210198741F9A1E70BA341F61F544DCE1E074FF76D6DC7F88CC4939ED6AE2AAC2DF355</checksum>
 </item>
