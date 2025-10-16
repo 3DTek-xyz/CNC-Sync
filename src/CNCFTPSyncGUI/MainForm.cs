@@ -2886,6 +2886,9 @@ rd /s /q ""{tempDir}"" 2>nul
                                     }));
                                 }
                             }
+                            
+                            // Wait before trying to reconnect to avoid constant polling
+                            await Task.Delay(5000, cancellationToken);
                         }
                     }
                     catch (OperationCanceledException)

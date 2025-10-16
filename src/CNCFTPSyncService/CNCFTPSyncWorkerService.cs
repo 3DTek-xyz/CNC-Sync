@@ -249,6 +249,9 @@ namespace CNCFTPSyncService
                             // Keep connection open briefly to ensure message is received
                             await Task.Delay(1000, cancellationToken);
                         }
+                        
+                        // Wait before accepting new connections to avoid constant communication
+                        await Task.Delay(5000, cancellationToken);
                     }
                     catch (OperationCanceledException)
                     {
