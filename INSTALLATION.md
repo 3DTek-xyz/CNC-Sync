@@ -57,7 +57,14 @@ sc start CNCFTPSyncService
 
 The configuration is stored at:
 ```
-%APPDATA%\CNC-FTP-SYNC\CNC-FTP-SYNC-Config.json
+C:\ProgramData\CNC-FTP-SYNC\CNC-FTP-SYNC-Config.json
+```
+
+## Logging Location
+
+All logs (GUI and Service) are stored at:
+```
+C:\ProgramData\CNC-FTP-SYNC\Logs\
 ```
 
 ## Default Folder Structure

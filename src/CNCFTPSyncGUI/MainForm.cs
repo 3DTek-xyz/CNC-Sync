@@ -672,6 +672,22 @@ namespace CNCFTPSyncGUI
                     return;
                 }
 
+                // Check if Windows Service is running - prevent double processing
+                try
+                {
+                    using var service = new ServiceController("CNCFTPSyncService");
+                    if (service.Status == ServiceControllerStatus.Running)
+                    {
+                        MessageBox.Show("The Windows Service is currently running and monitoring folders.\n\nTo avoid conflicts, please stop the service before starting standalone mode, or use the GUI for configuration and manual processing only.", 
+                            "Service Already Running", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                }
+                catch (Exception serviceEx)
+                {
+                    _logService.LogInfo($"Service status check failed - proceeding with standalone mode: {serviceEx.Message}");
+                }
+
                 btnStartStandalone.Enabled = false;
                 btnStopStandalone.Enabled = true;
 

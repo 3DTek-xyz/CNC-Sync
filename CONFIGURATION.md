@@ -5,7 +5,12 @@ The G-Code Sync Tool uses a JSON configuration file stored in the user's AppData
 
 ## Configuration File Location
 ```
-%APPDATA%\GCodeSync\GCodeSyncConfig.json
+C:\ProgramData\CNC-FTP-SYNC\CNC-FTP-SYNC-Config.json
+```
+
+## Logging Location
+```
+C:\ProgramData\CNC-FTP-SYNC\Logs\
 ```
 
 ## Configuration Properties
@@ -34,8 +39,8 @@ The G-Code Sync Tool uses a JSON configuration file stored in the user's AppData
 
 ```json
 {
-  "watchFolder": "C:\\GCodeWatch",
-  "ftpUploadFolder": "C:\\GCodeFtpUpload",
+  "watchFolder": "C:\\CNC-FTP-SYNC\\Watch",
+  "ftpUploadFolder": "C:\\CNC-FTP-SYNC\\FtpUpload",
   "ftpServer": "192.168.1.100",
   "ftpPort": 21,
   "useAnonymousFtp": true,
@@ -43,7 +48,7 @@ The G-Code Sync Tool uses a JSON configuration file stored in the user's AppData
   "ftpPassword": "anonymous@example.com",
   "fileStabilityDelaySeconds": 30,
   "fileStabilityCheckIntervalSeconds": 5,
-  "logFilePath": "C:\\Users\\YourUser\\AppData\\Roaming\\GCodeSync\\Logs\\GCodeSync.log",
+  "logFilePath": "C:\\ProgramData\\CNC-FTP-SYNC\\Logs\\CNCFTPSync.log",
   "enableDetailedLogging": true,
   "autoUploadAfterProcessing": true
 }

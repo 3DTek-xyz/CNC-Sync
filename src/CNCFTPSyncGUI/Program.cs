@@ -11,8 +11,12 @@ namespace CNCFTPSyncGUI
         {
             try
             {
-                // Configure log directory
-                var logDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
+                // Configure shared log directory in ProgramData (same as service)
+                var sharedDataDirectory = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                    "CNC-FTP-SYNC"
+                );
+                var logDirectory = Path.Combine(sharedDataDirectory, "Logs");
                 Directory.CreateDirectory(logDirectory);
                 
                 // Ensure NLog configuration is loaded
@@ -29,8 +33,8 @@ namespace CNCFTPSyncGUI
                         var config = new NLog.Config.LoggingConfiguration();
                         var fileTarget = new NLog.Targets.FileTarget("fileTarget")
                         {
-                            FileName = Path.Combine(logDirectory, "app.log"),
-                            Layout = "${longdate} ${level} ${message} ${exception}"
+                            FileName = Path.Combine(logDirectory, "CNCFTPSyncGUI-${shortdate}.log"),
+                            Layout = "${longdate} ${uppercase:${level}} ${logger} ${message} ${exception:format=tostring}"
                         };
                         config.AddTarget(fileTarget);
                         config.AddRuleForAllLevels(fileTarget);

@@ -5,7 +5,12 @@ The G-Code Sync Tool uses a JSON configuration file stored in the user's AppData
 
 ## Configuration File Location
 ```
-%APPDATA%\GCodeSync\GCodeSyncConfig.json
+C:\ProgramData\CNC-FTP-SYNC\CNC-FTP-SYNC-Config.json
+```
+
+## Logging Location
+```
+C:\ProgramData\CNC-FTP-SYNC\Logs\
 ```
 
 ## Configuration Properties

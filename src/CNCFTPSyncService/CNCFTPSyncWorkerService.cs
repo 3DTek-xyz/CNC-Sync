@@ -38,9 +38,15 @@ namespace CNCFTPSyncService
                     throw new InvalidOperationException("G-Code Sync Service requires valid configuration. Please run the GUI application first to set up configuration.", ex);
                 }
                 
-                // Set up NLog configuration
-                var logDirectory = Path.GetDirectoryName(config.LogFilePath);
-                if (!string.IsNullOrEmpty(logDirectory))
+                // Set up NLog configuration to use same shared directory as GUI
+                var sharedDataDirectory = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                    "CNC-FTP-SYNC"
+                );
+                var logDirectory = Path.Combine(sharedDataDirectory, "Logs");
+                Directory.CreateDirectory(logDirectory);
+                
+                if (LogManager.Configuration?.Variables != null)
                 {
                     LogManager.Configuration.Variables["logDirectory"] = logDirectory;
                 }

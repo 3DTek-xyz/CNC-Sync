@@ -133,8 +133,8 @@ namespace CNCFTPSyncCore.Services
         {
             return new SyncConfiguration
             {
-                WatchFolder = @"C:\GCodeWatch",
-                FtpUploadFolder = @"C:\GCodeFtpUpload",
+                WatchFolder = @"C:\CNC-FTP-SYNC\Watch",
+                FtpUploadFolder = @"C:\CNC-FTP-SYNC\FtpUpload",
                 FtpServer = "localhost",
                 FtpPort = 21,
                 UseAnonymousFtp = true,
@@ -142,7 +142,7 @@ namespace CNCFTPSyncCore.Services
                 FtpPassword = "anonymous@example.com",
                 FileStabilityDelaySeconds = 30,
                 FileStabilityCheckIntervalSeconds = 5,
-                LogFilePath = Path.Combine(_configDirectory, "Logs", "GCodeSync.log"),
+                LogFilePath = Path.Combine(_configDirectory, "Logs", "CNCFTPSync.log"),
                 EnableDetailedLogging = true,
                 AutoUploadAfterProcessing = true
             };
@@ -157,10 +157,10 @@ namespace CNCFTPSyncCore.Services
         {
             // Set default values for missing or invalid properties
             if (string.IsNullOrEmpty(config.WatchFolder))
-                config.WatchFolder = @"C:\GCodeWatch";
+                config.WatchFolder = @"C:\CNC-FTP-SYNC\Watch";
 
             if (string.IsNullOrEmpty(config.FtpUploadFolder))
-                config.FtpUploadFolder = @"C:\GCodeFtpUpload";
+                config.FtpUploadFolder = @"C:\CNC-FTP-SYNC\FtpUpload";
 
             if (string.IsNullOrEmpty(config.FtpServer))
                 config.FtpServer = "localhost";
