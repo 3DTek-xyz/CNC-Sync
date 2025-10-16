@@ -615,29 +615,48 @@ namespace CNCFTPSyncCore.Services
             {
                 if (string.IsNullOrWhiteSpace(line)) return null;
                 
-                // Try different parsing approaches
-                
-                // 1. Try DOS/Windows format first (more common with Windows FTP servers)
-                // Format: "MM-dd-yy  HH:mmAM/PM       <DIR>          filename"
-                // or:     "MM-dd-yy  HH:mmAM/PM            filesize filename"
-                if (TryParseDosFormat(line, basePath, out FtpFileInfo? dosFile))
+                // Skip common non-content lines
+                if (line.StartsWith("total ") || line.Trim() == "." || line.Trim() == "..")
                 {
-                    return dosFile;
+                    return null;
                 }
                 
-                // 2. Try Unix format
+                _logger.LogInfo($"Attempting to parse FTP line: '{line}'");
+                
+                // Try different parsing approaches in order of likelihood
+                
+                // 1. Try Unix format first (most common on Linux/Unix FTP servers)
                 // Format: "drwxrwxrwx   1 owner    group            0 Jan 01 12:00 filename"
-                if (TryParseUnixFormat(line, basePath, out FtpFileInfo? unixFile))
+                if (TryParseUnixFormat(line, basePath, out FtpFileInfo? unixFile) && unixFile != null)
                 {
+                    _logger.LogInfo($"Successfully parsed as Unix format: '{unixFile.Name}'");
                     return unixFile;
                 }
                 
-                // 3. Try simple name-only format (some FTP servers)
-                if (TryParseSimpleFormat(line, basePath, out FtpFileInfo? simpleFile))
+                // 2. Try DOS/Windows format (common with Windows FTP servers)
+                // Format: "MM-dd-yy  HH:mmAM/PM       <DIR>          filename"
+                // or:     "MM-dd-yy  HH:mmAM/PM            filesize filename"
+                if (TryParseDosFormat(line, basePath, out FtpFileInfo? dosFile) && dosFile != null)
                 {
+                    _logger.LogInfo($"Successfully parsed as DOS format: '{dosFile.Name}'");
+                    return dosFile;
+                }
+                
+                // 3. Try extended Unix format (some Unix servers with additional columns)
+                if (TryParseExtendedUnixFormat(line, basePath, out FtpFileInfo? extUnixFile) && extUnixFile != null)
+                {
+                    _logger.LogInfo($"Successfully parsed as extended Unix format: '{extUnixFile.Name}'");
+                    return extUnixFile;
+                }
+                
+                // 4. Try simple name-only format (minimal FTP servers)
+                if (TryParseSimpleFormat(line, basePath, out FtpFileInfo? simpleFile) && simpleFile != null)
+                {
+                    _logger.LogInfo($"Successfully parsed as simple format: '{simpleFile.Name}'");
                     return simpleFile;
                 }
                 
+                _logger.LogWarning($"Could not parse FTP list line with any known format: '{line}'");
                 return null;
             }
             catch (Exception ex)
@@ -734,8 +753,13 @@ namespace CNCFTPSyncCore.Services
                 {
                     fileInfo.Size = size;
                 }
+                else
+                {
+                    fileInfo.Size = 0; // Default for directories or unparseable sizes
+                }
                 
                 // Parse date/time (columns 6-8: month, day, year/time)
+                DateTime modifiedDate = DateTime.Now; // Default fallback
                 if (parts.Length >= 8)
                 {
                     try
@@ -744,61 +768,220 @@ namespace CNCFTPSyncCore.Services
                         string day = parts[6];
                         string yearOrTime = parts[7];
                         
-                        // If contains ":", it's time for current year
+                        // Enhanced date parsing with multiple format support
                         if (yearOrTime.Contains(":"))
                         {
+                            // Format: "Oct 16 01:15" - time for current year
                             int currentYear = DateTime.Now.Year;
-                            string dateTimeStr = $"{month} {day} {currentYear} {yearOrTime}";
-                            if (DateTime.TryParse(dateTimeStr, out DateTime parsedDate))
+                            
+                            // Try multiple date format variations
+                            string[] dateFormats = {
+                                $"{month} {day} {currentYear} {yearOrTime}",
+                                $"{day} {month} {currentYear} {yearOrTime}",
+                                $"{month}/{day}/{currentYear} {yearOrTime}",
+                                $"{day}/{month}/{currentYear} {yearOrTime}"
+                            };
+                            
+                            bool parsed = false;
+                            foreach (var format in dateFormats)
                             {
-                                fileInfo.ModifiedDate = parsedDate;
+                                if (DateTime.TryParse(format, out DateTime parsedDate))
+                                {
+                                    modifiedDate = parsedDate;
+                                    parsed = true;
+                                    break;
+                                }
                             }
-                            else
+                            
+                            if (!parsed)
+                            {
+                                _logger.LogWarning($"Could not parse Unix FTP date format: '{month} {day} {yearOrTime}' - using current time");
+                            }
+                        }
+                        else
+                        {
+                            // Format: "Oct 16 2023" - explicit year
+                            string[] dateFormats = {
+                                $"{month} {day} {yearOrTime}",
+                                $"{day} {month} {yearOrTime}",
+                                $"{month}/{day}/{yearOrTime}",
+                                $"{day}/{month}/{yearOrTime}"
+                            };
+                            
+                            bool parsed = false;
+                            foreach (var format in dateFormats)
+                            {
+                                if (DateTime.TryParse(format, out DateTime parsedDate))
+                                {
+                                    modifiedDate = parsedDate;
+                                    parsed = true;
+                                    break;
+                                }
+                            }
+                            
+                            if (!parsed)
+                            {
+                                _logger.LogWarning($"Could not parse Unix FTP date format: '{month} {day} {yearOrTime}' - using current time");
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning($"Exception parsing Unix FTP date from '{parts[5]} {parts[6]} {parts[7]}': {ex.Message}");
+                    }
+                }
+                
+                fileInfo.ModifiedDate = modifiedDate;
+                
+                // Parse filename (everything from 9th column onwards, may contain spaces)
+                var nameStartIndex = 8; // Start from 9th column for filename
+                if (parts.Length > nameStartIndex)
+                {
+                    fileInfo.Name = string.Join(" ", parts.Skip(nameStartIndex));
+                    
+                    // Remove symbolic link info if present (indicated by "->")
+                    var linkIndex = fileInfo.Name.IndexOf(" -> ");
+                    if (linkIndex > 0)
+                    {
+                        fileInfo.Name = fileInfo.Name.Substring(0, linkIndex);
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning($"Unix FTP format: Could not extract filename from line: '{line}'");
+                    return false;
+                }
+                
+                fileInfo.FullPath = basePath.TrimEnd('/') + "/" + fileInfo.Name;
+                
+                _logger.LogInfo($"Successfully parsed Unix FTP format: '{fileInfo.Name}' (IsDirectory: {fileInfo.IsDirectory}, Size: {fileInfo.Size})");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error parsing Unix FTP format line '{line}': {ex.Message}");
+                return false;
+            }
+        }
+
+        private bool TryParseExtendedUnixFormat(string line, string basePath, out FtpFileInfo? fileInfo)
+        {
+            fileInfo = null;
+            try
+            {
+                // Handle alternate Unix formats with different column layouts
+                // Some servers might have different spacing or additional columns
+                if (line.Length < 10) return false;
+                
+                var parts = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length < 6) return false; // Minimum: permissions, links, owner, group, size, name
+                
+                // Must start with permissions (first char is file type)
+                if (parts[0].Length < 10 || (parts[0][0] != 'd' && parts[0][0] != '-' && parts[0][0] != 'l'))
+                {
+                    return false;
+                }
+                
+                fileInfo = new FtpFileInfo();
+                
+                // Parse file type from first character of permissions
+                fileInfo.IsDirectory = parts[0][0] == 'd';
+                fileInfo.Type = fileInfo.IsDirectory ? "Folder" : "File";
+                
+                // Find the size column (scan for a numeric value)
+                int sizeIndex = -1;
+                int nameStartIndex = -1;
+                
+                for (int i = 1; i < parts.Length; i++)
+                {
+                    if (long.TryParse(parts[i], out long size))
+                    {
+                        fileInfo.Size = size;
+                        sizeIndex = i;
+                        
+                        // Look for date/time pattern after size
+                        // Date typically follows pattern: month day time/year
+                        if (i + 3 < parts.Length)
+                        {
+                            nameStartIndex = i + 4; // Skip size, month, day, time/year
+                            
+                            // Try to parse date
+                            try
+                            {
+                                string month = parts[i + 1];
+                                string day = parts[i + 2];
+                                string yearOrTime = parts[i + 3];
+                                
+                                DateTime modifiedDate = DateTime.Now;
+                                if (yearOrTime.Contains(":"))
+                                {
+                                    // Time format - current year
+                                    string dateStr = $"{month} {day} {DateTime.Now.Year} {yearOrTime}";
+                                    if (DateTime.TryParse(dateStr, out DateTime parsed))
+                                    {
+                                        modifiedDate = parsed;
+                                    }
+                                }
+                                else
+                                {
+                                    // Year format
+                                    string dateStr = $"{month} {day} {yearOrTime}";
+                                    if (DateTime.TryParse(dateStr, out DateTime parsed))
+                                    {
+                                        modifiedDate = parsed;
+                                    }
+                                }
+                                fileInfo.ModifiedDate = modifiedDate;
+                            }
+                            catch
                             {
                                 fileInfo.ModifiedDate = DateTime.Now;
                             }
                         }
                         else
                         {
-                            // It's a year
-                            string dateStr = $"{month} {day} {yearOrTime}";
-                            if (DateTime.TryParse(dateStr, out DateTime parsedDate))
-                            {
-                                fileInfo.ModifiedDate = parsedDate;
-                            }
-                            else
-                            {
-                                fileInfo.ModifiedDate = DateTime.Now;
-                            }
+                            // Not enough columns for date, filename starts after size
+                            nameStartIndex = i + 1;
+                            fileInfo.ModifiedDate = DateTime.Now;
                         }
+                        break;
                     }
-                    catch
+                }
+                
+                // If we couldn't find size, try a different approach
+                if (sizeIndex == -1)
+                {
+                    fileInfo.Size = 0;
+                    // Assume filename starts from a reasonable position
+                    nameStartIndex = Math.Min(5, parts.Length - 1);
+                    fileInfo.ModifiedDate = DateTime.Now;
+                }
+                
+                // Extract filename (join remaining parts)
+                if (nameStartIndex > 0 && nameStartIndex < parts.Length)
+                {
+                    fileInfo.Name = string.Join(" ", parts.Skip(nameStartIndex));
+                    
+                    // Handle symbolic links
+                    var linkIndex = fileInfo.Name.IndexOf(" -> ");
+                    if (linkIndex > 0)
                     {
-                        fileInfo.ModifiedDate = DateTime.Now;
+                        fileInfo.Name = fileInfo.Name.Substring(0, linkIndex);
                     }
                 }
                 else
                 {
-                    fileInfo.ModifiedDate = DateTime.Now;
-                }
-                
-                // Parse filename (last part, may contain spaces)
-                var nameStartIndex = 8; // Start from 9th column for filename
-                fileInfo.Name = string.Join(" ", parts.Skip(nameStartIndex));
-                
-                // Remove symbolic link info if present (indicated by "->")
-                var linkIndex = fileInfo.Name.IndexOf(" -> ");
-                if (linkIndex > 0)
-                {
-                    fileInfo.Name = fileInfo.Name.Substring(0, linkIndex);
+                    return false; // Couldn't extract filename
                 }
                 
                 fileInfo.FullPath = basePath.TrimEnd('/') + "/" + fileInfo.Name;
                 
+                _logger.LogInfo($"Successfully parsed extended Unix format: '{fileInfo.Name}' (IsDirectory: {fileInfo.IsDirectory}, Size: {fileInfo.Size})");
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError($"Error parsing extended Unix FTP format line '{line}': {ex.Message}");
                 return false;
             }
         }
