@@ -2,6 +2,8 @@ using CNCFTPSyncCore.Models;
 using CNCFTPSyncCore.Services;
 using Microsoft.Extensions.Hosting;
 using NLog;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace CNCFTPSyncService
 {
@@ -65,6 +67,9 @@ namespace CNCFTPSyncService
                 await _orchestrator.StartAsync();
 
                 _logService.LogInfo("G-Code Sync Service started successfully");
+                
+                // Launch GUI if not already running for current user
+                await LaunchGUIIfNotRunning();
 
                 // Wait for cancellation
                 while (!stoppingToken.IsCancellationRequested)
@@ -129,6 +134,60 @@ namespace CNCFTPSyncService
         private void OnStatusChanged(string status)
         {
             Logger.Debug($"Service status: {status}");
+        }
+
+        private async Task LaunchGUIIfNotRunning()
+        {
+            try
+            {
+                // Check if GUI is already running
+                var existingProcesses = Process.GetProcessesByName("CNCFTPSyncGUI");
+                if (existingProcesses.Length > 0)
+                {
+                    _logService?.LogInfo("GUI is already running, skipping launch");
+                    return;
+                }
+
+                // Get the service executable path and find GUI in same directory
+                var servicePath = Process.GetCurrentProcess().MainModule?.FileName;
+                if (string.IsNullOrEmpty(servicePath))
+                {
+                    _logService?.LogWarning("Could not determine service path for GUI launch");
+                    return;
+                }
+
+                var serviceDirectory = Path.GetDirectoryName(servicePath);
+                var guiPath = Path.Combine(serviceDirectory ?? "", "CNCFTPSyncGUI.exe");
+
+                if (!File.Exists(guiPath))
+                {
+                    _logService?.LogWarning($"GUI executable not found at: {guiPath}");
+                    return;
+                }
+
+                // Launch GUI for current user session
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = guiPath,
+                    UseShellExecute = true,
+                    CreateNoWindow = false,
+                    WindowStyle = ProcessWindowStyle.Normal
+                };
+
+                var process = Process.Start(startInfo);
+                if (process != null)
+                {
+                    _logService?.LogInfo($"Successfully launched GUI: {guiPath}");
+                }
+                else
+                {
+                    _logService?.LogWarning("Failed to launch GUI process");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService?.LogError("Error launching GUI from service", ex);
+            }
         }
     }
 }

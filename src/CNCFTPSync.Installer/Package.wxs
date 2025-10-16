@@ -32,6 +32,7 @@
       <ComponentGroupRef Id="ConfigComponents" />
       <ComponentRef Id="ProgramMenuDir" />
       <ComponentRef Id="DesktopShortcut" />
+      <ComponentRef Id="ServiceManagement" />
     </Feature>
 
     <!-- WiX UI for installation wizard with license agreement -->
@@ -95,11 +96,42 @@
                      KeyPath="yes" />
     </Component>
 
-    <!-- Note: Service installation will be handled manually by the user -->
-    <!-- The GUI application can manage service installation/removal -->
+    <!-- Windows Service Management Component - Only manage if service exists -->
+    <Component Id="ServiceManagement" Directory="INSTALLFOLDER" Guid="A1B2C3D4-E5F6-7890-ABCD-EF1234567890" Condition="SERVICEEXISTS">
+      <!-- Service Control for Updates - Stop existing service before upgrade -->
+      <ServiceControl Id="StopServiceOnUpgrade"
+                      Name="CNCFTPSyncService"
+                      Stop="both"
+                      Wait="yes" />
+      
+      <!-- Service Control for Updates - Start service after upgrade -->
+      <ServiceControl Id="StartServiceAfterUpgrade"
+                      Name="CNCFTPSyncService"
+                      Start="install"
+                      Wait="no" />
+      
+      <!-- Registry key to track service management -->
+      <RegistryValue Root="HKLM"
+                     Key="Software\3DTek\CNC-FTP-SYNC"
+                     Name="ServiceManaged"
+                     Type="integer"
+                     Value="1"
+                     KeyPath="yes" />
+    </Component>
+
+    <!-- Windows Service management for automatic updates -->
+    <!-- Service will be installed/updated automatically if already exists -->
 
     <!-- Properties for silent installation -->
     <Property Id="MSIUSEREALADMINDETECTION" Value="1" />
+    
+    <!-- Detect existing service via registry -->
+    <Property Id="SERVICEEXISTS">
+      <RegistrySearch Id="ServiceExistsSearch"
+                      Root="HKLM"
+                      Key="SYSTEM\CurrentControlSet\Services\CNCFTPSyncService"
+                      Type="raw" />
+    </Property>
 
     <!-- Custom action to launch application after installation -->
     <CustomAction Id="LaunchApplication"
