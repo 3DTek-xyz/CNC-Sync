@@ -296,7 +296,7 @@ namespace CNCFTPSyncGUI
             html.AppendLine(".loading { text-align: center; margin: 50px; }");
             html.AppendLine("</style>");
             html.AppendLine("</head><body>");
-            html.AppendLine($"<div class='loading'>Loading FTP directory: {ftpUrl}<br>🔄 Please wait...</div>");
+            html.AppendLine($"<div class='loading'>Loading FTP directory: {ftpUrl}<br>Please wait...</div>");
             html.AppendLine("</body></html>");
             return html.ToString();
         }

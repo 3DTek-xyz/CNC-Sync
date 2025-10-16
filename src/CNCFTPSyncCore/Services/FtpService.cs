@@ -396,16 +396,14 @@ namespace CNCFTPSyncCore.Services
                 string? line;
                 while ((line = await reader.ReadLineAsync()) is not null)
                 {
-                    _logger.LogInfo($"Raw FTP list line: '{line}'");
                     var fileInfo = ParseFtpListLine(line, remotePath);
                     if (fileInfo != null)
                     {
-                        _logger.LogInfo($"Parsed FTP item: Name='{fileInfo.Name}', IsDirectory={fileInfo.IsDirectory}, FullPath='{fileInfo.FullPath}'");
                         files.Add(fileInfo);
                     }
                     else
                     {
-                        _logger.LogInfo($"Failed to parse FTP list line: '{line}'");
+                        _logger.LogWarning($"Failed to parse FTP list line: '{line}'");
                     }
                 }
                 
@@ -621,7 +619,7 @@ namespace CNCFTPSyncCore.Services
                     return null;
                 }
                 
-                _logger.LogInfo($"Attempting to parse FTP line: '{line}'");
+
                 
                 // Try different parsing approaches in order of likelihood
                 
@@ -629,7 +627,6 @@ namespace CNCFTPSyncCore.Services
                 // Format: "drwxrwxrwx   1 owner    group            0 Jan 01 12:00 filename"
                 if (TryParseUnixFormat(line, basePath, out FtpFileInfo? unixFile) && unixFile != null)
                 {
-                    _logger.LogInfo($"Successfully parsed as Unix format: '{unixFile.Name}'");
                     return unixFile;
                 }
                 
@@ -638,21 +635,18 @@ namespace CNCFTPSyncCore.Services
                 // or:     "MM-dd-yy  HH:mmAM/PM            filesize filename"
                 if (TryParseDosFormat(line, basePath, out FtpFileInfo? dosFile) && dosFile != null)
                 {
-                    _logger.LogInfo($"Successfully parsed as DOS format: '{dosFile.Name}'");
                     return dosFile;
                 }
                 
                 // 3. Try extended Unix format (some Unix servers with additional columns)
                 if (TryParseExtendedUnixFormat(line, basePath, out FtpFileInfo? extUnixFile) && extUnixFile != null)
                 {
-                    _logger.LogInfo($"Successfully parsed as extended Unix format: '{extUnixFile.Name}'");
                     return extUnixFile;
                 }
                 
                 // 4. Try simple name-only format (minimal FTP servers)
                 if (TryParseSimpleFormat(line, basePath, out FtpFileInfo? simpleFile) && simpleFile != null)
                 {
-                    _logger.LogInfo($"Successfully parsed as simple format: '{simpleFile.Name}'");
                     return simpleFile;
                 }
                 
@@ -854,7 +848,7 @@ namespace CNCFTPSyncCore.Services
                 
                 fileInfo.FullPath = basePath.TrimEnd('/') + "/" + fileInfo.Name;
                 
-                _logger.LogInfo($"Successfully parsed Unix FTP format: '{fileInfo.Name}' (IsDirectory: {fileInfo.IsDirectory}, Size: {fileInfo.Size})");
+
                 return true;
             }
             catch (Exception ex)
@@ -976,7 +970,7 @@ namespace CNCFTPSyncCore.Services
                 
                 fileInfo.FullPath = basePath.TrimEnd('/') + "/" + fileInfo.Name;
                 
-                _logger.LogInfo($"Successfully parsed extended Unix format: '{fileInfo.Name}' (IsDirectory: {fileInfo.IsDirectory}, Size: {fileInfo.Size})");
+
                 return true;
             }
             catch (Exception ex)

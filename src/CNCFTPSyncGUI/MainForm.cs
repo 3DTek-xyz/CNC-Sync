@@ -212,8 +212,8 @@ namespace CNCFTPSyncGUI
                 
                 if (!string.IsNullOrEmpty(args.RemoteData))
                 {
-                    _logService.LogInfo("✅ Update XML downloaded successfully");
-                    _logService.LogInfo($"📄 Raw XML Content:\n{args.RemoteData}");
+                    _logService.LogInfo("Update XML downloaded successfully");
+                    _logService.LogInfo($"Raw XML Content:\n{args.RemoteData}");
                     
                     // Try to manually parse the XML to identify any issues
                     try
@@ -230,19 +230,19 @@ namespace CNCFTPSyncGUI
                         var algorithmAttr = checksumNode?.Attributes?["algorithm"];
                         
                         _logService.LogInfo("=== XML Content Analysis ===");
-                        _logService.LogInfo($"📦 Version: {versionNode?.InnerText ?? "❌ MISSING"}");
-                        _logService.LogInfo($"🔗 Download URL: {urlNode?.InnerText ?? "❌ MISSING"}");
-                        _logService.LogInfo($"📝 Changelog URL: {changelogNode?.InnerText ?? "❌ MISSING"}");
-                        _logService.LogInfo($"⚠️  Mandatory: {mandatoryNode?.InnerText ?? "❌ MISSING"}");
-                        _logService.LogInfo($"⚙️  Install Args: {argsNode?.InnerText ?? "❌ MISSING"}");
-                        _logService.LogInfo($"🔐 Checksum: {checksumNode?.InnerText ?? "❌ MISSING"}");
-                        _logService.LogInfo($"🔒 Hash Algorithm: {algorithmAttr?.Value ?? "❌ MISSING"}");
+                        _logService.LogInfo($"Version: {versionNode?.InnerText ?? "❌ MISSING"}");
+                        _logService.LogInfo($"Download URL: {urlNode?.InnerText ?? "❌ MISSING"}");
+                        _logService.LogInfo($"Changelog URL: {changelogNode?.InnerText ?? "❌ MISSING"}");
+                        _logService.LogInfo($"Mandatory: {mandatoryNode?.InnerText ?? "❌ MISSING"}");
+                        _logService.LogInfo($"Install Args: {argsNode?.InnerText ?? "❌ MISSING"}");
+                        _logService.LogInfo($"Checksum: {checksumNode?.InnerText ?? "❌ MISSING"}");
+                        _logService.LogInfo($"Hash Algorithm: {algorithmAttr?.Value ?? "❌ MISSING"}");
                         
                         // Validate download URL accessibility
                         if (urlNode != null && !string.IsNullOrEmpty(urlNode.InnerText))
                         {
                             var downloadUrl = urlNode.InnerText;
-                            _logService.LogInfo($"🔍 Validating download URL: {downloadUrl}");
+                            _logService.LogInfo($"Validating download URL: {downloadUrl}");
                             
                             // Test URL accessibility using modern HttpClient
                             try
@@ -253,14 +253,14 @@ namespace CNCFTPSyncGUI
                                 var request = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Head, downloadUrl);
                                 using var response = await httpClient.SendAsync(request);
                                 
-                                _logService.LogInfo($"✅ Download URL accessible - Status: {response.StatusCode}");
+                                _logService.LogInfo($"Download URL accessible - Status: {response.StatusCode}");
                                 if (response.Content.Headers.ContentLength.HasValue)
                                 {
-                                    _logService.LogInfo($"� Content Length: {response.Content.Headers.ContentLength} bytes");
+                                    _logService.LogInfo($"Content Length: {response.Content.Headers.ContentLength} bytes");
                                 }
                                 if (response.Content.Headers.LastModified.HasValue)
                                 {
-                                    _logService.LogInfo($"📅 Last Modified: {response.Content.Headers.LastModified}");
+                                    _logService.LogInfo($"Last Modified: {response.Content.Headers.LastModified}");
                                 }
                             }
                             catch (System.Net.Http.HttpRequestException httpEx)
@@ -345,7 +345,7 @@ namespace CNCFTPSyncGUI
                     _logService.LogInfo("✅ Update XML downloaded successfully");
                     
                     // Log version comparison details
-                    _logService.LogInfo($"📋 Version Comparison:");
+                    _logService.LogInfo($"Version Comparison:");
                     _logService.LogInfo($"   • Current (Installed): {args.InstalledVersion}");
                     _logService.LogInfo($"   • Available (XML): {args.CurrentVersion}");
                     _logService.LogInfo($"   • Update Available: {args.IsUpdateAvailable}");
@@ -353,19 +353,19 @@ namespace CNCFTPSyncGUI
                     // Log additional update info
                     if (!string.IsNullOrEmpty(args.DownloadURL))
                     {
-                        _logService.LogInfo($"🔗 Download URL: {args.DownloadURL}");
+                        _logService.LogInfo($"Download URL: {args.DownloadURL}");
                     }
                     if (!string.IsNullOrEmpty(args.ChangelogURL))
                     {
-                        _logService.LogInfo($"📝 Changelog URL: {args.ChangelogURL}");
+                        _logService.LogInfo($"Changelog URL: {args.ChangelogURL}");
                     }
                     // Note: Checksum and HashingAlgorithm properties not available in this version of AutoUpdater.NET
-                    _logService.LogInfo($"🔐 Checksum: Not available in current AutoUpdater.NET version");
-                    _logService.LogInfo($"🔒 Hash Algorithm: Not available in current AutoUpdater.NET version");
+                    _logService.LogInfo($"Checksum: Not available in current AutoUpdater.NET version");
+                    _logService.LogInfo($"Hash Algorithm: Not available in current AutoUpdater.NET version");
                     
                     if (args.IsUpdateAvailable)
                     {
-                        _logService.LogInfo($"🎯 Update Available: Version {args.InstalledVersion} -> {args.CurrentVersion}");
+                        _logService.LogInfo($"Update Available: Version {args.InstalledVersion} -> {args.CurrentVersion}");
                         
                         var result = MessageBox.Show(
                             $"A new version ({args.CurrentVersion}) is available!\n\n" +
@@ -381,7 +381,7 @@ namespace CNCFTPSyncGUI
                         {
                             try
                             {
-                                _logService.LogInfo($"🔄 Starting download from: {args.DownloadURL}");
+                                _logService.LogInfo($"Starting download from: {args.DownloadURL}");
                                 if (AutoUpdater.DownloadUpdate(args))
                                 {
                                     _logService.LogInfo("✅ Update downloaded successfully, exiting application");
@@ -413,23 +413,23 @@ namespace CNCFTPSyncGUI
                 {
                     _logService.LogError("=== AutoUpdater Error Details ===");
                     _logService.LogError($"❌ Update check failed: {args.Error.Message}");
-                    _logService.LogError($"🔍 Error Type: {args.Error.GetType().Name}");
-                    _logService.LogError($"📄 Full Error Details: {args.Error}");
+                    _logService.LogError($"Error Type: {args.Error.GetType().Name}");
+                    _logService.LogError($"Full Error Details: {args.Error}");
                     
                     if (args.Error.InnerException != null)
                     {
-                        _logService.LogError($"🔗 Inner Exception: {args.Error.InnerException.Message}");
-                        _logService.LogError($"📄 Inner Exception Details: {args.Error.InnerException}");
+                        _logService.LogError($"Inner Exception: {args.Error.InnerException.Message}");
+                        _logService.LogError($"Inner Exception Details: {args.Error.InnerException}");
                     }
                     
                     // Try to extract more specific error information
                     if (args.Error is System.Net.WebException webEx)
                     {
-                        _logService.LogError($"🌐 WebException Status: {webEx.Status}");
+                        _logService.LogError($"WebException Status: {webEx.Status}");
                         if (webEx.Response is System.Net.HttpWebResponse httpResponse)
                         {
-                            _logService.LogError($"🌐 HTTP Status Code: {httpResponse.StatusCode}");
-                            _logService.LogError($"🌐 HTTP Status Description: {httpResponse.StatusDescription}");
+                            _logService.LogError($"HTTP Status Code: {httpResponse.StatusCode}");
+                            _logService.LogError($"HTTP Status Description: {httpResponse.StatusDescription}");
                         }
                     }
                 }
@@ -2668,10 +2668,10 @@ Visit: https://3dtek-xyz.github.io/CNC-FTPSync/";
             try
             {
                 _logService.LogInfo("=== Custom Update Check Initiated ===");
-                _logService.LogInfo("🔄 User requested manual update check via menu");
+                _logService.LogInfo("User requested manual update check via menu");
                 
                 const string updateUrl = "https://3dtek-xyz.github.io/CNC-FTPSync/update.xml";
-                _logService.LogInfo($"🔗 Update check URL: {updateUrl}");
+                _logService.LogInfo($"Update check URL: {updateUrl}");
 
                 await CheckForUpdatesAsync(updateUrl, true);
             }
@@ -2691,7 +2691,7 @@ Visit: https://3dtek-xyz.github.io/CNC-FTPSync/";
                 using var httpClient = new System.Net.Http.HttpClient();
                 httpClient.Timeout = TimeSpan.FromSeconds(30);
                 
-                _logService.LogInfo($"🌐 Downloading update information from: {updateUrl}");
+                _logService.LogInfo($"Downloading update information from: {updateUrl}");
                 string xmlContent = await httpClient.GetStringAsync(updateUrl);
                 _logService.LogInfo($"✅ Downloaded {xmlContent.Length} bytes of update data");
 
@@ -2712,21 +2712,21 @@ Visit: https://3dtek-xyz.github.io/CNC-FTPSync/";
                 string downloadUrl = urlNode.InnerText.Trim();
                 string changelogUrl = changelogNode?.InnerText.Trim() ?? "";
                 
-                _logService.LogInfo($"📦 Remote version: {remoteVersionStr}");
-                _logService.LogInfo($"🔗 Download URL: {downloadUrl}");
+                _logService.LogInfo($"Remote version: {remoteVersionStr}");
+                _logService.LogInfo($"Download URL: {downloadUrl}");
 
                 // Get current version
                 var currentVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
                 var remoteVersion = new Version(remoteVersionStr);
                 
-                _logService.LogInfo($"📋 Current version: {currentVersion}");
-                _logService.LogInfo($"🆚 Comparing versions: {currentVersion} vs {remoteVersion}");
+                _logService.LogInfo($"Current version: {currentVersion}");
+                _logService.LogInfo($"Comparing versions: {currentVersion} vs {remoteVersion}");
 
                 bool updateAvailable = remoteVersion > currentVersion;
                 
                 if (updateAvailable)
                 {
-                    _logService.LogInfo($"🎯 Update available! {currentVersion} → {remoteVersion}");
+                    _logService.LogInfo($"Update available! {currentVersion} → {remoteVersion}");
                     
                     var result = MessageBox.Show(
                         $"A new version of CNC-FTP-SYNC is available!\n\n" +
@@ -2739,12 +2739,12 @@ Visit: https://3dtek-xyz.github.io/CNC-FTPSync/";
                         
                     if (result == DialogResult.Yes)
                     {
-                        _logService.LogInfo("🚀 User chose to install update");
+                        _logService.LogInfo("User chose to install update");
                         await DownloadAndInstallUpdateAsync(downloadUrl, changelogUrl);
                     }
                     else
                     {
-                        _logService.LogInfo("⏭️ User chose to skip update");
+                        _logService.LogInfo("User chose to skip update");
                     }
                 }
                 else
@@ -2772,7 +2772,7 @@ Visit: https://3dtek-xyz.github.io/CNC-FTPSync/";
         {
             try
             {
-                _logService.LogInfo($"⬇️ Starting download from: {downloadUrl}");
+                _logService.LogInfo($"Starting download from: {downloadUrl}");
                 
                 // Skip changelog prompt - directly proceed with download
                 
@@ -2783,7 +2783,7 @@ Visit: https://3dtek-xyz.github.io/CNC-FTPSync/";
                 string fileName = Path.GetFileName(new Uri(downloadUrl).LocalPath);
                 string tempFile = Path.Combine(tempDir, fileName);
                 
-                _logService.LogInfo($"💾 Downloading to: {tempFile}");
+                _logService.LogInfo($"Downloading to: {tempFile}");
                 
                 using var httpClient = new System.Net.Http.HttpClient();
                 httpClient.Timeout = TimeSpan.FromMinutes(10); // Large file timeout
@@ -2848,7 +2848,7 @@ Visit: https://3dtek-xyz.github.io/CNC-FTPSync/";
                 }
                 
                 // Start the installer
-                _logService.LogInfo("🚀 Starting MSI installer...");
+                _logService.LogInfo("Starting MSI installer...");
                 
                 var startInfo = new System.Diagnostics.ProcessStartInfo
                 {
@@ -2862,7 +2862,7 @@ Visit: https://3dtek-xyz.github.io/CNC-FTPSync/";
                 
                 if (process != null)
                 {
-                    _logService.LogInfo("🚀 Installer started, closing application for update...");
+                    _logService.LogInfo("Installer started, closing application for update...");
                     
                     // Create a batch file to restart the application after update
                     string batchFile = Path.Combine(tempDir, "restart_app.bat");
@@ -2889,7 +2889,7 @@ rd /s /q ""{tempDir}"" 2>nul
 ";
                     
                     File.WriteAllText(batchFile, batchContent);
-                    _logService.LogInfo($"📝 Created restart script: {batchFile}");
+                    _logService.LogInfo($"Created restart script: {batchFile}");
                     
                     // Start the restart script
                     var restartInfo = new System.Diagnostics.ProcessStartInfo
@@ -2900,7 +2900,7 @@ rd /s /q ""{tempDir}"" 2>nul
                     };
                     
                     System.Diagnostics.Process.Start(restartInfo);
-                    _logService.LogInfo("🔄 Started restart script, closing application for update...");
+                    _logService.LogInfo("Started restart script, closing application for update...");
                     
                     Application.Exit();
                 }

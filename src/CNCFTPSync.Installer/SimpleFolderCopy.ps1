@@ -14,7 +14,7 @@
 # RETURN VALUES:
 # The script must return:
 # 1. Exit Code: 0 for success, non-zero for failure
-# 2. Output Path: The script outputs the full path to the prepared files (via stdout)
+# 2. Output Path: The script outputs the full path to the prepared files (via stdout) !!! MUST Start with "Path=" eg "Path=C:\FTPUpload\NewProject_Rev1"
 #
 # USAGE:
 # To use this script:
