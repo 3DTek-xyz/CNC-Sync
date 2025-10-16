@@ -1663,8 +1663,14 @@ namespace CNCFTPSyncGUI
                 
                 if (Directory.Exists(logDirectory))
                 {
-                    // Clear all CNC-FTP-SYNC log files (GUI, Service, Core, Debug)
-                    var logPatterns = new[] { "CNCFTPSyncGUI*.log", "CNCFTPSyncService*.log", "CNCFTPSyncCore*.log", "CNCFTPSync*.log" };
+                    // Clear all CNC-FTP-SYNC log files (unified naming and legacy patterns)
+                    var logPatterns = new[] { 
+                        "CNC-FTP-SYNC*.log",              // New unified format
+                        "CNCFTPSyncGUI*.log",             // Legacy GUI logs
+                        "CNCFTPSyncService*.log",         // Legacy Service logs  
+                        "CNCFTPSyncCore*.log",            // Legacy Core logs
+                        "CNCFTPSync*.log"                 // Other legacy patterns
+                    };
                     
                     foreach (var pattern in logPatterns)
                     {
