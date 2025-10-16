@@ -61,17 +61,19 @@ namespace CNCFTPSyncCore.Services
                 switch (scriptExtension)
                 {
                     case ".ps1":
-                        // PowerShell script
+                        // PowerShell script with enhanced output capture
                         processInfo = new System.Diagnostics.ProcessStartInfo
                         {
                             FileName = "powershell.exe",
-                            Arguments = $"-ExecutionPolicy Bypass -File \"{_config.ExternalProcessorPath}\" \"{projectPath}\" \"{ftpUploadDirectory}\" \"{currentLogFile}\"",
+                            Arguments = $"-ExecutionPolicy Bypass -NoProfile -NonInteractive -File \"{_config.ExternalProcessorPath}\" \"{projectPath}\" \"{ftpUploadDirectory}\" \"{currentLogFile}\"",
                             UseShellExecute = false,
                             RedirectStandardOutput = true,
                             RedirectStandardError = true,
-                            CreateNoWindow = true
+                            CreateNoWindow = true,
+                            StandardOutputEncoding = Encoding.UTF8,
+                            StandardErrorEncoding = Encoding.UTF8
                         };
-                        _logger.LogInfo($"Executing PowerShell script via: powershell.exe -ExecutionPolicy Bypass -File \"{_config.ExternalProcessorPath}\"");
+                        _logger.LogInfo($"Executing PowerShell script via: powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File \"{_config.ExternalProcessorPath}\"");
                         break;
                         
                     case ".bat":
@@ -105,15 +107,37 @@ namespace CNCFTPSyncCore.Services
                         break;
                 }
 
-                // Execute external script
+                // Execute external script with improved output capture
                 using var process = new System.Diagnostics.Process { StartInfo = processInfo };
-                process.Start();
+                
+                var outputBuilder = new StringBuilder();
+                var errorBuilder = new StringBuilder();
+                
+                // Set up asynchronous output reading to prevent deadlocks
+                process.OutputDataReceived += (sender, e) => {
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        outputBuilder.AppendLine(e.Data);
+                        _logger.LogInfo($"[Script Output] {e.Data}");
+                    }
+                };
+                
+                process.ErrorDataReceived += (sender, e) => {
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        errorBuilder.AppendLine(e.Data);
+                        _logger.LogError($"[Script Error] {e.Data}");
+                    }
+                };
 
-                // Read output
-                var output = await process.StandardOutput.ReadToEndAsync();
-                var error = await process.StandardError.ReadToEndAsync();
+                process.Start();
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
                 
                 await process.WaitForExitAsync();
+                
+                var output = outputBuilder.ToString().Trim();
+                var error = errorBuilder.ToString().Trim();
 
                 if (process.ExitCode == 0)
                 {
