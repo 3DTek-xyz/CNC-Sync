@@ -33,7 +33,7 @@ namespace CNCFTPSyncGUI
                         var config = new NLog.Config.LoggingConfiguration();
                         var fileTarget = new NLog.Targets.FileTarget("fileTarget")
                         {
-                            FileName = Path.Combine(logDirectory, "CNCFTPSyncGUI-${shortdate}.log"),
+                            FileName = Path.Combine(logDirectory, "CNC-FTP-SYNC-${shortdate}.log"),
                             Layout = "${longdate} ${uppercase:${level}} ${logger} ${message} ${exception:format=tostring}"
                         };
                         config.AddTarget(fileTarget);

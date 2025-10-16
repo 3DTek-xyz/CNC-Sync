@@ -1503,7 +1503,7 @@ namespace CNCFTPSyncGUI
                 var logDirectory = Path.Combine(sharedDataDirectory, "Logs");
                 Directory.CreateDirectory(logDirectory);
                 
-                string logPath = Path.Combine(logDirectory, $"CNCFTPSyncGUI-Debug-{DateTime.Now:yyyy-MM-dd}.log");
+                string logPath = Path.Combine(logDirectory, $"CNC-FTP-SYNC-{DateTime.Now:yyyy-MM-dd}.log");
                 string logEntry = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - {message}{Environment.NewLine}";
                 File.AppendAllText(logPath, logEntry);
             }
