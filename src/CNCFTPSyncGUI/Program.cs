@@ -59,7 +59,7 @@ namespace CNCFTPSyncGUI
                 
                 if (!createdNew)
                 {
-                    MessageBox.Show("CNC-FTP-SYNC GUI is already running. Check the system tray.", 
+                    SafeMessageBox.Show("CNC-FTP-SYNC GUI is already running. Check the system tray.", 
                         "Already Running", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
@@ -76,7 +76,7 @@ namespace CNCFTPSyncGUI
                 {
                     // If logging fails, still show the message box
                 }
-                MessageBox.Show($"Fatal application error: {ex.Message}\n\nStack trace:\n{ex.StackTrace}", "Fatal Error", 
+                SafeMessageBox.Show($"Fatal application error: {ex.Message}\n\nStack trace:\n{ex.StackTrace}", "Fatal Error", 
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally

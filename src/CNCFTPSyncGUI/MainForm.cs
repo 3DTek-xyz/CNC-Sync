@@ -44,7 +44,7 @@ namespace CNCFTPSyncGUI
             catch (Exception ex)
             {
                 WriteToLogFile($"Error navigating local to {path}: {ex.Message}");
-                MessageBox.Show($"Error navigating to: {path}\n{ex.Message}", "Navigation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                SafeMessageBox.Show($"Error navigating to: {path}\n{ex.Message}", "Navigation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -689,7 +689,7 @@ namespace CNCFTPSyncGUI
                 // Check if service is managing the GUI via pipe communication
                 if (_isServiceManagedMode)
                 {
-                    MessageBox.Show("The Windows Service is currently active and managing folder processing.\n\nStandalone mode is disabled while the service is running. The service will automatically handle all folder monitoring and processing.", 
+                    SafeMessageBox.Show("The Windows Service is currently active and managing folder processing.\n\nStandalone mode is disabled while the service is running. The service will automatically handle all folder monitoring and processing.", 
                         "Service is Active", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
