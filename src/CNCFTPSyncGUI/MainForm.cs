@@ -3,6 +3,8 @@ using CNCFTPSyncCore.Services;
 using System.ServiceProcess;
 using System.Diagnostics;
 using AutoUpdaterDotNET;
+using System.IO.Pipes;
+using System.Text;
 
 
 namespace CNCFTPSyncGUI
@@ -22,6 +24,11 @@ namespace CNCFTPSyncGUI
         private string _currentLocalPath = "";
         private string _currentRemotePath = "/";
         private FtpService? _ftpService;
+        
+        // Named pipe client for service communication
+        private readonly CancellationTokenSource _pipeClientCancellation = new CancellationTokenSource();
+        private Task? _pipeClientTask;
+        private bool _isServiceManagedMode = false;
 
               private void NavigateLocalTo(string path)
         {
@@ -58,6 +65,10 @@ namespace CNCFTPSyncGUI
                 WriteToLogFile("MainForm: Creating LogService");
                 _logService = new LogService();
                 WriteToLogFile("MainForm: LogService created");
+                
+                WriteToLogFile("MainForm: Starting pipe client for service communication");
+                _pipeClientTask = StartPipeClientAsync(_pipeClientCancellation.Token);
+                WriteToLogFile("MainForm: Pipe client started");
                 
                 WriteToLogFile("MainForm: Loading configuration");
                 _config = _configService.LoadConfiguration();
@@ -669,6 +680,14 @@ namespace CNCFTPSyncGUI
                 {
                     MessageBox.Show("Standalone mode is already running.", "Already Running", 
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                // Check if service is managing the GUI via pipe communication
+                if (_isServiceManagedMode)
+                {
+                    MessageBox.Show("The Windows Service is currently active and managing folder processing.\n\nStandalone mode is disabled while the service is running. The service will automatically handle all folder monitoring and processing.", 
+                        "Service is Active", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
@@ -1385,6 +1404,18 @@ namespace CNCFTPSyncGUI
         {
             if (disposing)
             {
+                // Cancel pipe client
+                _pipeClientCancellation.Cancel();
+                try
+                {
+                    _pipeClientTask?.Wait(TimeSpan.FromSeconds(2));
+                }
+                catch (Exception ex)
+                {
+                    _logService?.LogError("Error waiting for pipe client to stop", ex);
+                }
+                _pipeClientCancellation.Dispose();
+                
                 _orchestrator?.Dispose();
                 _notifyIcon?.Dispose();
                 components?.Dispose();
@@ -2783,7 +2814,107 @@ rd /s /q ""{tempDir}"" 2>nul
             return serviceExePath;
         }
 
-
+        private async Task StartPipeClientAsync(CancellationToken cancellationToken)
+        {
+            const string pipeName = "CNCFTPSync-Control";
+            
+            try
+            {
+                _logService?.LogInfo("Starting named pipe client for service communication");
+                
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    try
+                    {
+                        using (var pipeClient = new NamedPipeClientStream(".", pipeName, PipeDirection.In, PipeOptions.None))
+                        {
+                            _logService?.LogDebug("Attempting to connect to service pipe: " + pipeName);
+                            
+                            // Try to connect to the service pipe
+                            await pipeClient.ConnectAsync(5000, cancellationToken);
+                            
+                            _logService?.LogInfo("Connected to service pipe - service is managing GUI");
+                            _isServiceManagedMode = true;
+                            
+                            // Read commands from service
+                            var buffer = new byte[1024];
+                            var bytesRead = await pipeClient.ReadAsync(buffer, 0, buffer.Length, cancellationToken);
+                            
+                            if (bytesRead > 0)
+                            {
+                                var command = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                                _logService?.LogInfo($"Received command from service: {command}");
+                                
+                                if (command == "STOP_STANDALONE")
+                                {
+                                    _logService?.LogInfo("Service requested to stop standalone mode");
+                                    
+                                    // Stop standalone mode if running
+                                    this.Invoke((Action)(() =>
+                                    {
+                                        if (_orchestrator?.IsRunning == true)
+                                        {
+                                            _logService?.LogInfo("Stopping standalone mode per service request");
+                                            StopStandaloneMode();
+                                        }
+                                        
+                                        // Disable standalone mode while service is active
+                                        btnStartStandalone.Enabled = false;
+                                        _logService?.LogInfo("Standalone mode disabled - service is active");
+                                    }));
+                                }
+                            }
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                    catch (System.TimeoutException)
+                    {
+                        // Service pipe not available - GUI can run standalone
+                        if (_isServiceManagedMode)
+                        {
+                            _logService?.LogInfo("Service pipe disconnected - enabling standalone mode");
+                            _isServiceManagedMode = false;
+                            
+                            this.Invoke((Action)(() =>
+                            {
+                                btnStartStandalone.Enabled = true;
+                            }));
+                        }
+                        
+                        // Wait before retrying connection
+                        await Task.Delay(10000, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logService?.LogDebug($"Pipe client connection failed (normal if service not running): {ex.Message}");
+                        
+                        // Service not available - ensure standalone mode is available
+                        if (_isServiceManagedMode)
+                        {
+                            _isServiceManagedMode = false;
+                            this.Invoke((Action)(() =>
+                            {
+                                btnStartStandalone.Enabled = true;
+                            }));
+                        }
+                        
+                        // Wait before retrying to avoid rapid connection attempts
+                        await Task.Delay(15000, cancellationToken);
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                _logService?.LogInfo("Named pipe client cancelled");
+            }
+            catch (Exception ex)
+            {
+                _logService?.LogError("Fatal error in named pipe client", ex);
+            }
+        }
 
         #endregion
 

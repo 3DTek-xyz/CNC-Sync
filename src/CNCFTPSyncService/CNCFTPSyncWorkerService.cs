@@ -4,6 +4,8 @@ using Microsoft.Extensions.Hosting;
 using NLog;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.IO.Pipes;
+using System.Text;
 
 namespace CNCFTPSyncService
 {
@@ -13,10 +15,13 @@ namespace CNCFTPSyncService
         private readonly IHostApplicationLifetime _hostApplicationLifetime;
         private ISyncOrchestrator? _orchestrator;
         private ILogService? _logService;
+        private readonly CancellationTokenSource _pipeServerCancellation;
+        private Task? _pipeServerTask;
 
         public CNCFTPSyncWorkerService(IHostApplicationLifetime hostApplicationLifetime)
         {
             _hostApplicationLifetime = hostApplicationLifetime;
+            _pipeServerCancellation = new CancellationTokenSource();
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -68,8 +73,11 @@ namespace CNCFTPSyncService
 
                 _logService.LogInfo("G-Code Sync Service started successfully");
                 
+                // Start the named pipe server for GUI communication
+                _pipeServerTask = StartPipeServerAsync(_pipeServerCancellation.Token);
+                
                 // Launch GUI if not already running for current user
-                await LaunchGUIIfNotRunning();
+                LaunchGUIIfNotRunning();
 
                 // Wait for cancellation
                 while (!stoppingToken.IsCancellationRequested)
@@ -104,6 +112,20 @@ namespace CNCFTPSyncService
             {
                 Logger.Info("G-Code Sync Service is stopping");
                 
+                // Stop the pipe server
+                _pipeServerCancellation.Cancel();
+                if (_pipeServerTask != null)
+                {
+                    try
+                    {
+                        await _pipeServerTask;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Expected when cancelling
+                    }
+                }
+                
                 if (_orchestrator != null)
                 {
                     await _orchestrator.StopAsync();
@@ -115,6 +137,10 @@ namespace CNCFTPSyncService
             catch (Exception ex)
             {
                 Logger.Error(ex, "Error stopping G-Code Sync Service");
+            }
+            finally
+            {
+                _pipeServerCancellation.Dispose();
             }
 
             await base.StopAsync(cancellationToken);
@@ -136,7 +162,7 @@ namespace CNCFTPSyncService
             Logger.Debug($"Service status: {status}");
         }
 
-        private async Task LaunchGUIIfNotRunning()
+        private void LaunchGUIIfNotRunning()
         {
             try
             {
@@ -187,6 +213,70 @@ namespace CNCFTPSyncService
             catch (Exception ex)
             {
                 _logService?.LogError("Error launching GUI from service", ex);
+            }
+        }
+
+        private async Task StartPipeServerAsync(CancellationToken cancellationToken)
+        {
+            const string pipeName = "CNCFTPSync-Control";
+            
+            try
+            {
+                _logService?.LogInfo("Starting named pipe server for GUI communication");
+                
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    try
+                    {
+                        using (var pipeServer = new NamedPipeServerStream(pipeName, PipeDirection.Out, 10, PipeTransmissionMode.Message))
+                        {
+                            _logService?.LogDebug("Waiting for GUI connection on pipe: " + pipeName);
+                            
+                            // Wait for a client to connect
+                            await pipeServer.WaitForConnectionAsync(cancellationToken);
+                            
+                            _logService?.LogInfo("GUI connected to pipe server");
+                            
+                            // Send STOP_STANDALONE command to GUI
+                            var command = "STOP_STANDALONE";
+                            var commandBytes = Encoding.UTF8.GetBytes(command);
+                            
+                            await pipeServer.WriteAsync(commandBytes, 0, commandBytes.Length, cancellationToken);
+                            await pipeServer.FlushAsync(cancellationToken);
+                            
+                            _logService?.LogInfo($"Sent command to GUI: {command}");
+                            
+                            // Keep connection open briefly to ensure message is received
+                            await Task.Delay(1000, cancellationToken);
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logService?.LogError("Error in pipe server connection", ex);
+                        
+                        // Wait before retrying to avoid rapid failures
+                        try
+                        {
+                            await Task.Delay(5000, cancellationToken);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                _logService?.LogInfo("Named pipe server cancelled");
+            }
+            catch (Exception ex)
+            {
+                _logService?.LogError("Fatal error in named pipe server", ex);
             }
         }
     }
