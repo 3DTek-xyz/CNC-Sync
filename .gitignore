@@ -1,3 +1,25 @@
+# Build artifacts and output directories
+bin/
+obj/
+*.exe
+*.dll
+*.pdb
+*.msi
+
+# Visual Studio / MSBuild
+.vs/
+*.user
+*.suo
+*.sln.docstates
+
+# NuGet packages
+packages/
+*.nupkg
+
+# Logs
+*.log
+logs/
+
 # macOS metadata files that cause Windows Git issues
 Icon?
 Icon
