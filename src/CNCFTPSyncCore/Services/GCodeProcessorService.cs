@@ -34,24 +34,30 @@ namespace CNCFTPSyncCore.Services
                     return result;
                 }
 
-                // Analyze project to get basic info
-                var projectInfo = AnalyzeProject(projectPath);
-                var projectName = projectInfo.ProjectName;
-                var revision = projectInfo.LatestRevision ?? "unknown";
-                
-                // Determine FTP destination path
-                var ftpDestination = string.IsNullOrEmpty(_config.FtpUploadFolder) 
-                    ? projectName 
-                    : Path.Combine(_config.FtpUploadFolder, projectName).Replace('\\', '/');
+                // Get the FTP upload directory (use local directory if not configured)
+                var ftpUploadDirectory = string.IsNullOrEmpty(_config.FtpUploadFolder) 
+                    ? Path.Combine(Path.GetTempPath(), "CNC-FTP-Upload")
+                    : _config.FtpUploadFolder;
+
+                // Ensure upload directory exists
+                Directory.CreateDirectory(ftpUploadDirectory);
+
+                // Get the current log file path (same pattern as used throughout the system)
+                var sharedDataDirectory = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                    "CNC-FTP-SYNC"
+                );
+                var logDirectory = Path.Combine(sharedDataDirectory, "Logs");
+                var currentLogFile = Path.Combine(logDirectory, $"cnc-ftp-sync-{DateTime.Now:yyyy-MM-dd}.log");
 
                 _logger.LogInfo($"Calling external processor: {_config.ExternalProcessorPath}");
-                _logger.LogInfo($"Arguments: \"{projectPath}\" \"{ftpDestination}\" \"{projectName}\" \"{revision}\"");
+                _logger.LogInfo($"Arguments: \"{projectPath}\" \"{ftpUploadDirectory}\" \"{currentLogFile}\"");
 
-                // Prepare process arguments
+                // Prepare process arguments - source path, upload directory, and log file path
                 var processInfo = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = _config.ExternalProcessorPath,
-                    Arguments = $"\"{projectPath}\" \"{ftpDestination}\" \"{projectName}\" \"{revision}\"",
+                    Arguments = $"\"{projectPath}\" \"{ftpUploadDirectory}\" \"{currentLogFile}\"",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -72,6 +78,23 @@ namespace CNCFTPSyncCore.Services
                 {
                     result.Success = true;
                     result.Message = $"External processor completed successfully";
+                    
+                    // Parse the output path from stdout (first line should be the prepared files path)
+                    var outputLines = output?.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                    if (outputLines?.Length > 0)
+                    {
+                        var preparedPath = outputLines[0].Trim();
+                        if (Directory.Exists(preparedPath))
+                        {
+                            result.ProcessedFiles.Add($"External script prepared files at: {preparedPath}");
+                            _logger.LogInfo($"External processor prepared files at: {preparedPath}");
+                        }
+                        else
+                        {
+                            _logger.LogWarning($"External processor output path does not exist: {preparedPath}");
+                        }
+                    }
+                    
                     result.ProcessedFiles.Add($"External script processed: {projectPath}");
                     
                     if (!string.IsNullOrEmpty(output))

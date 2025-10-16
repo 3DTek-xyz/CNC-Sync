@@ -6,11 +6,15 @@
 # in the CNC-FTP-SYNC configuration.
 #
 # PARAMETERS:
-# The CNC-FTP-SYNC system calls this script with 4 parameters:
-# 1. ProjectPath     - Full path to the source folder that was detected (e.g., "C:\Watch\NewProject_Rev1")  
-# 2. FtpDestination  - Target FTP upload path (e.g., "Upload/NewProject" or just "NewProject")
-# 3. ProjectName     - Extracted project name (e.g., "NewProject") 
-# 4. Revision        - Extracted revision or "unknown" (e.g., "Rev1" or "unknown")
+# The CNC-FTP-SYNC system calls this script with 3 parameters:
+# 1. SourcePath      - Full path to the source folder that was detected by file watcher (e.g., "C:\Watch\NewProject_Rev1")  
+# 2. FtpUploadPath   - Base FTP upload directory path (e.g., "C:\FTPUpload" or "\\server\upload")
+# 3. LogFilePath     - Path to the main CNC-FTP-SYNC log file for integrated logging
+#
+# RETURN VALUES:
+# The script must return:
+# 1. Exit Code: 0 for success, non-zero for failure
+# 2. Output Path: The script outputs the full path to the prepared files (via stdout)
 #
 # USAGE:
 # To use this script:
@@ -20,31 +24,42 @@
 #
 # CUSTOMIZATION:
 # Copy this file and modify it to implement your specific processing needs:
-# - Custom file filtering (not just .gcode files)
+# - Custom file filtering and processing
 # - File transformation or validation
 # - Integration with other systems
-# - Custom logging or reporting
-# - Advanced folder structure handling
+# - Custom naming and folder structure
+# - Advanced error handling and logging
 
 param(
     [Parameter(Mandatory=$true)]
-    [string]$ProjectPath,      # Source folder path
+    [string]$SourcePath,       # Source folder detected by watcher
     
     [Parameter(Mandatory=$true)] 
-    [string]$FtpDestination,   # Target FTP upload path
+    [string]$FtpUploadPath,    # Base FTP upload directory
     
     [Parameter(Mandatory=$true)]
-    [string]$ProjectName,      # Project name
-    
-    [Parameter(Mandatory=$true)]
-    [string]$Revision          # Revision or "unknown"
+    [string]$LogFilePath       # Main application log file path
 )
 
 # Function to write log messages with timestamps
 function Write-Log {
     param([string]$Message, [string]$Level = "INFO")
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    Write-Host "[$timestamp] [$Level] $Message"
+    $logEntry = "[$timestamp] [$Level] [External Script] $Message"
+    
+    # Output to console
+    Write-Host $logEntry
+    
+    # Also append to main application log file
+    try {
+        if (-not [string]::IsNullOrEmpty($LogFilePath) -and (Test-Path (Split-Path $LogFilePath -Parent))) {
+            Add-Content -Path $LogFilePath -Value $logEntry -Encoding UTF8
+        }
+    }
+    catch {
+        # If log file writing fails, don't break the script - just output to console
+        Write-Host "[$timestamp] [WARNING] [External Script] Failed to write to log file: $($_.Exception.Message)"
+    }
 }
 
 # Function to safely copy files with error handling
@@ -74,29 +89,29 @@ function Copy-FileSafely {
 # Main processing logic starts here
 Write-Log "=== CNC-FTP-SYNC External Script Processing Started ==="
 Write-Log "Script: SimpleFolderCopy.ps1"
-Write-Log "ProjectPath: $ProjectPath"
-Write-Log "FtpDestination: $FtpDestination" 
-Write-Log "ProjectName: $ProjectName"
-Write-Log "Revision: $Revision"
+Write-Log "SourcePath: $SourcePath"
+Write-Log "FtpUploadPath: $FtpUploadPath"
+Write-Log "LogFilePath: $LogFilePath"
 
 # Validate that source folder exists
-if (-not (Test-Path $ProjectPath -PathType Container)) {
-    Write-Log "ERROR: Source folder does not exist: $ProjectPath" "ERROR"
+if (-not (Test-Path $SourcePath -PathType Container)) {
+    Write-Log "ERROR: Source folder does not exist: $SourcePath" "ERROR"
     exit 1
 }
 
-# Get the configured FTP upload directory from CNC-FTP-SYNC
-# In this demo, we assume it's a local folder for simplicity
-# In real scenarios, this might be the local FTP staging area
-$baseUploadPath = Split-Path $FtpDestination -Parent
-if ([string]::IsNullOrEmpty($baseUploadPath)) {
-    # If no parent path, assume current working directory or default upload location
-    $baseUploadPath = Join-Path $env:TEMP "CNC-FTP-Upload"
+# Validate that FTP upload base path exists
+if (-not (Test-Path $FtpUploadPath -PathType Container)) {
+    Write-Log "ERROR: FTP upload path does not exist: $FtpUploadPath" "ERROR"
+    exit 1
 }
 
-# Create the full destination path  
-$fullDestinationPath = Join-Path $baseUploadPath $ProjectName
+# Extract folder name from source path for destination
+$sourceFolderName = Split-Path $SourcePath -Leaf
 
+# Create the full destination path within FTP upload directory
+$fullDestinationPath = Join-Path $FtpUploadPath $sourceFolderName
+
+Write-Log "Source folder name: $sourceFolderName"
 Write-Log "Destination folder: $fullDestinationPath"
 
 # Create destination directory if it doesn't exist
@@ -112,7 +127,7 @@ catch {
 }
 
 # Get all files from source folder recursively
-$sourceFiles = Get-ChildItem -Path $ProjectPath -File -Recurse
+$sourceFiles = Get-ChildItem -Path $SourcePath -File -Recurse
 
 Write-Log "Found $($sourceFiles.Count) files to process"
 
@@ -122,7 +137,7 @@ $failCount = 0
 
 foreach ($file in $sourceFiles) {
     # Calculate relative path from source root
-    $relativePath = $file.FullName.Substring($ProjectPath.Length).TrimStart('\', '/')
+    $relativePath = $file.FullName.Substring($SourcePath.Length).TrimStart('\', '/')
     
     # Build destination path maintaining folder structure
     $destFile = Join-Path $fullDestinationPath $relativePath
@@ -142,12 +157,14 @@ Write-Log "Successfully copied: $successCount files"
 if ($failCount -gt 0) {
     Write-Log "Failed to copy: $failCount files" "ERROR"
 }
-Write-Log "Destination: $fullDestinationPath"
+Write-Log "Prepared files location: $fullDestinationPath"
 Write-Log "==============================================="
 
-# Exit with appropriate code
+# Output the path to prepared files (for service to capture)
 if ($failCount -eq 0) {
     Write-Log "Script completed successfully" "SUCCESS"
+    # Output the destination path to stdout for the service
+    Write-Output $fullDestinationPath
     exit 0
 } else {
     Write-Log "Script completed with errors" "ERROR" 
