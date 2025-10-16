@@ -143,12 +143,23 @@ namespace CNCFTPSyncCore.Services
                     {
                         _logger.LogInfo($"External processor output: {output.Trim()}");
                     }
+                    
+                    if (!string.IsNullOrEmpty(error))
+                    {
+                        _logger.LogWarning($"External processor stderr: {error.Trim()}");
+                    }
                 }
                 else
                 {
                     result.Success = false;
                     result.Message = $"External processor failed with exit code: {process.ExitCode}";
                     result.Errors.Add($"Exit code: {process.ExitCode}");
+                    
+                    // Log both stdout and stderr for failed processes
+                    if (!string.IsNullOrEmpty(output))
+                    {
+                        _logger.LogInfo($"External processor output (failed run): {output.Trim()}");
+                    }
                     
                     if (!string.IsNullOrEmpty(error))
                     {

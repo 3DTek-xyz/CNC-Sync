@@ -41,6 +41,56 @@ param(
     [string]$LogFilePath       # Main application log file path
 )
 
+#############################################################################
+# HELPER FUNCTIONS
+#############################################################################
+
+# Function to write log messages with timestamps
+function Write-Log {
+    param([string]$Message, [string]$Level = "INFO")
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $logEntry = "[$timestamp] [$Level] [External Script] $Message"
+    
+    # Output to console for service to capture
+    Write-Host $logEntry
+    
+    # Also append to main application log file
+    try {
+        if (-not [string]::IsNullOrEmpty($LogFilePath) -and (Test-Path (Split-Path $LogFilePath -Parent))) {
+            Add-Content -Path $LogFilePath -Value $logEntry -Encoding UTF8
+        }
+    }
+    catch {
+        # If log file writing fails, don't break the script - just output to console
+        Write-Host "[$timestamp] [WARNING] [External Script] Failed to write to log file: $($_.Exception.Message)"
+    }
+}
+
+# Function to safely copy files with error handling
+function Copy-FileSafely {
+    param(
+        [string]$Source,
+        [string]$Destination
+    )
+    
+    try {
+        # Ensure destination directory exists
+        $destDir = Split-Path $Destination -Parent
+        if (-not (Test-Path $destDir)) {
+            New-Item -ItemType Directory -Path $destDir -Force | Out-Null
+        }
+        
+        Copy-Item -Path $Source -Destination $Destination -Force
+        Write-Log "Copied: $(Split-Path $Source -Leaf) -> $(Split-Path $Destination -Leaf)"
+        return $true
+    }
+    catch {
+        Write-Log "Failed to copy $Source to $Destination : $($_.Exception.Message)" "ERROR"
+        return $false
+    }
+}
+
+#############################################################################
 # Main processing logic starts here
 Write-Log "=== CNC-FTP-SYNC External Script Processing Started ==="
 Write-Log "Script: SimpleFolderCopy.ps1"
@@ -124,53 +174,4 @@ if ($failCount -eq 0) {
 } else {
     Write-Log "Script completed with errors" "ERROR" 
     exit 1
-}
-
-#############################################################################
-# HELPER FUNCTIONS (Do not modify unless you need custom functionality)
-#############################################################################
-
-# Function to write log messages with timestamps
-function Write-Log {
-    param([string]$Message, [string]$Level = "INFO")
-    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    $logEntry = "[$timestamp] [$Level] [External Script] $Message"
-    
-    # Output to console
-    Write-Host $logEntry
-    
-    # Also append to main application log file
-    try {
-        if (-not [string]::IsNullOrEmpty($LogFilePath) -and (Test-Path (Split-Path $LogFilePath -Parent))) {
-            Add-Content -Path $LogFilePath -Value $logEntry -Encoding UTF8
-        }
-    }
-    catch {
-        # If log file writing fails, don't break the script - just output to console
-        Write-Host "[$timestamp] [WARNING] [External Script] Failed to write to log file: $($_.Exception.Message)"
-    }
-}
-
-# Function to safely copy files with error handling
-function Copy-FileSafely {
-    param(
-        [string]$Source,
-        [string]$Destination
-    )
-    
-    try {
-        # Ensure destination directory exists
-        $destDir = Split-Path $Destination -Parent
-        if (-not (Test-Path $destDir)) {
-            New-Item -ItemType Directory -Path $destDir -Force | Out-Null
-        }
-        
-        Copy-Item -Path $Source -Destination $Destination -Force
-        Write-Log "Copied: $(Split-Path $Source -Leaf) -> $(Split-Path $Destination -Leaf)"
-        return $true
-    }
-    catch {
-        Write-Log "Failed to copy $Source to $Destination : $($_.Exception.Message)" "ERROR"
-        return $false
-    }
 }
