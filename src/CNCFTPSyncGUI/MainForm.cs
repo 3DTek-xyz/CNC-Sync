@@ -2852,8 +2852,6 @@ rd /s /q ""{tempDir}"" 2>nul
                     {
                         using (var pipeClient = new NamedPipeClientStream(".", pipeName, PipeDirection.In, PipeOptions.None))
                         {
-                            _logService?.LogDebug("Attempting to connect to service pipe: " + pipeName);
-                            
                             // Try to connect to the service pipe
                             await pipeClient.ConnectAsync(5000, cancellationToken);
                             
