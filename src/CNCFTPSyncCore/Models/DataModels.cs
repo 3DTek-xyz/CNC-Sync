@@ -11,6 +11,10 @@ namespace CNCFTPSyncCore.Models
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }
         public TimeSpan Duration => EndTime - StartTime;
+        /// <summary>
+        /// Output path for processed files, used for FTP upload when external processors are used
+        /// </summary>
+        public string OutputPath { get; set; } = string.Empty;
     }
 
     public class ProjectInfo

@@ -86,6 +86,7 @@ namespace CNCFTPSyncCore.Services
                         var preparedPath = outputLines[0].Trim();
                         if (Directory.Exists(preparedPath))
                         {
+                            result.OutputPath = preparedPath;
                             result.ProcessedFiles.Add($"External script prepared files at: {preparedPath}");
                             _logger.LogInfo($"External processor prepared files at: {preparedPath}");
                         }

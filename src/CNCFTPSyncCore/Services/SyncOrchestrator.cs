@@ -205,35 +205,52 @@ namespace CNCFTPSyncCore.Services
                 SetStatus("Uploading to FTP...");
                 _logger.LogInfo("Starting FTP upload...");
 
-                // Find the corresponding folder in the FTP upload directory
-                var projectName = Path.GetFileName(originalFolderPath);
-                var ftpFolders = Directory.GetDirectories(_config.FtpUploadFolder, $"{projectName}-*");
+                string folderToUpload;
+                string folderDisplayName;
 
-                if (ftpFolders.Length == 0)
+                // Check if external script provided a specific output path
+                if (!string.IsNullOrEmpty(processingResult.OutputPath) && Directory.Exists(processingResult.OutputPath))
                 {
-                    _logger.LogWarning($"No FTP upload folder found for project: {projectName}");
-                    return;
-                }
-
-                // Upload the most recently created folder (should be the one we just processed)
-                var latestFolder = ftpFolders
-                    .Select(f => new DirectoryInfo(f))
-                    .OrderByDescending(d => d.CreationTime)
-                    .First();
-
-                var uploadSuccess = await _ftpService.UploadDirectoryAsync(latestFolder.FullName);
-                
-                if (uploadSuccess)
-                {
-                    _logger.LogInfo($"FTP upload completed successfully: {latestFolder.Name}");
-                    
-                    // Optionally, clean up the local FTP folder after successful upload
-                    // Directory.Delete(latestFolder.FullName, true);
-                    // _logger.LogInfo($"Cleaned up local FTP folder: {latestFolder.Name}");
+                    folderToUpload = processingResult.OutputPath;
+                    folderDisplayName = Path.GetFileName(processingResult.OutputPath);
+                    _logger.LogInfo($"Using external script output path for FTP upload: {folderToUpload}");
                 }
                 else
                 {
-                    _logger.LogError($"FTP upload failed for: {latestFolder.Name}");
+                    // Standard processing: find the corresponding folder in the FTP upload directory
+                    var projectName = Path.GetFileName(originalFolderPath);
+                    var ftpFolders = Directory.GetDirectories(_config.FtpUploadFolder, $"{projectName}-*");
+
+                    if (ftpFolders.Length == 0)
+                    {
+                        _logger.LogWarning($"No FTP upload folder found for project: {projectName}");
+                        return;
+                    }
+
+                    // Upload the most recently created folder (should be the one we just processed)
+                    var latestFolder = ftpFolders
+                        .Select(f => new DirectoryInfo(f))
+                        .OrderByDescending(d => d.CreationTime)
+                        .First();
+                    
+                    folderToUpload = latestFolder.FullName;
+                    folderDisplayName = latestFolder.Name;
+                    _logger.LogInfo($"Using standard processing folder for FTP upload: {folderToUpload}");
+                }
+
+                var uploadSuccess = await _ftpService.UploadDirectoryAsync(folderToUpload);
+                
+                if (uploadSuccess)
+                {
+                    _logger.LogInfo($"FTP upload completed successfully: {folderDisplayName}");
+                    
+                    // Optionally, clean up the local FTP folder after successful upload
+                    // Directory.Delete(folderToUpload, true);
+                    // _logger.LogInfo($"Cleaned up local FTP folder: {folderDisplayName}");
+                }
+                else
+                {
+                    _logger.LogError($"FTP upload failed for: {folderDisplayName}");
                 }
             }
             catch (Exception ex)
