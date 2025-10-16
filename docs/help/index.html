@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CNC-FTP-SYNC - Complete How-To Guide</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f8f9fa;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+        
+        .nav {
+            background: white;
+            padding: 1rem 0;
+            border-bottom: 1px solid #eee;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .nav ul {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 2rem;
+        }
+        
+        .nav a {
+            text-decoration: none;
+            color: #667eea;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+        
+        .nav a:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .content {
+            background: white;
+            margin: 2rem 0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .section {
+            padding: 3rem;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .section:last-child {
+            border-bottom: none;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        h2 {
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            color: #667eea;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        h3 {
+            font-size: 1.5rem;
+            margin: 2rem 0 1rem 0;
+            color: #333;
+        }
+        
+        .step {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .step h4 {
+            color: #667eea;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+        }
+        
+        .warning strong {
+            color: #856404;
+        }
+        
+        .tip {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+        }
+        
+        .tip strong {
+            color: #0c5460;
+        }
+        
+        .code {
+            background: #f1f3f4;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .feature-card {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .back-to-main {
+            text-align: center;
+            padding: 2rem;
+            background: #667eea;
+            color: white;
+        }
+        
+        .back-to-main a {
+            color: white;
+            text-decoration: none;
+            padding: 1rem 2rem;
+            background: rgba(255,255,255,0.2);
+            border-radius: 6px;
+            font-weight: bold;
+        }
+        
+        .back-to-main a:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        @media (max-width: 768px) {
+            .nav ul {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .section {
+                padding: 2rem 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <h1>🚀 CNC-FTP-SYNC Complete How-To Guide</h1>
+            <p>Everything you need to know to use CNC-FTP-SYNC effectively</p>
+        </div>
+    </div>
+    
+    <div class="nav">
+        <div class="container">
+            <ul>
+                <li><a href="#installation">📦 Installation</a></li>
+                <li><a href="#configuration">⚙️ Configuration</a></li>
+                <li><a href="#userscripts">📜 UserScripts</a></li>
+                <li><a href="#monitoring">👀 Monitoring</a></li>
+                <li><a href="#troubleshooting">🔧 Troubleshooting</a></li>
+                <li><a href="#advanced">🎯 Advanced</a></li>
+            </ul>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="content">
+            
+            <!-- Installation Section -->
+            <div class="section" id="installation">
+                <h2>📦 Installation & Setup</h2>
+                
+                <h3>System Requirements</h3>
+                <ul>
+                    <li><strong>Windows 10</strong> or <strong>Windows 11</strong></li>
+                    <li><strong>Administrator privileges</strong> for installation</li>
+                    <li><strong>FTP server access</strong> for uploads</li>
+                    <li><strong>.NET 8.0 Runtime</strong> (included in installer)</li>
+                </ul>
+                
+                <h3>Installation Steps</h3>
+                
+                <div class="step">
+                    <h4>🔽 Step 1: Download</h4>
+                    <p>Download the latest installer from the <a href="../">main page</a> or <a href="../installer/CNC-FTP-SYNC-Setup-Latest.msi">direct download</a>.</p>
+                </div>
+                
+                <div class="step">
+                    <h4>🛡️ Step 2: Run as Administrator</h4>
+                    <p>Right-click the installer and select <strong>"Run as administrator"</strong>. This is required for Windows Service installation.</p>
+                </div>
+                
+                <div class="step">
+                    <h4>📂 Step 3: Choose Installation Location</h4>
+                    <p>Default location: <span class="code">C:\Program Files\CNC-FTP-SYNC\</span></p>
+                    <p>The installer will also create:</p>
+                    <ul>
+                        <li><span class="code">C:\ProgramData\CNC-FTP-SYNC\</span> - Configuration files</li>
+                        <li><span class="code">C:\Program Files\CNC-FTP-SYNC\UserScripts\</span> - Custom scripts</li>
+                    </ul>
+                </div>
+                
+                <div class="step">
+                    <h4>🎯 Step 4: Service Installation</h4>
+                    <p>The installer automatically:</p>
+                    <ul>
+                        <li>Installs the Windows Service</li>
+                        <li>Creates desktop shortcut</li>
+                        <li>Adds Start Menu entries</li>
+                        <li>Sets up UserScripts folder with demo script</li>
+                    </ul>
+                </div>
+                
+                <div class="warning">
+                    <strong>⚠️ Important:</strong> If you see "Service failed to start" during installation, this is normal on first install. Launch the GUI and start the service manually.
+                </div>
+            </div>
+            
+            <!-- Configuration Section -->
+            <div class="section" id="configuration">
+                <h2>⚙️ Configuration Guide</h2>
+                
+                <h3>First Launch</h3>
+                <p>After installation, launch CNC-FTP-SYNC from the desktop shortcut or Start Menu.</p>
+                
+                <div class="step">
+                    <h4>🗂️ Folder Settings</h4>
+                    <p><strong>Source Folder:</strong> Where you drop new G-code projects</p>
+                    <p><strong>Destination Folder:</strong> Where processed files are organized</p>
+                    <p><strong>Archive Folder:</strong> Where completed projects are stored</p>
+                </div>
+                
+                <div class="step">
+                    <h4>🌐 FTP Configuration</h4>
+                    <p>Configure your FTP server details:</p>
+                    <ul>
+                        <li><strong>Server:</strong> Your FTP server address</li>
+                        <li><strong>Username:</strong> FTP login username</li>
+                        <li><strong>Password:</strong> FTP login password</li>
+                        <li><strong>Port:</strong> Usually 21 (default)</li>
+                        <li><strong>Upload Path:</strong> Remote directory path</li>
+                    </ul>
+                </div>
+                
+                <div class="step">
+                    <h4>🔄 Processing Options</h4>
+                    <ul>
+                        <li><strong>Auto-start monitoring:</strong> Begin watching folders immediately</li>
+                        <li><strong>Delete source after processing:</strong> Clean up original files</li>
+                        <li><strong>Enable logging:</strong> Detailed operation logs</li>
+                    </ul>
+                </div>
+                
+                <div class="tip">
+                    <strong>💡 Pro Tip:</strong> Use the "Test FTP Connection" button to verify your settings before starting monitoring.
+                </div>
+                
+                <h3>Service vs Standalone Mode</h3>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>🔧 Service Mode (Recommended)</h4>
+                        <ul>
+                            <li>Runs automatically at startup</li>
+                            <li>Works without user login</li>
+                            <li>Continues running in background</li>
+                            <li>Professional deployment</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>👤 Standalone Mode</h4>
+                        <ul>
+                            <li>Only runs when GUI is open</li>
+                            <li>Requires user to be logged in</li>
+                            <li>Good for testing/development</li>
+                            <li>Manual control</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- UserScripts Section -->
+            <div class="section" id="userscripts">
+                <h2>📜 UserScripts Guide</h2>
+                
+                <p>UserScripts let you add custom processing logic to CNC-FTP-SYNC. Scripts run after G-code processing but before FTP upload.</p>
+                
+                <h3>Script Location</h3>
+                <p>Place your scripts in: <span class="code">C:\Program Files\CNC-FTP-SYNC\UserScripts\</span></p>
+                
+                <h3>Supported Script Types</h3>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>📜 PowerShell (.ps1)</h4>
+                        <p>Most flexible option with full .NET access</p>
+                        <div class="code">MyScript.ps1</div>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>📄 Batch Files (.bat/.cmd)</h4>
+                        <p>Simple command-line operations</p>
+                        <div class="code">MyScript.bat</div>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>⚡ Executables (.exe)</h4>
+                        <p>Compiled programs for complex operations</p>
+                        <div class="code">MyProgram.exe</div>
+                    </div>
+                </div>
+                
+                <h3>Script Parameters</h3>
+                <p>Your script receives exactly 3 parameters:</p>
+                
+                <div class="step">
+                    <h4>📥 Parameter 1: Input Folder Path</h4>
+                    <p>Full path to the processed G-code folder</p>
+                    <div class="code">C:\ProcessedProjects\MyProject\</div>
+                </div>
+                
+                <div class="step">
+                    <h4>📤 Parameter 2: Expected Output Path</h4>
+                    <p>Where your script should place the final result</p>
+                    <div class="code">C:\ReadyForUpload\MyProject\</div>
+                </div>
+                
+                <div class="step">
+                    <h4>📋 Parameter 3: Project Name</h4>
+                    <p>The name of the current project</p>
+                    <div class="code">MyProject</div>
+                </div>
+                
+                <h3>Demo Script Example</h3>
+                <p>A demo script <span class="code">SimpleFolderCopy.ps1</span> is included:</p>
+                
+                <div class="code" style="white-space: pre-line; padding: 1rem;">param(
+    [string]$InputFolderPath,
+    [string]$OutputFolderPath, 
+    [string]$ProjectName
+)
+
+# Your custom processing logic here
+Write-Host "Processing project: $ProjectName"
+Write-Host "Input: $InputFolderPath"
+Write-Host "Output: $OutputFolderPath"
+
+# Copy files with your modifications
+Copy-Item -Path $InputFolderPath -Destination $OutputFolderPath -Recurse -Force
+                </div>
+                
+                <div class="warning">
+                    <strong>⚠️ Important:</strong> Your script MUST create the output folder and place files there. CNC-FTP-SYNC will upload whatever is in the output folder.
+                </div>
+                
+                <h3>Script Execution Order</h3>
+                <ol>
+                    <li>CNC-FTP-SYNC processes G-code files</li>
+                    <li>Your UserScript runs with the processed files</li>
+                    <li>CNC-FTP-SYNC uploads your script's output to FTP</li>
+                    <li>Files are archived for future reference</li>
+                </ol>
+            </div>
+            
+            <!-- Monitoring Section -->
+            <div class="section" id="monitoring">
+                <h2>👀 Monitoring & Status</h2>
+                
+                <h3>Real-time Status</h3>
+                <p>The GUI provides comprehensive monitoring of all operations:</p>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>📊 Current Activity</h4>
+                        <ul>
+                            <li>Files being processed</li>
+                            <li>Upload progress</li>
+                            <li>Service status</li>
+                            <li>Last operation time</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>📈 Statistics</h4>
+                        <ul>
+                            <li>Total files processed</li>
+                            <li>Successful uploads</li>
+                            <li>Error count</li>
+                            <li>Processing time</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <h3>Service Management</h3>
+                
+                <div class="step">
+                    <h4>🔍 Service Status</h4>
+                    <p>Use <strong>Help → Service Status</strong> to check:</p>
+                    <ul>
+                        <li>✅ Service installed and running</li>
+                        <li>⚠️ Service installed but stopped</li>
+                        <li>❌ Service not installed</li>
+                        <li>🔄 Service starting/stopping</li>
+                    </ul>
+                </div>
+                
+                <div class="step">
+                    <h4>▶️ Start/Stop Service</h4>
+                    <p>Use <strong>File → Start Service</strong> or <strong>Stop Service</strong></p>
+                    <p>Also available in system tray right-click menu</p>
+                </div>
+                
+                <h3>Log Files</h3>
+                <p>Detailed logs are saved to: <span class="code">C:\ProgramData\CNC-FTP-SYNC\logs\</span></p>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>📝 Application Logs</h4>
+                        <p>General operation logs with timestamps</p>
+                        <div class="code">app-YYYY-MM-DD.log</div>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🚨 Error Logs</h4>
+                        <p>Detailed error information for troubleshooting</p>
+                        <div class="code">error-YYYY-MM-DD.log</div>
+                    </div>
+                </div>
+                
+                <div class="tip">
+                    <strong>💡 Pro Tip:</strong> Log files automatically rotate daily and old files are cleaned up to save disk space.
+                </div>
+            </div>
+            
+            <!-- Troubleshooting Section -->
+            <div class="section" id="troubleshooting">
+                <h2>🔧 Troubleshooting Guide</h2>
+                
+                <h3>Common Issues</h3>
+                
+                <div class="step">
+                    <h4>❌ Service Won't Start</h4>
+                    <p><strong>Symptoms:</strong> "Service failed to start" error</p>
+                    <p><strong>Solutions:</strong></p>
+                    <ul>
+                        <li>Run GUI as Administrator</li>
+                        <li>Check Windows Event Viewer for details</li>
+                        <li>Verify configuration file is not corrupted</li>
+                        <li>Restart Windows and try again</li>
+                    </ul>
+                </div>
+                
+                <div class="step">
+                    <h4>🌐 FTP Connection Problems</h4>
+                    <p><strong>Symptoms:</strong> Upload failures, connection timeouts</p>
+                    <p><strong>Solutions:</strong></p>
+                    <ul>
+                        <li>Use "Test FTP Connection" button</li>
+                        <li>Verify server address and credentials</li>
+                        <li>Check firewall and antivirus settings</li>
+                        <li>Try different FTP port (21, 22, 990)</li>
+                    </ul>
+                </div>
+                
+                <div class="step">
+                    <h4>📜 UserScript Not Running</h4>
+                    <p><strong>Symptoms:</strong> Files processed but script not executed</p>
+                    <p><strong>Solutions:</strong></p>
+                    <ul>
+                        <li>Check script file permissions</li>
+                        <li>Verify script syntax (test manually)</li>
+                        <li>Review log files for script errors</li>
+                        <li>Ensure PowerShell execution policy allows scripts</li>
+                    </ul>
+                </div>
+                
+                <div class="step">
+                    <h4>📁 Files Not Being Processed</h4>
+                    <p><strong>Symptoms:</strong> New files ignored in source folder</p>
+                    <p><strong>Solutions:</strong></p>
+                    <ul>
+                        <li>Check folder permissions</li>
+                        <li>Verify file formats are supported</li>
+                        <li>Ensure monitoring is enabled</li>
+                        <li>Restart monitoring or service</li>
+                    </ul>
+                </div>
+                
+                <h3>Getting Help</h3>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>📋 Collect Information</h4>
+                        <ul>
+                            <li>Check log files first</li>
+                            <li>Note exact error messages</li>
+                            <li>Record steps to reproduce</li>
+                            <li>Check Windows Event Viewer</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🆘 Contact Support</h4>
+                        <ul>
+                            <li>Include log files with your report</li>
+                            <li>Describe your configuration</li>
+                            <li>Mention Windows version</li>
+                            <li>Provide error screenshots</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="warning">
+                    <strong>⚠️ PowerShell Execution Policy:</strong> If scripts don't run, you may need to enable PowerShell script execution:
+                    <div class="code">Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser</div>
+                </div>
+            </div>
+            
+            <!-- Advanced Section -->
+            <div class="section" id="advanced">
+                <h2>🎯 Advanced Configuration</h2>
+                
+                <h3>Configuration File</h3>
+                <p>Advanced users can directly edit: <span class="code">C:\ProgramData\CNC-FTP-SYNC\config.json</span></p>
+                
+                <div class="warning">
+                    <strong>⚠️ Caution:</strong> Always backup the configuration file before making manual changes. Invalid JSON will prevent the application from starting.
+                </div>
+                
+                <h3>Command Line Options</h3>
+                <p>The service executable supports command line parameters for automation:</p>
+                
+                <div class="code" style="white-space: pre-line;">CNCFTPSyncService.exe --install    # Install service
+CNCFTPSyncService.exe --uninstall  # Remove service
+CNCFTPSyncService.exe --start      # Start service
+CNCFTPSyncService.exe --stop       # Stop service</div>
+                
+                <h3>Network Configuration</h3>
+                
+                <div class="step">
+                    <h4>🔒 Firewall Settings</h4>
+                    <p>Ensure Windows Firewall allows:</p>
+                    <ul>
+                        <li>Outbound FTP connections (port 21)</li>
+                        <li>FTP passive mode data connections</li>
+                        <li>Any custom FTP ports you're using</li>
+                    </ul>
+                </div>
+                
+                <div class="step">
+                    <h4>🛡️ Antivirus Exclusions</h4>
+                    <p>Add these folders to antivirus exclusions:</p>
+                    <ul>
+                        <li><span class="code">C:\Program Files\CNC-FTP-SYNC\</span></li>
+                        <li><span class="code">C:\ProgramData\CNC-FTP-SYNC\</span></li>
+                        <li>Your source and destination folders</li>
+                    </ul>
+                </div>
+                
+                <h3>Scaling for High Volume</h3>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>⚡ Performance Tips</h4>
+                        <ul>
+                            <li>Use SSD storage for processing folders</li>
+                            <li>Exclude processing folders from antivirus real-time scanning</li>
+                            <li>Consider dedicated network connection for FTP</li>
+                            <li>Monitor system resources during peak usage</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>📊 Monitoring</h4>
+                        <ul>
+                            <li>Set up log file monitoring</li>
+                            <li>Monitor disk space usage</li>
+                            <li>Track processing times</li>
+                            <li>Set up alerts for failures</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <h3>Backup & Recovery</h3>
+                
+                <div class="step">
+                    <h4>💾 What to Backup</h4>
+                    <ul>
+                        <li><span class="code">C:\ProgramData\CNC-FTP-SYNC\config.json</span> - Your configuration</li>
+                        <li><span class="code">C:\Program Files\CNC-FTP-SYNC\UserScripts\</span> - Custom scripts</li>
+                        <li>Archive folder contents - Processed projects</li>
+                    </ul>
+                </div>
+                
+                <div class="step">
+                    <h4>🔄 Recovery Process</h4>
+                    <ol>
+                        <li>Reinstall CNC-FTP-SYNC</li>
+                        <li>Stop the service</li>
+                        <li>Restore configuration and scripts</li>
+                        <li>Start the service</li>
+                        <li>Verify configuration in GUI</li>
+                    </ol>
+                </div>
+            </div>
+            
+        </div>
+        
+        <div class="back-to-main">
+            <p>Ready to get started?</p>
+            <a href="../">⬅️ Back to Download Page</a>
+        </div>
+    </div>
+</body>
+</html>

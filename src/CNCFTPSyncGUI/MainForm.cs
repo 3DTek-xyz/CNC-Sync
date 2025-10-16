@@ -144,6 +144,8 @@ namespace CNCFTPSyncGUI
             contextMenu.Items.Add("Install Service", null, InstallService_Click);
             contextMenu.Items.Add("Uninstall Service", null, UninstallService_Click);
             contextMenu.Items.Add("-");
+            contextMenu.Items.Add("How To Guide", null, HowTo_Click);
+            contextMenu.Items.Add("-");
             contextMenu.Items.Add("Exit", null, Exit_Click);
 
             _notifyIcon.ContextMenuStrip = contextMenu;
@@ -2588,6 +2590,32 @@ namespace CNCFTPSyncGUI
             catch (Exception ex)
             {
                 _logService.LogError($"Error showing application from tray: {ex.Message}");
+            }
+        }
+
+        private void HowTo_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                const string helpUrl = "https://3dtek-xyz.github.io/CNC-FTPSync/help/";
+                
+                _logService.LogInfo("Opening How To guide in default browser");
+                
+                // Use ProcessStartInfo for better control
+                var psi = new ProcessStartInfo
+                {
+                    FileName = helpUrl,
+                    UseShellExecute = true
+                };
+                
+                Process.Start(psi);
+                _logService.LogInfo($"How To guide opened: {helpUrl}");
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError($"Error opening How To guide: {ex.Message}");
+                MessageBox.Show("Could not open How To guide. Please visit:\nhttps://3dtek-xyz.github.io/CNC-FTPSync/help/", 
+                    "Error Opening Help", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 

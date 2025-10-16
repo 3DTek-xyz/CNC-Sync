@@ -16,6 +16,7 @@ namespace CNCFTPSyncGUI
         private ToolStripMenuItem stopServiceToolStripMenuItem;
         private ToolStripMenuItem serviceStatusToolStripMenuItem;
         private ToolStripMenuItem helpToolStripMenuItem;
+        private ToolStripMenuItem howToToolStripMenuItem;
         private ToolStripMenuItem aboutToolStripMenuItem;
         private NotifyIcon notifyIcon;
         private ContextMenuStrip trayContextMenu;
@@ -133,6 +134,7 @@ namespace CNCFTPSyncGUI
             this.closeToTrayToolStripMenuItem = new ToolStripMenuItem();
             this.closeFullyToolStripMenuItem = new ToolStripMenuItem();
             this.checkForUpdatesToolStripMenuItem = new ToolStripMenuItem();
+            this.howToToolStripMenuItem = new ToolStripMenuItem();
             this.uninstallAndCloseToolStripMenuItem = new ToolStripMenuItem();
             this.serviceToolStripMenuItem = new ToolStripMenuItem();
             this.installServiceToolStripMenuItem = new ToolStripMenuItem();
@@ -737,6 +739,13 @@ namespace CNCFTPSyncGUI
                 this.helpToolStripMenuItem.Size = new Size(44, 20);
                 this.helpToolStripMenuItem.Text = "&Help";
                 
+                // How To menu item
+                this.howToToolStripMenuItem = new ToolStripMenuItem();
+                this.howToToolStripMenuItem.Name = "howToToolStripMenuItem";
+                this.howToToolStripMenuItem.Size = new Size(152, 22);
+                this.howToToolStripMenuItem.Text = "&How To Guide...";
+                this.howToToolStripMenuItem.Click += new EventHandler(this.HowTo_Click);
+                
                 // About menu item
                 this.aboutToolStripMenuItem = new ToolStripMenuItem();
                 this.aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
@@ -745,9 +754,12 @@ namespace CNCFTPSyncGUI
                 this.aboutToolStripMenuItem.Click += new EventHandler(this.About_Click);
                 
                 // Add items to Help menu
+                if (this.howToToolStripMenuItem == null) throw new Exception("howToToolStripMenuItem is null before Add");
                 if (this.aboutToolStripMenuItem == null) throw new Exception("aboutToolStripMenuItem is null before Add");
                 if (this.checkForUpdatesToolStripMenuItem == null) throw new Exception("checkForUpdatesToolStripMenuItem is null before Add");
                 this.helpToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] {
+                    this.howToToolStripMenuItem,
+                    new ToolStripSeparator(),
                     this.checkForUpdatesToolStripMenuItem,
                     new ToolStripSeparator(),
                     this.aboutToolStripMenuItem});
