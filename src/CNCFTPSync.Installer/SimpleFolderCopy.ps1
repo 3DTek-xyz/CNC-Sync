@@ -51,18 +51,15 @@ function Write-Log {
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     $logEntry = "[$timestamp] [$Level] [External Script] $Message"
     
-    # Output to console for service to capture
-    Write-Host $logEntry
-    
-    # Also append to main application log file
+    # Only write to log file, NOT to stdout - stdout is reserved for return path
     try {
         if (-not [string]::IsNullOrEmpty($LogFilePath) -and (Test-Path (Split-Path $LogFilePath -Parent))) {
             Add-Content -Path $LogFilePath -Value $logEntry -Encoding UTF8
         }
     }
     catch {
-        # If log file writing fails, don't break the script - just output to console
-        Write-Host "[$timestamp] [WARNING] [External Script] Failed to write to log file: $($_.Exception.Message)"
+        # If log file writing fails, write to stderr instead of stdout to avoid polluting return path
+        Write-Error "[$timestamp] [WARNING] [External Script] Failed to write to log file: $($_.Exception.Message)"
     }
 }
 
@@ -168,8 +165,8 @@ Write-Log "==============================================="
 # Output the path to prepared files (for service to capture)
 if ($failCount -eq 0) {
     Write-Log "Script completed successfully" "SUCCESS"
-    # Output the destination path to stdout for the service
-    Write-Output $fullDestinationPath
+    # Output the destination path to stdout with Path= prefix for easy parsing
+    Write-Output "Path=$fullDestinationPath"
     exit 0
 } else {
     Write-Log "Script completed with errors" "ERROR" 

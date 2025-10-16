@@ -208,7 +208,7 @@ namespace CNCFTPSyncGUI
             try
             {
                 _logService.LogInfo("=== AutoUpdater XML Parse Event ===");
-                _logService.LogInfo($"📄 RemoteData length: {args.RemoteData?.Length ?? 0} bytes");
+                _logService.LogInfo($"RemoteData length: {args.RemoteData?.Length ?? 0} bytes");
                 
                 if (!string.IsNullOrEmpty(args.RemoteData))
                 {

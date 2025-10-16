@@ -78,7 +78,7 @@ namespace CNCFTPSyncCore.Services
                         
                     case ".bat":
                     case ".cmd":
-                        // Batch file
+                        // Batch file with enhanced output capture
                         processInfo = new System.Diagnostics.ProcessStartInfo
                         {
                             FileName = "cmd.exe",
@@ -86,14 +86,16 @@ namespace CNCFTPSyncCore.Services
                             UseShellExecute = false,
                             RedirectStandardOutput = true,
                             RedirectStandardError = true,
-                            CreateNoWindow = true
+                            CreateNoWindow = true,
+                            StandardOutputEncoding = Encoding.UTF8,
+                            StandardErrorEncoding = Encoding.UTF8
                         };
                         _logger.LogInfo($"Executing batch file via: cmd.exe /c \"{_config.ExternalProcessorPath}\"");
                         break;
                         
                     case ".exe":
                     default:
-                        // Executable or unknown - try direct execution
+                        // Executable or unknown - try direct execution with enhanced output capture
                         processInfo = new System.Diagnostics.ProcessStartInfo
                         {
                             FileName = _config.ExternalProcessorPath,
@@ -101,7 +103,9 @@ namespace CNCFTPSyncCore.Services
                             UseShellExecute = false,
                             RedirectStandardOutput = true,
                             RedirectStandardError = true,
-                            CreateNoWindow = true
+                            CreateNoWindow = true,
+                            StandardOutputEncoding = Encoding.UTF8,
+                            StandardErrorEncoding = Encoding.UTF8
                         };
                         _logger.LogInfo($"Executing directly: \"{_config.ExternalProcessorPath}\"");
                         break;
@@ -144,20 +148,28 @@ namespace CNCFTPSyncCore.Services
                     result.Success = true;
                     result.Message = $"External processor completed successfully";
                     
-                    // Parse the output path from stdout (first line should be the prepared files path)
+                    // Parse the output path from stdout - look for "Path=" prefix
                     var outputLines = output?.Split('\n', StringSplitOptions.RemoveEmptyEntries);
                     if (outputLines?.Length > 0)
                     {
-                        var preparedPath = outputLines[0].Trim();
-                        if (Directory.Exists(preparedPath))
+                        foreach (var line in outputLines)
                         {
-                            result.OutputPath = preparedPath;
-                            result.ProcessedFiles.Add($"External script prepared files at: {preparedPath}");
-                            _logger.LogInfo($"External processor prepared files at: {preparedPath}");
-                        }
-                        else
-                        {
-                            _logger.LogWarning($"External processor output path does not exist: {preparedPath}");
+                            var trimmedLine = line.Trim();
+                            if (trimmedLine.StartsWith("Path="))
+                            {
+                                var preparedPath = trimmedLine.Substring(5); // Remove "Path=" prefix
+                                if (Directory.Exists(preparedPath))
+                                {
+                                    result.OutputPath = preparedPath;
+                                    result.ProcessedFiles.Add($"External script prepared files at: {preparedPath}");
+                                    _logger.LogInfo($"External processor prepared files at: {preparedPath}");
+                                }
+                                else
+                                {
+                                    _logger.LogWarning($"External processor output path does not exist: {preparedPath}");
+                                }
+                                break; // Found the path, no need to check other lines
+                            }
                         }
                     }
                     
