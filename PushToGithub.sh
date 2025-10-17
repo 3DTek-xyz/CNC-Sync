@@ -61,7 +61,11 @@ gh run list --limit 3
 echo ""
 echo "Monitoring GitHub Actions build..."
 
-# Get the latest run ID for our tag
+# Wait for GitHub Actions to create the new run (takes a few seconds)
+echo "Waiting for GitHub Actions to start the build..."
+sleep 15
+
+# Get the latest run ID for our tag (should now be the newly created run)
 RUN_ID=$(gh run list --event push --limit 1 --json databaseId --jq '.[0].databaseId')
 
 if [ -z "$RUN_ID" ]; then

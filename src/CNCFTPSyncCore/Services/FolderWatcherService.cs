@@ -53,13 +53,6 @@ namespace CNCFTPSyncCore.Services
                 // Check if we're using Simple FTP Upload mode for file watching
                 _isSimpleFtpMode = _config.InternalProcessingType == "Simple FTP Upload";
                 
-                _logger.LogInfo($"=== FOLDER WATCHER DEBUG ===");
-                _logger.LogInfo($"Internal Processing Type: '{_config.InternalProcessingType}'");
-                _logger.LogInfo($"Is Simple FTP Mode: {_isSimpleFtpMode}");
-                _logger.LogInfo($"Expected Simple FTP string: 'Simple FTP Upload'");
-                _logger.LogInfo($"String comparison result: {_config.InternalProcessingType == "Simple FTP Upload"}");
-                _logger.LogInfo($"===============================");
-                
                 var notifyFilter = _isSimpleFtpMode 
                     ? NotifyFilters.DirectoryName | NotifyFilters.FileName | NotifyFilters.CreationTime | NotifyFilters.LastWrite
                     : NotifyFilters.DirectoryName | NotifyFilters.CreationTime;
@@ -71,9 +64,6 @@ namespace CNCFTPSyncCore.Services
                     IncludeSubdirectories = _isSimpleFtpMode, // Only monitor subdirectories in Simple FTP mode
                     InternalBufferSize = 8192 * 16 // Increase buffer size from default 8KB to 128KB
                 };
-                
-                _logger.LogInfo($"FileSystemWatcher NotifyFilter: {notifyFilter}");
-                _logger.LogInfo($"FileSystemWatcher IncludeSubdirectories: {_isSimpleFtpMode}");
 
                 _watcher.Created += OnItemCreated;
                 _watcher.Error += OnWatcherError;
@@ -81,9 +71,7 @@ namespace CNCFTPSyncCore.Services
                 _stabilityTimer.Start();
                 IsRunning = true;
 
-                _logger.LogInfo($"Folder watcher started monitoring: {_config.WatchFolder}");
-                _logger.LogInfo($"Simple FTP mode enabled: {_isSimpleFtpMode}");
-                _logger.LogInfo($"NotifyFilter settings: {_watcher.NotifyFilter}");
+                _logger.LogInfo($"✓ Folder watcher monitoring: {_config.WatchFolder} (Simple FTP: {_isSimpleFtpMode})");
             }
             catch (Exception ex)
             {
@@ -169,14 +157,14 @@ namespace CNCFTPSyncCore.Services
             {
                 if (isDirectory)
                 {
-                    _logger.LogInfo($"Processing as DIRECTORY");
+
                     // For Mozaik modes, use the existing folder-based processing
                     _pendingFolders[e.FullPath] = DateTime.Now;
                     _logger.LogInfo($"New folder detected (Mozaik mode): {e.FullPath} - waiting for stability");
                 }
                 else if (isFile)
                 {
-                    _logger.LogInfo($"Processing as FILE");
+
                     _logger.LogInfo($"File creation ignored (not in Simple FTP mode): {e.FullPath}");
                 }
                 else
@@ -233,7 +221,7 @@ namespace CNCFTPSyncCore.Services
                         _processingFolderTimestamps[stableRootFolder] = timestamp;
                         _rootFolderTimestamps.Remove(stableRootFolder);
 
-                        _logger.LogInfo($"Root folder is stable and ready for timestamp-based processing: {stableRootFolder} (files since {timestamp})");
+                        _logger.LogInfo($"✓ Root folder ready for processing: {stableRootFolder}");
                         
                         // Pass the root folder to processor - it will scan for files created since timestamp
                         Task.Run(() => FolderCreated?.Invoke(stableRootFolder));
@@ -270,7 +258,7 @@ namespace CNCFTPSyncCore.Services
                     foreach (var stableFolder in stableFolders)
                     {
                         _pendingFolders.Remove(stableFolder);
-                        _logger.LogInfo($"Folder is stable and ready for processing: {stableFolder}");
+                        _logger.LogInfo($"✓ Folder ready for processing: {stableFolder}");
                         
                         // Trigger processing on a background thread
                         Task.Run(() => FolderCreated?.Invoke(stableFolder));

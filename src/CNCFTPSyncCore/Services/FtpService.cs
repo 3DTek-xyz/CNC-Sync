@@ -37,20 +37,17 @@ namespace CNCFTPSyncCore.Services
                                    $"User: {(_config.UseAnonymousFtp ? "anonymous" : _config.FtpUsername)}, " +
                                    $"Mode: {(_config.UseAnonymousFtp ? "Anonymous" : "Authenticated")}";
                 
-                _logger.LogInfo($"STARTUP TIMING: Testing FTP connection started at {DateTime.Now:HH:mm:ss.fff} - {connectionInfo}");
+                _logger.LogInfo($"Testing FTP connection - {connectionInfo}");
 
-                _logger.LogInfo($"STARTUP TIMING: Creating FTP request at {ftpStopwatch.ElapsedMilliseconds}ms");
                 var request = CreateFtpRequest("/", WebRequestMethods.Ftp.ListDirectory);
                 
-                _logger.LogInfo($"STARTUP TIMING: Getting FTP response at {ftpStopwatch.ElapsedMilliseconds}ms");
                 using var response = (FtpWebResponse)await request.GetResponseAsync();
                 using var responseStream = response.GetResponseStream();
                 using var reader = new StreamReader(responseStream);
                 
-                _logger.LogInfo($"STARTUP TIMING: Reading FTP response at {ftpStopwatch.ElapsedMilliseconds}ms");
                 var result = await reader.ReadToEndAsync();
                 
-                _logger.LogInfo($"STARTUP TIMING: FTP connection test successful at {ftpStopwatch.ElapsedMilliseconds}ms - {connectionInfo}. Status: {response.StatusCode} - {response.StatusDescription}");
+                _logger.LogInfo($"✓ FTP connection successful ({ftpStopwatch.ElapsedMilliseconds}ms) - {connectionInfo}");
                 return true;
             }
             catch (WebException webEx)
@@ -62,12 +59,10 @@ namespace CNCFTPSyncCore.Services
                 // Check if this is an FTP response with status code
                 if (webEx.Response is FtpWebResponse ftpResponse)
                 {
-                    _logger.LogInfo($"FTP response received - Status: {ftpResponse.StatusCode} - {ftpResponse.StatusDescription}");
-                    
                     // Use comprehensive FTP success code checker
                     if (IsFtpSuccessCode(ftpResponse.StatusCode))
                     {
-                        _logger.LogInfo($"FTP connection successful (WebException with success status) - {connectionInfo}. Status: {ftpResponse.StatusCode}: {ftpResponse.StatusDescription}");
+                        _logger.LogInfo($"✓ FTP connection successful - {connectionInfo}");
                         return true;
                     }
                     else
@@ -188,8 +183,6 @@ namespace CNCFTPSyncCore.Services
                     return false;
                 }
 
-                _logger.LogInfo($"Uploading file: {Path.GetFileName(localFilePath)} -> {remoteFilePath}");
-
                 var request = CreateFtpRequest(remoteFilePath, WebRequestMethods.Ftp.UploadFile);
                 
                 // Upload file content
@@ -201,7 +194,7 @@ namespace CNCFTPSyncCore.Services
                 // Get response
                 using var response = (FtpWebResponse)await request.GetResponseAsync();
                 
-                _logger.LogInfo($"File uploaded successfully: {Path.GetFileName(localFilePath)} - {response.StatusDescription}");
+                _logger.LogInfo($"✓ {Path.GetFileName(localFilePath)} uploaded");
                 return true;
             }
             catch (WebException webEx)
@@ -211,7 +204,7 @@ namespace CNCFTPSyncCore.Services
                     // Use comprehensive FTP success code checker
                     if (IsFtpSuccessCode(ftpResponse.StatusCode))
                     {
-                        _logger.LogInfo($"File uploaded successfully: {Path.GetFileName(localFilePath)} - {ftpResponse.StatusCode}: {ftpResponse.StatusDescription}");
+                        _logger.LogInfo($"✓ {Path.GetFileName(localFilePath)} uploaded");
                         return true;
                     }
                     else
@@ -240,17 +233,14 @@ namespace CNCFTPSyncCore.Services
                 // Check if directory already exists
                 if (await DirectoryExistsAsync(remotePath))
                 {
-                    _logger.LogInfo($"Remote directory already exists: {remotePath}");
                     return true;
                 }
-
-                _logger.LogInfo($"Creating remote directory: {remotePath}");
 
                 var request = CreateFtpRequest(remotePath, WebRequestMethods.Ftp.MakeDirectory);
                 
                 using var response = (FtpWebResponse)await request.GetResponseAsync();
                 
-                _logger.LogInfo($"Remote directory created: {remotePath} - {response.StatusDescription}");
+                _logger.LogInfo($"✓ Directory created: {remotePath}");
                 return true;
             }
             catch (WebException ex) when (ex.Response is FtpWebResponse ftpResponse)
@@ -258,13 +248,12 @@ namespace CNCFTPSyncCore.Services
                 // Use comprehensive FTP success code checker
                 if (IsFtpSuccessCode(ftpResponse.StatusCode))
                 {
-                    _logger.LogInfo($"Remote directory created successfully: {remotePath} - {ftpResponse.StatusCode}: {ftpResponse.StatusDescription}");
+                    _logger.LogInfo($"✓ Directory created: {remotePath}");
                     return true;
                 }
                 else if (ftpResponse.StatusCode == FtpStatusCode.ActionNotTakenFileUnavailable)
                 {
                     // Directory might already exist - treat as success
-                    _logger.LogInfo($"Directory creation skipped (may already exist): {remotePath}");
                     return true;
                 }
                 else
@@ -308,8 +297,6 @@ namespace CNCFTPSyncCore.Services
                     parentPath = "/";
                 }
                 
-                _logger.LogInfo($"Checking if directory exists - Parent: '{parentPath}', Target: '{targetDirName}'");
-                
                 // List parent directory contents
                 var items = await ListDirectoryAsync(parentPath);
                 
@@ -318,7 +305,6 @@ namespace CNCFTPSyncCore.Services
                     item.IsDirectory && 
                     string.Equals(item.Name, targetDirName, StringComparison.OrdinalIgnoreCase));
                 
-                _logger.LogInfo($"Directory exists check result: {directoryExists} for {remotePath}");
                 return directoryExists;
             }
             catch (Exception ex)
@@ -385,8 +371,6 @@ namespace CNCFTPSyncCore.Services
             
             try
             {
-                _logger.LogInfo($"Listing FTP directory: {remotePath}");
-                
                 var request = CreateFtpRequest(remotePath, WebRequestMethods.Ftp.ListDirectoryDetails);
                 
                 using var response = (FtpWebResponse)await request.GetResponseAsync();
@@ -401,13 +385,8 @@ namespace CNCFTPSyncCore.Services
                     {
                         files.Add(fileInfo);
                     }
-                    else
-                    {
-                        _logger.LogWarning($"Failed to parse FTP list line: '{line}'");
-                    }
                 }
                 
-                _logger.LogInfo($"Listed {files.Count} items from {remotePath}");
                 return files;
             }
             catch (WebException webEx)
@@ -417,7 +396,6 @@ namespace CNCFTPSyncCore.Services
                     // Use comprehensive FTP success code checker
                     if (IsFtpSuccessCode(ftpResponse.StatusCode))
                     {
-                        _logger.LogInfo($"FTP directory listing completed with success status: {remotePath} - {ftpResponse.StatusCode}: {ftpResponse.StatusDescription}");
                         // Note: If we got here via exception, the response stream was likely already consumed
                         // This is an edge case where FTP returns success via WebException
                         return files;
@@ -445,13 +423,11 @@ namespace CNCFTPSyncCore.Services
         {
             try
             {
-                _logger.LogInfo($"Deleting FTP file: {remoteFilePath}");
-                
                 var request = CreateFtpRequest(remoteFilePath, WebRequestMethods.Ftp.DeleteFile);
                 
                 using var response = (FtpWebResponse)await request.GetResponseAsync();
                 
-                _logger.LogInfo($"Successfully deleted FTP file: {remoteFilePath}. Status: {response.StatusDescription}");
+                _logger.LogInfo($"✓ File deleted: {remoteFilePath}");
                 return true;
             }
             catch (WebException webEx)
@@ -461,7 +437,7 @@ namespace CNCFTPSyncCore.Services
                     // Use comprehensive FTP success code checker
                     if (IsFtpSuccessCode(ftpResponse.StatusCode))
                     {
-                        _logger.LogInfo($"Successfully deleted FTP file: {remoteFilePath} - {ftpResponse.StatusCode}: {ftpResponse.StatusDescription}");
+                        _logger.LogInfo($"✓ File deleted: {remoteFilePath}");
                         return true;
                     }
                     else
@@ -487,8 +463,6 @@ namespace CNCFTPSyncCore.Services
         {
             try
             {
-                _logger.LogInfo($"Deleting FTP directory: {remoteDirectoryPath}");
-                
                 // First, get the contents of the directory to delete files/subdirectories recursively
                 var items = await ListDirectoryAsync(remoteDirectoryPath);
                 
@@ -522,7 +496,7 @@ namespace CNCFTPSyncCore.Services
                 
                 using var response = (FtpWebResponse)await request.GetResponseAsync();
                 
-                _logger.LogInfo($"Successfully deleted FTP directory: {remoteDirectoryPath}");
+                _logger.LogInfo($"✓ Directory deleted: {remoteDirectoryPath}");
                 return true;
             }
             catch (WebException webEx)
@@ -532,7 +506,7 @@ namespace CNCFTPSyncCore.Services
                     // Use comprehensive FTP success code checker
                     if (IsFtpSuccessCode(ftpResponse.StatusCode))
                     {
-                        _logger.LogInfo($"Successfully deleted FTP directory: {remoteDirectoryPath} - {ftpResponse.StatusCode}: {ftpResponse.StatusDescription}");
+                        _logger.LogInfo($"✓ Directory deleted: {remoteDirectoryPath}");
                         return true;
                     }
                     else
@@ -558,8 +532,6 @@ namespace CNCFTPSyncCore.Services
         {
             try
             {
-                _logger.LogInfo($"Downloading FTP file: {remoteFilePath} -> {localFilePath}");
-                
                 // Ensure local directory exists
                 var localDir = Path.GetDirectoryName(localFilePath);
                 if (!string.IsNullOrEmpty(localDir) && !Directory.Exists(localDir))
@@ -575,7 +547,7 @@ namespace CNCFTPSyncCore.Services
                 
                 await responseStream.CopyToAsync(fileStream);
                 
-                _logger.LogInfo($"Successfully downloaded FTP file: {remoteFilePath} -> {localFilePath}");
+                _logger.LogInfo($"✓ {Path.GetFileName(remoteFilePath)} downloaded");
                 return true;
             }
             catch (WebException webEx)
@@ -585,7 +557,7 @@ namespace CNCFTPSyncCore.Services
                     // Use comprehensive FTP success code checker
                     if (IsFtpSuccessCode(ftpResponse.StatusCode))
                     {
-                        _logger.LogInfo($"Successfully downloaded FTP file: {remoteFilePath} -> {localFilePath} - {ftpResponse.StatusCode}: {ftpResponse.StatusDescription}");
+                        _logger.LogInfo($"✓ {Path.GetFileName(remoteFilePath)} downloaded");
                         return true;
                     }
                     else
@@ -619,8 +591,6 @@ namespace CNCFTPSyncCore.Services
                     return null;
                 }
                 
-
-                
                 // Try different parsing approaches in order of likelihood
                 
                 // 1. Try Unix format first (most common on Linux/Unix FTP servers)
@@ -650,7 +620,6 @@ namespace CNCFTPSyncCore.Services
                     return simpleFile;
                 }
                 
-                _logger.LogWarning($"Could not parse FTP list line with any known format: '{line}'");
                 return null;
             }
             catch (Exception ex)
@@ -776,20 +745,13 @@ namespace CNCFTPSyncCore.Services
                                 $"{day}/{month}/{currentYear} {yearOrTime}"
                             };
                             
-                            bool parsed = false;
                             foreach (var format in dateFormats)
                             {
                                 if (DateTime.TryParse(format, out DateTime parsedDate))
                                 {
                                     modifiedDate = parsedDate;
-                                    parsed = true;
                                     break;
                                 }
-                            }
-                            
-                            if (!parsed)
-                            {
-                                _logger.LogWarning($"Could not parse Unix FTP date format: '{month} {day} {yearOrTime}' - using current time");
                             }
                         }
                         else
@@ -802,26 +764,19 @@ namespace CNCFTPSyncCore.Services
                                 $"{day}/{month}/{yearOrTime}"
                             };
                             
-                            bool parsed = false;
                             foreach (var format in dateFormats)
                             {
                                 if (DateTime.TryParse(format, out DateTime parsedDate))
                                 {
                                     modifiedDate = parsedDate;
-                                    parsed = true;
                                     break;
                                 }
                             }
-                            
-                            if (!parsed)
-                            {
-                                _logger.LogWarning($"Could not parse Unix FTP date format: '{month} {day} {yearOrTime}' - using current time");
-                            }
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
-                        _logger.LogWarning($"Exception parsing Unix FTP date from '{parts[5]} {parts[6]} {parts[7]}': {ex.Message}");
+                        // Use default time on parsing exception
                     }
                 }
                 
@@ -842,7 +797,6 @@ namespace CNCFTPSyncCore.Services
                 }
                 else
                 {
-                    _logger.LogWarning($"Unix FTP format: Could not extract filename from line: '{line}'");
                     return false;
                 }
                 

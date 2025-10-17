@@ -71,7 +71,6 @@ namespace CNCFTPSyncCore.Services
                 var currentLogFile = Path.Combine(logDirectory, $"cnc-ftp-sync-{DateTime.Now:yyyy-MM-dd}.log");
 
                 _logger.LogInfo($"Calling external processor: {_config.ExternalProcessorPath}");
-                _logger.LogInfo($"Arguments: \"{projectPath}\" \"{ftpUploadDirectory}\" \"{currentLogFile}\"");
 
                 // Determine how to execute the script based on file extension
                 var scriptExtension = Path.GetExtension(_config.ExternalProcessorPath).ToLowerInvariant();
@@ -93,7 +92,6 @@ namespace CNCFTPSyncCore.Services
                             StandardOutputEncoding = Encoding.UTF8,
                             StandardErrorEncoding = Encoding.UTF8
                         };
-                        _logger.LogInfo($"Executing PowerShell script via: powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File \"{_config.ExternalProcessorPath}\"");
                         break;
                         
                     case ".bat":
@@ -109,7 +107,6 @@ namespace CNCFTPSyncCore.Services
                             StandardOutputEncoding = Encoding.UTF8,
                             StandardErrorEncoding = Encoding.UTF8
                         };
-                        _logger.LogInfo($"Executing batch file via: cmd.exe /c \"{_config.ExternalProcessorPath}\"");
                         break;
                         
                     default:
@@ -131,7 +128,6 @@ namespace CNCFTPSyncCore.Services
                     if (!string.IsNullOrEmpty(e.Data))
                     {
                         outputBuilder.AppendLine(e.Data);
-                        _logger.LogInfo($"[Script Output] {e.Data}");
                     }
                 };
                 
@@ -184,15 +180,7 @@ namespace CNCFTPSyncCore.Services
                     
                     result.ProcessedFiles.Add($"External script processed: {projectPath}");
                     
-                    if (!string.IsNullOrEmpty(output))
-                    {
-                        _logger.LogInfo($"External processor output: {output.Trim()}");
-                    }
-                    
-                    if (!string.IsNullOrEmpty(error))
-                    {
-                        _logger.LogWarning($"External processor stderr: {error.Trim()}");
-                    }
+                    _logger.LogInfo($"✓ External processor completed successfully");
                 }
                 else
                 {
@@ -201,11 +189,6 @@ namespace CNCFTPSyncCore.Services
                     result.Errors.Add($"Exit code: {process.ExitCode}");
                     
                     // Log both stdout and stderr for failed processes
-                    if (!string.IsNullOrEmpty(output))
-                    {
-                        _logger.LogInfo($"External processor output (failed run): {output.Trim()}");
-                    }
-                    
                     if (!string.IsNullOrEmpty(error))
                     {
                         result.Errors.Add($"Error: {error.Trim()}");
@@ -239,7 +222,7 @@ namespace CNCFTPSyncCore.Services
 
             try
             {
-                _logger.LogInfo($"Starting processing of project folder: {projectPath}");
+                _logger.LogInfo($"Processing project: {projectPath}");
 
                 // Check if external processor should be used
                 if (_config.UseExternalProcessor)
@@ -249,7 +232,7 @@ namespace CNCFTPSyncCore.Services
 
                 // Determine internal processing type
                 var processingType = GetInternalProcessingType(_config.InternalProcessingType);
-                _logger.LogInfo($"Using internal processing type: {processingType}");
+
 
                 // Route to appropriate internal processing method
                 switch (processingType)
@@ -303,7 +286,7 @@ namespace CNCFTPSyncCore.Services
                     return result;
                 }
 
-                _logger.LogInfo($"Project: {projectInfo.ProjectName}, Latest Revision: {projectInfo.LatestRevision}");
+
 
                 // Step 2: Copy entire project to FTP working area
                 await CopyProjectToFtpWorkingAreaAsync(projectInfo);
@@ -355,7 +338,7 @@ namespace CNCFTPSyncCore.Services
         {
             try
             {
-                _logger.LogInfo($"Processing Simple FTP Upload for: {projectPath}");
+
 
                 // For Simple FTP Upload, just copy all files/folders to FTP Upload directory
                 var sourceInfo = new DirectoryInfo(projectPath);
@@ -401,7 +384,6 @@ namespace CNCFTPSyncCore.Services
                 var fileName = Path.GetFileName(file);
                 var destFile = Path.Combine(destDir, fileName);
                 File.Copy(file, destFile, true);
-                _logger.LogInfo($"Copied file: {fileName}");
             }
 
             // Copy all subdirectories recursively
@@ -874,7 +856,6 @@ namespace CNCFTPSyncCore.Services
                     }
                     
                     File.Copy(filePath, destPath, true);
-                    _logger.LogInfo($"Copied file: {filePath} -> {destPath}");
                 }
                 catch (Exception ex)
                 {
