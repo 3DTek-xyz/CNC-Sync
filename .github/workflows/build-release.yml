@@ -53,13 +53,13 @@ jobs:
     # automatically uses the correct version from the compiled executable
 
     - name: Build Release configuration
-      run: dotnet build --configuration Release --no-restore -p:ProductVersion=${{ steps.version.outputs.VERSION }}.0
+      run: dotnet build --configuration Release --no-restore -p:ProductVersion=${{ steps.version.outputs.VERSION }}
 
     - name: Restore WiX Installer dependencies
       run: dotnet restore src/CNCFTPSync.Installer/CNCFTPSync.Installer.wixproj
 
     - name: Build MSI Installer
-      run: dotnet build src/CNCFTPSync.Installer/CNCFTPSync.Installer.wixproj --configuration Release -p:ProductVersion=${{ steps.version.outputs.VERSION }}.0
+      run: dotnet build src/CNCFTPSync.Installer/CNCFTPSync.Installer.wixproj --configuration Release -p:ProductVersion=${{ steps.version.outputs.VERSION }}
 
     - name: Generate checksums and copy to docs
       id: checksums
@@ -98,7 +98,7 @@ jobs:
       shell: powershell
       run: |
         $updateFile = "docs/update.xml"
-        $version = "${{ steps.version.outputs.VERSION }}.0"
+        $version = "${{ steps.version.outputs.VERSION }}"
         $downloadUrl = "https://3dtek-xyz.github.io/CNC-FTPSync/installer/${{ steps.checksums.outputs.MSI_FILENAME }}"
         $changelogUrl = "https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.VERSION_WITH_V }}"
         $checksum = "${{ steps.checksums.outputs.MSI_CHECKSUM }}"
