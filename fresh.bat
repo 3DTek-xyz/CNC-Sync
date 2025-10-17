@@ -116,9 +116,9 @@ echo Step 6: Check outputs
 if exist "bin\Release\CNCFTPSync.Installer.msi" (
     echo SUCCESS: MSI created at bin\Release\CNCFTPSync.Installer.msi
     echo.
-    echo Step 7: Auto-installing after successful build
-    echo Running installer...
-    msiexec /i "bin\Release\CNCFTPSync.Installer.msi" /l*v install.log
+    echo Step 7: Auto-installing after successful build (force install)
+    echo Running installer with force flags...
+    msiexec /i "bin\Release\CNCFTPSync.Installer.msi" /l*v install.log /qb REINSTALL=ALL REINSTALLMODE=vamus
     if %errorLevel% equ 0 (
         echo OK: Installation completed successfully
     ) else (
