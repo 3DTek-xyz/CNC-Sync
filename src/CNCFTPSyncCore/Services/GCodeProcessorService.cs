@@ -368,36 +368,10 @@ namespace CNCFTPSyncCore.Services
                 // Ensure FTP upload directory exists
                 Directory.CreateDirectory(ftpUploadDirectory);
 
-                // Check if this is the watch folder (individual file processing)
-                if (projectPath == _config.WatchFolder)
-                {
-                    // For watch folder root, copy files directly to FTP upload root
-                    await ProcessIndividualFilesAsync(projectPath, ftpUploadDirectory);
-                }
-                else if (projectPath.StartsWith(_config.WatchFolder))
-                {
-                    // For subdirectories within watch folder, maintain relative path structure
-                    var relativePath = Path.GetRelativePath(_config.WatchFolder, projectPath);
-                    var destinationSubPath = Path.Combine(ftpUploadDirectory, relativePath);
-                    
-                    // Copy the subdirectory with its structure preserved
-                    await CopyDirectoryAsync(projectPath, destinationSubPath);
-                    result.OutputPath = destinationSubPath;
-                }
-                else
-                {
-                    // Standard folder processing - copy entire folder
-                    // If destination already exists, remove it first
-                    if (Directory.Exists(destinationPath))
-                    {
-                        Directory.Delete(destinationPath, true);
-                        _logger.LogInfo($"Removed existing destination: {destinationPath}");
-                    }
-
-                    // Copy all files and subdirectories
-                    await CopyDirectoryAsync(projectPath, destinationPath);
-                    result.OutputPath = destinationPath;
-                }
+                // For Simple FTP Upload, always use timestamp-based file processing
+                // This ensures only changed files are uploaded, not entire directories
+                await ProcessIndividualFilesAsync(projectPath, ftpUploadDirectory);
+                result.OutputPath = ftpUploadDirectory;
 
                 result.Success = true;
                 result.Message = $"Successfully processed Simple FTP Upload for: {projectPath}";
