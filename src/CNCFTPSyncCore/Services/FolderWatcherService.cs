@@ -359,10 +359,11 @@ namespace CNCFTPSyncCore.Services
             // Find the immediate child folder of the watch directory
             var relativePath = Path.GetRelativePath(_config.WatchFolder, path);
             
-            // If the path is directly in the watch folder, return the path itself
+            // If the path is directly in the watch folder, return the watch folder itself
+            // (This handles files created directly in the root watch directory)
             if (!relativePath.Contains(Path.DirectorySeparatorChar))
             {
-                return path;
+                return _config.WatchFolder;
             }
             
             // Otherwise, return the root-level folder
