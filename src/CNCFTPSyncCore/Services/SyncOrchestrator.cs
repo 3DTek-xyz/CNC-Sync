@@ -190,9 +190,17 @@ namespace CNCFTPSyncCore.Services
 
             var result = await _gCodeProcessor.ProcessProjectFolderAsync(folderPath);
 
-            if (result.Success && _config.AutoUploadAfterProcessing)
+            // For Simple FTP Upload mode, files are uploaded directly during processing
+            // Skip the additional FTP upload step to avoid duplicate uploads
+            var isSimpleFtpMode = _config.InternalProcessingType == "Simple FTP Upload";
+            
+            if (result.Success && _config.AutoUploadAfterProcessing && !isSimpleFtpMode)
             {
                 await UploadProcessedFolderAsync(folderPath, result);
+            }
+            else if (isSimpleFtpMode)
+            {
+                _logger.LogInfo("Simple FTP Upload mode: Skipping additional FTP upload (files already uploaded during processing)");
             }
 
             SetStatus(IsRunning ? "Running - Monitoring for new folders" : "Stopped");
