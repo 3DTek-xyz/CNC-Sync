@@ -22,6 +22,7 @@ namespace CNCFTPSyncCore.Services
         private FileSystemWatcher? _watcher;
         private readonly Dictionary<string, DateTime> _pendingFolders = new(); // For folder-based processing (Mozaik modes)
         private readonly Dictionary<string, DateTime> _rootFolderTimestamps = new(); // For root-level timestamp tracking (Simple FTP)
+        private readonly Dictionary<string, DateTime> _processingFolderTimestamps = new(); // Store timestamps for folders being processed
         private readonly System.Timers.Timer _stabilityTimer;
         private readonly object _lockObject = new();
         private bool _isSimpleFtpMode;
@@ -226,7 +227,11 @@ namespace CNCFTPSyncCore.Services
                     foreach (var stableRootFolder in stableRootFolders)
                     {
                         var timestamp = _rootFolderTimestamps[stableRootFolder];
-                        // Don't remove timestamp here - let GCodeProcessor remove it after processing
+                        
+                        // Move timestamp to processing dictionary and remove from active tracking
+                        // This prevents multiple processing events for the same folder
+                        _processingFolderTimestamps[stableRootFolder] = timestamp;
+                        _rootFolderTimestamps.Remove(stableRootFolder);
 
                         _logger.LogInfo($"Root folder is stable and ready for timestamp-based processing: {stableRootFolder} (files since {timestamp})");
                         
@@ -342,6 +347,13 @@ namespace CNCFTPSyncCore.Services
         {
             lock (_lockObject)
             {
+                // First check if folder is actively being processed
+                if (_processingFolderTimestamps.TryGetValue(folderPath, out var processingTimestamp))
+                {
+                    return processingTimestamp;
+                }
+                
+                // Fall back to checking if folder is still in initial tracking
                 return _rootFolderTimestamps.TryGetValue(folderPath, out var timestamp) ? timestamp : null;
             }
         }
@@ -351,6 +363,7 @@ namespace CNCFTPSyncCore.Services
             lock (_lockObject)
             {
                 _rootFolderTimestamps.Remove(folderPath);
+                _processingFolderTimestamps.Remove(folderPath);
             }
         }
 
