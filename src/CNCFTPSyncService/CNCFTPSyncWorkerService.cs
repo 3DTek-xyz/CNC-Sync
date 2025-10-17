@@ -58,8 +58,8 @@ namespace CNCFTPSyncService
                     LogManager.Configuration.Variables["logDirectory"] = logDirectory;
                 }
 
-                var gCodeProcessor = new GCodeProcessorService(_logService, config);
                 var ftpService = new FtpService(_logService, config);
+                var gCodeProcessor = new GCodeProcessorService(_logService, config, ftpService);
                 
                 _orchestrator = new SyncOrchestrator(configService, _logService, gCodeProcessor, ftpService);
 

@@ -28,12 +28,14 @@ namespace CNCFTPSyncCore.Services
     {
         private readonly ILogService _logger;
         private readonly SyncConfiguration _config;
+        private readonly IFtpService _ftpService;
         private IFolderWatcher? _folderWatcher;
 
-        public GCodeProcessorService(ILogService logger, SyncConfiguration config)
+        public GCodeProcessorService(ILogService logger, SyncConfiguration config, IFtpService ftpService)
         {
             _logger = logger;
             _config = config;
+            _ftpService = ftpService;
         }
 
         public void SetFolderWatcher(IFolderWatcher folderWatcher)
@@ -333,6 +335,7 @@ namespace CNCFTPSyncCore.Services
                 }
 
                 // Files are now ready in FTP working area - no additional copying needed
+                result.OutputPath = projectInfo.FtpWorkingPath;
 
                 result.Success = true;
                 result.Message = $"Successfully processed project: {projectInfo.ProjectName}-{projectInfo.LatestRevision} (originals preserved)";
@@ -374,7 +377,7 @@ namespace CNCFTPSyncCore.Services
                 
                 result.Success = true;
                 result.Message = $"Successfully processed Simple FTP Upload for: {projectPath}";
-                // Don't set OutputPath for Simple FTP - files are individually copied to final destinations
+                // Don't set OutputPath - ProcessIndividualFilesAsync handles direct FTP uploads internally
                 _logger.LogInfo(result.Message);
             }
             catch (Exception ex)
@@ -805,7 +808,7 @@ namespace CNCFTPSyncCore.Services
                 return;
             }
 
-            // Process each recent file
+            // Process each recent file - upload directly to FTP server
             foreach (var filePath in recentFiles)
             {
                 try
@@ -816,24 +819,31 @@ namespace CNCFTPSyncCore.Services
                         continue;
                     }
 
-                    // Calculate the relative path from the watch folder to maintain structure
+                    // Calculate the relative path from the watch folder to maintain FTP structure
                     var relativePath = Path.GetRelativePath(_config.WatchFolder, filePath);
-                    var destPath = Path.Combine(ftpUploadDirectory, relativePath);
                     
-                    // Ensure destination directory exists
-                    var destDir = Path.GetDirectoryName(destPath);
-                    if (!string.IsNullOrEmpty(destDir))
+                    // Create FTP directory if file is in a subfolder (not root)
+                    var ftpDir = Path.GetDirectoryName(relativePath);
+                    if (!string.IsNullOrEmpty(ftpDir))
                     {
-                        Directory.CreateDirectory(destDir);
+                        await _ftpService.CreateDirectoryAsync(ftpDir);
                     }
                     
-                    // Copy the specific file
-                    File.Copy(filePath, destPath, true);
-                    _logger.LogInfo($"Copied recent file: {filePath} -> {destPath}");
+                    // Upload file directly to FTP server
+                    var uploadSuccess = await _ftpService.UploadFileAsync(filePath, relativePath);
+                    
+                    if (uploadSuccess)
+                    {
+                        _logger.LogInfo($"Uploaded file to FTP: {filePath} -> {relativePath}");
+                    }
+                    else
+                    {
+                        _logger.LogError($"Failed to upload file to FTP: {filePath} -> {relativePath}");
+                    }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError($"Failed to copy file {filePath}: {ex.Message}");
+                    _logger.LogError($"Failed to process file {filePath}: {ex.Message}");
                 }
             }
 

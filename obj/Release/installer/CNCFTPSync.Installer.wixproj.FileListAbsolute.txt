@@ -4,9 +4,3 @@ C:\Users\Emils\Dropbox\CBWSS-SYNC\obj\Release\installer\CNCFTPSync.Installer.wix
 C:\Users\Emils\Dropbox\CBWSS-SYNC\obj\Release\installer\CNCFTPSync.Installer.msi
 C:\Users\Emils\Dropbox\CBWSS-SYNC\obj\Release\installer\CNCFTPSync.Installer.wixpdb
 C:\Users\Emils\Dropbox\CBWSS-SYNC\obj\Release\installer\CNCFTPSync.Installer.wixproj.BindTracking-neutral.txt
-D:\a\CNC-FTPSync\CNC-FTPSync\bin\Release\CNCFTPSync.Installer.msi
-D:\a\CNC-FTPSync\CNC-FTPSync\bin\Release\CNCFTPSync.Installer.wixpdb
-D:\a\CNC-FTPSync\CNC-FTPSync\obj\Release\installer\CNCFTPSync.Installer.wixproj.CoreCompileInputs.cache
-D:\a\CNC-FTPSync\CNC-FTPSync\obj\Release\installer\CNCFTPSync.Installer.msi
-D:\a\CNC-FTPSync\CNC-FTPSync\obj\Release\installer\CNCFTPSync.Installer.wixpdb
-D:\a\CNC-FTPSync\CNC-FTPSync\obj\Release\installer\CNCFTPSync.Installer.wixproj.BindTracking-neutral.txt

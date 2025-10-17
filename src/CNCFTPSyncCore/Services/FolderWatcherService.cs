@@ -257,7 +257,7 @@ namespace CNCFTPSyncCore.Services
                     foreach (var stableRootFolder in stableRootFolders)
                     {
                         var timestamp = _rootFolderTimestamps[stableRootFolder];
-                        _rootFolderTimestamps.Remove(stableRootFolder);
+                        // Don't remove timestamp here - let GCodeProcessor remove it after processing
 
                         _logger.LogInfo($"Root folder is stable and ready for timestamp-based processing: {stableRootFolder} (files since {timestamp})");
                         

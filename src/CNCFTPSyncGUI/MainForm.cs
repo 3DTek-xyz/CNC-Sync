@@ -730,13 +730,13 @@ namespace CNCFTPSyncGUI
                 btnStopStandalone.Enabled = true;
 
                 // Initialize orchestrator
-                _logService.LogInfo($"STARTUP TIMING: Creating GCodeProcessorService at {standaloneStopwatch.ElapsedMilliseconds}ms");
-                var gCodeProcessor = new GCodeProcessorService(_logService, _config);
-                _logService.LogInfo($"STARTUP TIMING: GCodeProcessorService created at {standaloneStopwatch.ElapsedMilliseconds}ms");
-                
                 _logService.LogInfo($"STARTUP TIMING: Creating FtpService at {standaloneStopwatch.ElapsedMilliseconds}ms");
                 var ftpService = new FtpService(_logService, _config);
                 _logService.LogInfo($"STARTUP TIMING: FtpService created at {standaloneStopwatch.ElapsedMilliseconds}ms");
+                
+                _logService.LogInfo($"STARTUP TIMING: Creating GCodeProcessorService at {standaloneStopwatch.ElapsedMilliseconds}ms");
+                var gCodeProcessor = new GCodeProcessorService(_logService, _config, ftpService);
+                _logService.LogInfo($"STARTUP TIMING: GCodeProcessorService created at {standaloneStopwatch.ElapsedMilliseconds}ms");
                 
                 _logService.LogInfo($"STARTUP TIMING: Creating SyncOrchestrator at {standaloneStopwatch.ElapsedMilliseconds}ms");
                 _orchestrator = new SyncOrchestrator(_configService, _logService, gCodeProcessor, ftpService);
