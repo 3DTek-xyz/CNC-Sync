@@ -371,11 +371,10 @@ namespace CNCFTPSyncCore.Services
                 // For Simple FTP Upload, always use timestamp-based file processing
                 // This ensures only changed files are uploaded, not entire directories
                 await ProcessIndividualFilesAsync(projectPath, ftpUploadDirectory);
-                result.OutputPath = ftpUploadDirectory;
-
+                
                 result.Success = true;
                 result.Message = $"Successfully processed Simple FTP Upload for: {projectPath}";
-                result.OutputPath = result.OutputPath ?? ftpUploadDirectory;
+                // Don't set OutputPath for Simple FTP - files are individually copied to final destinations
                 _logger.LogInfo(result.Message);
             }
             catch (Exception ex)
