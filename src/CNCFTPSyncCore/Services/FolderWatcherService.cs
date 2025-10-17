@@ -67,7 +67,8 @@ namespace CNCFTPSyncCore.Services
                 {
                     NotifyFilter = notifyFilter,
                     EnableRaisingEvents = true,
-                    IncludeSubdirectories = _isSimpleFtpMode // Only monitor subdirectories in Simple FTP mode
+                    IncludeSubdirectories = _isSimpleFtpMode, // Only monitor subdirectories in Simple FTP mode
+                    InternalBufferSize = 8192 * 16 // Increase buffer size from default 8KB to 128KB
                 };
                 
                 _logger.LogInfo($"FileSystemWatcher NotifyFilter: {notifyFilter}");
@@ -118,17 +119,32 @@ namespace CNCFTPSyncCore.Services
 
         private void OnItemCreated(object sender, FileSystemEventArgs e)
         {
+            if (e.ChangeType != WatcherChangeTypes.Created)
+                return;
+
+            if (_isSimpleFtpMode)
+            {
+                // Minimal processing for Simple FTP mode - just capture timestamp
+                lock (_lockObject)
+                {
+                    var rootFolder = GetRootLevelFolder(e.FullPath);
+                    
+                    // Only set timestamp if this is the first activity in this root folder
+                    if (!_rootFolderTimestamps.ContainsKey(rootFolder))
+                    {
+                        _rootFolderTimestamps[rootFolder] = DateTime.Now;
+                        _logger.LogInfo($"Simple FTP: Root folder activity started: {rootFolder}");
+                    }
+                }
+                return;
+            }
+
+            // Full processing for Mozaik modes
             _logger.LogInfo($"=== FILE SYSTEM EVENT DEBUG ===");
             _logger.LogInfo($"Event Type: {e.ChangeType}");
             _logger.LogInfo($"Event Path: {e.FullPath}");
             _logger.LogInfo($"Simple FTP Mode: {_isSimpleFtpMode}");
             
-            if (e.ChangeType != WatcherChangeTypes.Created)
-            {
-                _logger.LogInfo($"Event ignored - not a Created event");
-                return;
-            }
-
             // Check what type of item this is
             bool isDirectory = Directory.Exists(e.FullPath);
             bool isFile = File.Exists(e.FullPath);
@@ -153,61 +169,14 @@ namespace CNCFTPSyncCore.Services
                 if (isDirectory)
                 {
                     _logger.LogInfo($"Processing as DIRECTORY");
-                    if (_isSimpleFtpMode)
-                    {
-                        // For Simple FTP mode, track at root-level for batch processing
-                        var rootFolder = GetRootLevelFolder(e.FullPath);
-                        var currentTime = DateTime.Now;
-                        
-                        // Only set timestamp if this is the first activity in this root folder
-                        if (!_rootFolderTimestamps.ContainsKey(rootFolder))
-                        {
-                            _rootFolderTimestamps[rootFolder] = currentTime;
-                            _logger.LogInfo($"New root folder activity started: {rootFolder} at {currentTime}");
-                        }
-                        _logger.LogInfo($"New folder detected (Simple FTP mode): {e.FullPath} in root {rootFolder}");
-                    }
-                    else
-                    {
-                        // For Mozaik modes, use the existing folder-based processing
-                        _pendingFolders[e.FullPath] = DateTime.Now;
-                        _logger.LogInfo($"New folder detected (Mozaik mode): {e.FullPath} - waiting for stability");
-                    }
+                    // For Mozaik modes, use the existing folder-based processing
+                    _pendingFolders[e.FullPath] = DateTime.Now;
+                    _logger.LogInfo($"New folder detected (Mozaik mode): {e.FullPath} - waiting for stability");
                 }
                 else if (isFile)
                 {
                     _logger.LogInfo($"Processing as FILE");
-                    
-                    if (_isSimpleFtpMode)
-                    {
-                        _logger.LogInfo($"File processing enabled (Simple FTP mode) - Current config InternalProcessingType: '{_config.InternalProcessingType}'");
-                        // For Simple FTP mode, track at root-level for batch processing
-                        var parentDir = Path.GetDirectoryName(e.FullPath);
-                        _logger.LogInfo($"Parent directory: {parentDir}");
-                        
-                        if (!string.IsNullOrEmpty(parentDir))
-                        {
-                            var rootFolder = GetRootLevelFolder(parentDir);
-                            var currentTime = DateTime.Now;
-                            
-                            // Only set timestamp if this is the first activity in this root folder
-                            if (!_rootFolderTimestamps.ContainsKey(rootFolder))
-                            {
-                                _rootFolderTimestamps[rootFolder] = currentTime;
-                                _logger.LogInfo($"New root folder activity started: {rootFolder} at {currentTime}");
-                            }
-                            
-                            _logger.LogInfo($"New file detected: {e.FullPath} in root {rootFolder} - will be batch processed");
-                        }
-                        else
-                        {
-                            _logger.LogWarning($"Could not determine parent directory for file: {e.FullPath}");
-                        }
-                    }
-                    else
-                    {
-                        _logger.LogInfo($"File creation ignored (not in Simple FTP mode): {e.FullPath}");
-                    }
+                    _logger.LogInfo($"File creation ignored (not in Simple FTP mode): {e.FullPath}");
                 }
                 else
                 {
