@@ -121,15 +121,36 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git stash --include-untracked || echo "No changes to stash"
-        git checkout main
-        # Pull latest changes to avoid push conflicts
-        git pull origin main --no-edit || echo "No remote changes to pull"
-        git stash pop || echo "No stash to pop"
+        git config pull.rebase false
+        
+        # Use force checkout to clean update.xml conflicts
+        git checkout -- docs/update.xml || echo "No conflicts to reset"
+        git pull origin main || echo "No remote changes to pull"
+        
+        # Regenerate clean update.xml after pull
+        $version = "${{ steps.version.outputs.VERSION }}"
+        $downloadUrl = "https://3dtek-xyz.github.io/CNC-FTPSync/installer/${{ steps.checksums.outputs.MSI_FILENAME }}"
+        $changelogUrl = "https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.VERSION_WITH_V }}"
+        $checksum = "${{ steps.checksums.outputs.MSI_CHECKSUM }}"
+        
+        $updateXml = @'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <item>
+            <version>{0}</version>
+            <url>{1}</url>
+            <changelog>{2}</changelog>
+            <mandatory>false</mandatory>
+            <args>/QUIET /NORESTART</args>
+            <checksum algorithm="SHA512">{3}</checksum>
+        </item>
+        '@ -f $version, $downloadUrl, $changelogUrl, $checksum
+        
+        Set-Content "docs/update.xml" $updateXml
+        
         git add docs/
-        # Use --no-edit to avoid opening vim for merge commits
         git commit -m "Release ${{ steps.version.outputs.VERSION_WITH_V }} - Update installer and version files" || echo "No changes to commit"
         git push origin main || echo "No changes to push"
+      shell: powershell
 
     - name: Create Release Notes
       id: release_notes
