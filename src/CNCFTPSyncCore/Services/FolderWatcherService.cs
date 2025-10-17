@@ -8,17 +8,23 @@ namespace CNCFTPSyncCore.Services
         event Action<string> FolderCreated;
         void Start();
         void Stop();
+        void Restart(); // Add restart method for config changes
+        void UpdateConfiguration(SyncConfiguration newConfig); // Add method to update config  
         bool IsRunning { get; }
+        DateTime? GetRootFolderTimestamp(string folderPath);
+        void ClearRootFolderTimestamp(string folderPath);
     }
 
     public class FolderWatcherService : IFolderWatcher, IDisposable
     {
         private readonly ILogService _logger;
-        private readonly SyncConfiguration _config;
+        private SyncConfiguration _config; // Remove readonly to allow updates
         private FileSystemWatcher? _watcher;
-        private readonly Dictionary<string, DateTime> _pendingFolders = new();
+        private readonly Dictionary<string, DateTime> _pendingFolders = new(); // For folder-based processing (Mozaik modes)
+        private readonly Dictionary<string, DateTime> _rootFolderTimestamps = new(); // For root-level timestamp tracking (Simple FTP)
         private readonly System.Timers.Timer _stabilityTimer;
         private readonly object _lockObject = new();
+        private bool _isSimpleFtpMode;
 
         public event Action<string>? FolderCreated;
         public bool IsRunning { get; private set; }
@@ -43,20 +49,39 @@ namespace CNCFTPSyncCore.Services
                     throw new InvalidOperationException($"Watch folder does not exist: {_config.WatchFolder}");
                 }
 
+                // Check if we're using Simple FTP Upload mode for file watching
+                _isSimpleFtpMode = _config.InternalProcessingType == "Simple FTP Upload";
+                
+                _logger.LogInfo($"=== FOLDER WATCHER DEBUG ===");
+                _logger.LogInfo($"Internal Processing Type: '{_config.InternalProcessingType}'");
+                _logger.LogInfo($"Is Simple FTP Mode: {_isSimpleFtpMode}");
+                _logger.LogInfo($"Expected Simple FTP string: 'Simple FTP Upload'");
+                _logger.LogInfo($"String comparison result: {_config.InternalProcessingType == "Simple FTP Upload"}");
+                _logger.LogInfo($"===============================");
+                
+                var notifyFilter = _isSimpleFtpMode 
+                    ? NotifyFilters.DirectoryName | NotifyFilters.FileName | NotifyFilters.CreationTime | NotifyFilters.LastWrite
+                    : NotifyFilters.DirectoryName | NotifyFilters.CreationTime;
+                
                 _watcher = new FileSystemWatcher(_config.WatchFolder)
                 {
-                    NotifyFilter = NotifyFilters.DirectoryName | NotifyFilters.CreationTime,
+                    NotifyFilter = notifyFilter,
                     EnableRaisingEvents = true,
-                    IncludeSubdirectories = false
+                    IncludeSubdirectories = _isSimpleFtpMode // Only monitor subdirectories in Simple FTP mode
                 };
+                
+                _logger.LogInfo($"FileSystemWatcher NotifyFilter: {notifyFilter}");
+                _logger.LogInfo($"FileSystemWatcher IncludeSubdirectories: {_isSimpleFtpMode}");
 
-                _watcher.Created += OnFolderCreated;
+                _watcher.Created += OnItemCreated;
                 _watcher.Error += OnWatcherError;
 
                 _stabilityTimer.Start();
                 IsRunning = true;
 
                 _logger.LogInfo($"Folder watcher started monitoring: {_config.WatchFolder}");
+                _logger.LogInfo($"Simple FTP mode enabled: {_isSimpleFtpMode}");
+                _logger.LogInfo($"NotifyFilter settings: {_watcher.NotifyFilter}");
             }
             catch (Exception ex)
             {
@@ -79,6 +104,7 @@ namespace CNCFTPSyncCore.Services
                 lock (_lockObject)
                 {
                     _pendingFolders.Clear();
+                    _rootFolderTimestamps.Clear();
                 }
 
                 IsRunning = false;
@@ -90,56 +116,191 @@ namespace CNCFTPSyncCore.Services
             }
         }
 
-        private void OnFolderCreated(object sender, FileSystemEventArgs e)
+        private void OnItemCreated(object sender, FileSystemEventArgs e)
         {
-            if (e.ChangeType == WatcherChangeTypes.Created && Directory.Exists(e.FullPath))
+            _logger.LogInfo($"=== FILE SYSTEM EVENT DEBUG ===");
+            _logger.LogInfo($"Event Type: {e.ChangeType}");
+            _logger.LogInfo($"Event Path: {e.FullPath}");
+            _logger.LogInfo($"Simple FTP Mode: {_isSimpleFtpMode}");
+            
+            if (e.ChangeType != WatcherChangeTypes.Created)
             {
-                lock (_lockObject)
-                {
-                    _pendingFolders[e.FullPath] = DateTime.Now;
-                }
-                
-                _logger.LogInfo($"New folder detected: {e.FullPath} - waiting for stability");
+                _logger.LogInfo($"Event ignored - not a Created event");
+                return;
             }
+
+            // Check what type of item this is
+            bool isDirectory = Directory.Exists(e.FullPath);
+            bool isFile = File.Exists(e.FullPath);
+            
+            _logger.LogInfo($"Path Analysis:");
+            _logger.LogInfo($"  - Directory.Exists: {isDirectory}");
+            _logger.LogInfo($"  - File.Exists: {isFile}");
+            _logger.LogInfo($"  - Path exists at all: {isDirectory || isFile}");
+            
+            // Add a small delay and recheck if neither exists initially
+            if (!isDirectory && !isFile)
+            {
+                _logger.LogInfo($"Neither directory nor file detected initially, waiting 100ms and rechecking...");
+                Thread.Sleep(100);
+                isDirectory = Directory.Exists(e.FullPath);
+                isFile = File.Exists(e.FullPath);
+                _logger.LogInfo($"After delay - Directory: {isDirectory}, File: {isFile}");
+            }
+
+            lock (_lockObject)
+            {
+                if (isDirectory)
+                {
+                    _logger.LogInfo($"Processing as DIRECTORY");
+                    if (_isSimpleFtpMode)
+                    {
+                        // For Simple FTP mode, track at root-level for batch processing
+                        var rootFolder = GetRootLevelFolder(e.FullPath);
+                        var currentTime = DateTime.Now;
+                        
+                        // Only set timestamp if this is the first activity in this root folder
+                        if (!_rootFolderTimestamps.ContainsKey(rootFolder))
+                        {
+                            _rootFolderTimestamps[rootFolder] = currentTime;
+                            _logger.LogInfo($"New root folder activity started: {rootFolder} at {currentTime}");
+                        }
+                        _logger.LogInfo($"New folder detected (Simple FTP mode): {e.FullPath} in root {rootFolder}");
+                    }
+                    else
+                    {
+                        // For Mozaik modes, use the existing folder-based processing
+                        _pendingFolders[e.FullPath] = DateTime.Now;
+                        _logger.LogInfo($"New folder detected (Mozaik mode): {e.FullPath} - waiting for stability");
+                    }
+                }
+                else if (isFile)
+                {
+                    _logger.LogInfo($"Processing as FILE");
+                    
+                    if (_isSimpleFtpMode)
+                    {
+                        _logger.LogInfo($"File processing enabled (Simple FTP mode) - Current config InternalProcessingType: '{_config.InternalProcessingType}'");
+                        // For Simple FTP mode, track at root-level for batch processing
+                        var parentDir = Path.GetDirectoryName(e.FullPath);
+                        _logger.LogInfo($"Parent directory: {parentDir}");
+                        
+                        if (!string.IsNullOrEmpty(parentDir))
+                        {
+                            var rootFolder = GetRootLevelFolder(parentDir);
+                            var currentTime = DateTime.Now;
+                            
+                            // Only set timestamp if this is the first activity in this root folder
+                            if (!_rootFolderTimestamps.ContainsKey(rootFolder))
+                            {
+                                _rootFolderTimestamps[rootFolder] = currentTime;
+                                _logger.LogInfo($"New root folder activity started: {rootFolder} at {currentTime}");
+                            }
+                            
+                            _logger.LogInfo($"New file detected: {e.FullPath} in root {rootFolder} - will be batch processed");
+                        }
+                        else
+                        {
+                            _logger.LogWarning($"Could not determine parent directory for file: {e.FullPath}");
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogInfo($"File creation ignored (not in Simple FTP mode): {e.FullPath}");
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning($"Path exists but is neither directory nor file: {e.FullPath}");
+                }
+            }
+            
+            _logger.LogInfo($"=== END FILE SYSTEM EVENT DEBUG ===");
         }
 
         private void CheckFolderStability(object? sender, System.Timers.ElapsedEventArgs e)
         {
             lock (_lockObject)
             {
-                var stableFolders = new List<string>();
                 var currentTime = DateTime.Now;
 
-                foreach (var kvp in _pendingFolders.ToList())
+                if (_isSimpleFtpMode)
                 {
-                    var folderPath = kvp.Key;
-                    var detectionTime = kvp.Value;
+                    // Handle root-level timestamp tracking for Simple FTP mode
+                    var stableRootFolders = new List<string>();
 
-                    // Check if enough time has passed
-                    if (currentTime.Subtract(detectionTime).TotalSeconds >= _config.FileStabilityDelaySeconds)
+                    // Check each root folder for stability (last activity + stability delay)
+                    foreach (var kvp in _rootFolderTimestamps.ToList())
                     {
-                        // Check if folder still exists and appears stable
-                        if (Directory.Exists(folderPath) && IsFolderStable(folderPath))
+                        var rootFolderPath = kvp.Key;
+                        var firstActivityTime = kvp.Value;
+
+                        // For stability, we need to check if there's been no recent activity
+                        // We'll use a simple approach: if enough time has passed since the first activity
+                        // and the folder still exists, consider it stable
+                        if (currentTime.Subtract(firstActivityTime).TotalSeconds >= _config.FileStabilityDelaySeconds)
                         {
-                            stableFolders.Add(folderPath);
-                        }
-                        else if (!Directory.Exists(folderPath))
-                        {
-                            // Folder was deleted, remove from pending
-                            _pendingFolders.Remove(folderPath);
-                            _logger.LogWarning($"Pending folder was deleted: {folderPath}");
+                            if (Directory.Exists(rootFolderPath))
+                            {
+                                stableRootFolders.Add(rootFolderPath);
+                            }
+                            else
+                            {
+                                // Root folder was deleted, remove from tracking
+                                _rootFolderTimestamps.Remove(rootFolderPath);
+                                _logger.LogWarning($"Root folder was deleted: {rootFolderPath}");
+                            }
                         }
                     }
-                }
 
-                // Process stable folders
-                foreach (var stableFolder in stableFolders)
+                    // Process stable root folders
+                    foreach (var stableRootFolder in stableRootFolders)
+                    {
+                        var timestamp = _rootFolderTimestamps[stableRootFolder];
+                        _rootFolderTimestamps.Remove(stableRootFolder);
+
+                        _logger.LogInfo($"Root folder is stable and ready for timestamp-based processing: {stableRootFolder} (files since {timestamp})");
+                        
+                        // Pass the root folder to processor - it will scan for files created since timestamp
+                        Task.Run(() => FolderCreated?.Invoke(stableRootFolder));
+                    }
+                }
+                else
                 {
-                    _pendingFolders.Remove(stableFolder);
-                    _logger.LogInfo($"Folder is stable and ready for processing: {stableFolder}");
-                    
-                    // Trigger processing on a background thread
-                    Task.Run(() => FolderCreated?.Invoke(stableFolder));
+                    // Handle folder-based processing for Mozaik modes (existing logic)
+                    var stableFolders = new List<string>();
+
+                    foreach (var kvp in _pendingFolders.ToList())
+                    {
+                        var folderPath = kvp.Key;
+                        var detectionTime = kvp.Value;
+
+                        // Check if enough time has passed
+                        if (currentTime.Subtract(detectionTime).TotalSeconds >= _config.FileStabilityDelaySeconds)
+                        {
+                            // Check if folder still exists and appears stable
+                            if (Directory.Exists(folderPath) && IsFolderStable(folderPath))
+                            {
+                                stableFolders.Add(folderPath);
+                            }
+                            else if (!Directory.Exists(folderPath))
+                            {
+                                // Folder was deleted, remove from pending
+                                _pendingFolders.Remove(folderPath);
+                                _logger.LogWarning($"Pending folder was deleted: {folderPath}");
+                            }
+                        }
+                    }
+
+                    // Process stable folders
+                    foreach (var stableFolder in stableFolders)
+                    {
+                        _pendingFolders.Remove(stableFolder);
+                        _logger.LogInfo($"Folder is stable and ready for processing: {stableFolder}");
+                        
+                        // Trigger processing on a background thread
+                        Task.Run(() => FolderCreated?.Invoke(stableFolder));
+                    }
                 }
             }
         }
@@ -204,6 +365,53 @@ namespace CNCFTPSyncCore.Services
                     _logger.LogError("Failed to restart FileSystemWatcher", ex);
                 }
             });
+        }
+
+
+
+        public DateTime? GetRootFolderTimestamp(string folderPath)
+        {
+            lock (_lockObject)
+            {
+                return _rootFolderTimestamps.TryGetValue(folderPath, out var timestamp) ? timestamp : null;
+            }
+        }
+
+        public void ClearRootFolderTimestamp(string folderPath)
+        {
+            lock (_lockObject)
+            {
+                _rootFolderTimestamps.Remove(folderPath);
+            }
+        }
+
+        private string GetRootLevelFolder(string path)
+        {
+            // Find the immediate child folder of the watch directory
+            var relativePath = Path.GetRelativePath(_config.WatchFolder, path);
+            
+            // If the path is directly in the watch folder, return the path itself
+            if (!relativePath.Contains(Path.DirectorySeparatorChar))
+            {
+                return path;
+            }
+            
+            // Otherwise, return the root-level folder
+            var rootFolderName = relativePath.Split(Path.DirectorySeparatorChar)[0];
+            return Path.Combine(_config.WatchFolder, rootFolderName);
+        }
+
+        public void Restart()
+        {
+            _logger.LogInfo("Restarting folder watcher due to configuration change");
+            Stop();
+            Start();
+        }
+
+        public void UpdateConfiguration(SyncConfiguration newConfig)
+        {
+            _config = newConfig;
+            _logger.LogInfo("Updated folder watcher configuration");
         }
 
         public void Dispose()

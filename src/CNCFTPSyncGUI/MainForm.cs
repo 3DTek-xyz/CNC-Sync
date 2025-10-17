@@ -565,6 +565,14 @@ namespace CNCFTPSyncGUI
                 chkAutoUpload.Checked = _config.AutoUploadAfterProcessing;
                 chkUseExternalProcessor.Checked = _config.UseExternalProcessor;
                 txtExternalProcessorPath.Text = _config.ExternalProcessorPath;
+                
+                // Load internal processing type
+                string processingType = _config.InternalProcessingType;
+                int index = cmbInternalProcessingType.Items.Cast<string>().ToList().IndexOf(processingType);
+                if (index >= 0)
+                    cmbInternalProcessingType.SelectedIndex = index;
+                else
+                    cmbInternalProcessingType.SelectedIndex = 0; // Default to first option
 
                 WriteToLogFile($"LoadConfiguration: Set txtFtpServer.Text to '{txtFtpServer.Text}'");
                 UpdateFtpCredentialsVisibility();
@@ -597,12 +605,20 @@ namespace CNCFTPSyncGUI
                 _config.AutoUploadAfterProcessing = chkAutoUpload.Checked;
                 _config.UseExternalProcessor = chkUseExternalProcessor.Checked;
                 _config.ExternalProcessorPath = txtExternalProcessorPath.Text;
+                _config.InternalProcessingType = cmbInternalProcessingType.SelectedItem?.ToString() ?? "Mozaik=>SyntecLabel+CNC";
 
                 WriteToLogFile($"SaveConfiguration: About to save FtpServer = '{_config.FtpServer}'");
                 WriteToLogFile($"SaveConfiguration: About to save FtpPort = {_config.FtpPort}");
                 WriteToLogFile($"SaveConfiguration: About to save WatchFolder = '{_config.WatchFolder}'");
 
                 _configService.SaveConfiguration(_config);
+                
+                // Refresh orchestrator configuration if it's running
+                if (_orchestrator?.IsRunning == true)
+                {
+                    _orchestrator.RefreshConfiguration();
+                    WriteToLogFile($"SaveConfiguration: Refreshed orchestrator configuration");
+                }
                 
                 WriteToLogFile($"SaveConfiguration: Successfully saved configuration");
                 MessageBox.Show("Configuration saved successfully.", "Configuration", 
@@ -1618,10 +1634,14 @@ namespace CNCFTPSyncGUI
         {
             bool useExternal = chkUseExternalProcessor.Checked;
             
-            // Enable/disable related controls
+            // Enable/disable external processor controls
             lblExternalProcessorPath.Enabled = useExternal;
             txtExternalProcessorPath.Enabled = useExternal;
             btnBrowseExternalProcessor.Enabled = useExternal;
+            
+            // Enable/disable internal processing controls (mutually exclusive)
+            lblInternalProcessingType.Enabled = !useExternal;
+            cmbInternalProcessingType.Enabled = !useExternal;
             
             _logService.LogInfo($"External processor usage changed to: {(useExternal ? "Enabled" : "Disabled")}");
         }

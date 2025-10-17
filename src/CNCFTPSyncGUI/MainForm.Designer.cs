@@ -56,6 +56,8 @@ namespace CNCFTPSyncGUI
         private Label lblExternalProcessorPath;
         private TextBox txtExternalProcessorPath;
         private Button btnBrowseExternalProcessor;
+        private Label lblInternalProcessingType;
+        private ComboBox cmbInternalProcessingType;
         private Button btnSaveConfig;
         private Button btnTestFtp;
         
@@ -321,6 +323,8 @@ namespace CNCFTPSyncGUI
             // Configuration Tab
             this.tabConfiguration = new TabPage("Configuration");
             this.tabConfiguration.AutoScroll = true;
+            this.tabConfiguration.AutoScrollMinSize = new Size(700, 800); // Ensure content area is larger than visible
+            this.tabConfiguration.Dock = DockStyle.Fill;
             this.tabControl.TabPages.Add(this.tabConfiguration);
             
             int yPos = 20;
@@ -499,6 +503,25 @@ namespace CNCFTPSyncGUI
             this.btnBrowseExternalProcessor.Enabled = false;
             this.btnBrowseExternalProcessor.Click += btnBrowseExternalProcessor_Click;
             this.tabConfiguration.Controls.Add(this.btnBrowseExternalProcessor);
+            
+            yPos += 40;
+            
+            // Internal Processing Type
+            this.lblInternalProcessingType = new Label();
+            this.lblInternalProcessingType.Text = "Internal Processing Type:";
+            this.lblInternalProcessingType.Location = new Point(20, yPos);
+            this.lblInternalProcessingType.Size = new Size(140, 20);
+            this.tabConfiguration.Controls.Add(this.lblInternalProcessingType);
+            
+            this.cmbInternalProcessingType = new ComboBox();
+            this.cmbInternalProcessingType.Location = new Point(170, yPos);
+            this.cmbInternalProcessingType.Size = new Size(300, 20);
+            this.cmbInternalProcessingType.DropDownStyle = ComboBoxStyle.DropDownList;
+            this.cmbInternalProcessingType.Items.Add("Mozaik=>SyntecLabel+CNC");
+            this.cmbInternalProcessingType.Items.Add("Mozaik=>SyntecLabel+CNC (CYC Coordinate Update)");
+            this.cmbInternalProcessingType.Items.Add("Simple FTP Upload");
+            this.cmbInternalProcessingType.SelectedIndex = 0; // Default to first option
+            this.tabConfiguration.Controls.Add(this.cmbInternalProcessingType);
             
             yPos += 40;
             

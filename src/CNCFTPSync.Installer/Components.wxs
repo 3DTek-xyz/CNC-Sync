@@ -240,6 +240,13 @@
             Source="SimpleFolderCopy.ps1" 
             KeyPath="yes" />
     </Component>
+    
+    <!-- Demo Batch script -->
+    <Component Id="DemoBatchScript" Guid="93A4B5C6-D7E8-9F01-AB23-3E4F5A6B7C8D">
+      <File Id="SimpleFolderCopy.bat" 
+            Source="SimpleFolderCopy.bat" 
+            KeyPath="yes" />
+    </Component>
 
   </ComponentGroup>
 

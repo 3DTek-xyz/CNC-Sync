@@ -1,8 +1,19 @@
 using CNCFTPSyncCore.Models;
 using CNCFTPSyncCore.Services;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using System.Xml;
+
+namespace CNCFTPSyncCore.Services
+{
+    public enum InternalProcessingType
+    {
+        MozaikSyntecLabelCNC,
+        MozaikSyntecLabelCNCWithCYC,
+        SimpleFtpUpload
+    }
+}
 
 namespace CNCFTPSyncCore.Services
 {
@@ -10,17 +21,24 @@ namespace CNCFTPSyncCore.Services
     {
         Task<ProcessingResult> ProcessProjectFolderAsync(string projectPath);
         ProjectInfo AnalyzeProject(string projectPath);
+        void SetFolderWatcher(IFolderWatcher folderWatcher);
     }
 
     public class GCodeProcessorService : IGCodeProcessor
     {
         private readonly ILogService _logger;
         private readonly SyncConfiguration _config;
+        private IFolderWatcher? _folderWatcher;
 
         public GCodeProcessorService(ILogService logger, SyncConfiguration config)
         {
             _logger = logger;
             _config = config;
+        }
+
+        public void SetFolderWatcher(IFolderWatcher folderWatcher)
+        {
+            _folderWatcher = folderWatcher;
         }
 
         private async Task<ProcessingResult> ProcessWithExternalScriptAsync(string projectPath, ProcessingResult result)
@@ -77,7 +95,6 @@ namespace CNCFTPSyncCore.Services
                         break;
                         
                     case ".bat":
-                    case ".cmd":
                         // Batch file with enhanced output capture
                         processInfo = new System.Diagnostics.ProcessStartInfo
                         {
@@ -93,22 +110,12 @@ namespace CNCFTPSyncCore.Services
                         _logger.LogInfo($"Executing batch file via: cmd.exe /c \"{_config.ExternalProcessorPath}\"");
                         break;
                         
-                    case ".exe":
                     default:
-                        // Executable or unknown - try direct execution with enhanced output capture
-                        processInfo = new System.Diagnostics.ProcessStartInfo
-                        {
-                            FileName = _config.ExternalProcessorPath,
-                            Arguments = $"\"{projectPath}\" \"{ftpUploadDirectory}\" \"{currentLogFile}\"",
-                            UseShellExecute = false,
-                            RedirectStandardOutput = true,
-                            RedirectStandardError = true,
-                            CreateNoWindow = true,
-                            StandardOutputEncoding = Encoding.UTF8,
-                            StandardErrorEncoding = Encoding.UTF8
-                        };
-                        _logger.LogInfo($"Executing directly: \"{_config.ExternalProcessorPath}\"");
-                        break;
+                        // Unsupported file type
+                        result.Success = false;
+                        result.Message = $"Unsupported script type: {scriptExtension}. Only .ps1 and .bat files are supported.";
+                        _logger.LogError(result.Message);
+                        return result;
                 }
 
                 // Execute external script with improved output capture
@@ -238,6 +245,53 @@ namespace CNCFTPSyncCore.Services
                     return await ProcessWithExternalScriptAsync(projectPath, result);
                 }
 
+                // Determine internal processing type
+                var processingType = GetInternalProcessingType(_config.InternalProcessingType);
+                _logger.LogInfo($"Using internal processing type: {processingType}");
+
+                // Route to appropriate internal processing method
+                switch (processingType)
+                {
+                    case InternalProcessingType.MozaikSyntecLabelCNC:
+                    case InternalProcessingType.MozaikSyntecLabelCNCWithCYC:
+                        return await ProcessMozaikSyntecLabelCNCAsync(projectPath, result);
+                    case InternalProcessingType.SimpleFtpUpload:
+                        return await ProcessSimpleFtpUploadAsync(projectPath, result);
+                    default:
+                        result.Message = $"Unknown internal processing type: {processingType}";
+                        _logger.LogError(result.Message);
+                        return result;
+                }
+            }
+            catch (Exception ex)
+            {
+                result.Message = $"Error processing project: {ex.Message}";
+                result.Errors.Add(ex.ToString());
+                _logger.LogError(result.Message, ex);
+            }
+            finally
+            {
+                result.EndTime = DateTime.Now;
+            }
+
+            return result;
+        }
+
+        private InternalProcessingType GetInternalProcessingType(string processingTypeName)
+        {
+            return processingTypeName switch
+            {
+                "Mozaik=>SyntecLabel+CNC" => InternalProcessingType.MozaikSyntecLabelCNC,
+                "Mozaik=>SyntecLabel+CNC (CYC Coordinate Update)" => InternalProcessingType.MozaikSyntecLabelCNCWithCYC,
+                "Simple FTP Upload" => InternalProcessingType.SimpleFtpUpload,
+                _ => InternalProcessingType.MozaikSyntecLabelCNC // Default to first option
+            };
+        }
+
+        private async Task<ProcessingResult> ProcessMozaikSyntecLabelCNCAsync(string projectPath, ProcessingResult result)
+        {
+            try
+            {
                 // Step 1: Analyze the project (using original path)
                 var projectInfo = AnalyzeProject(projectPath);
                 if (string.IsNullOrEmpty(projectInfo.LatestRevision))
@@ -272,7 +326,11 @@ namespace CNCFTPSyncCore.Services
                 await MoveXmlFilesAsync(projectInfo);
 
                 // Step 9: Process CYC coordinates and convert to UTF-8 (in FTP working area)
-                await ProcessCycCoordinatesAsync(projectInfo);
+                // Only execute this step if using the CYC Coordinate Update option
+                if (_config.InternalProcessingType == "Mozaik=>SyntecLabel+CNC (CYC Coordinate Update)")
+                {
+                    await ProcessCycCoordinatesAsync(projectInfo);
+                }
 
                 // Files are now ready in FTP working area - no additional copying needed
 
@@ -282,16 +340,101 @@ namespace CNCFTPSyncCore.Services
             }
             catch (Exception ex)
             {
-                result.Message = $"Error processing project: {ex.Message}";
+                result.Message = $"Error processing Mozaik=>SyntecLabel+CNC: {ex.Message}";
                 result.Errors.Add(ex.ToString());
                 _logger.LogError(result.Message, ex);
             }
-            finally
+
+            return result;
+        }
+
+        private async Task<ProcessingResult> ProcessSimpleFtpUploadAsync(string projectPath, ProcessingResult result)
+        {
+            try
             {
-                result.EndTime = DateTime.Now;
+                _logger.LogInfo($"Processing Simple FTP Upload for: {projectPath}");
+
+                // For Simple FTP Upload, just copy all files/folders to FTP Upload directory
+                var sourceInfo = new DirectoryInfo(projectPath);
+                var projectName = sourceInfo.Name;
+                
+                // Create destination path in FTP upload directory
+                var ftpUploadDirectory = !string.IsNullOrEmpty(_config.FtpUploadFolder) 
+                    ? _config.FtpUploadFolder 
+                    : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "CNC-FTP-SYNC", "FtpUpload");
+
+                var destinationPath = Path.Combine(ftpUploadDirectory, projectName);
+
+                // Ensure FTP upload directory exists
+                Directory.CreateDirectory(ftpUploadDirectory);
+
+                // Check if this is the watch folder (individual file processing)
+                if (projectPath == _config.WatchFolder)
+                {
+                    // For watch folder root, copy files directly to FTP upload root
+                    await ProcessIndividualFilesAsync(projectPath, ftpUploadDirectory);
+                }
+                else if (projectPath.StartsWith(_config.WatchFolder))
+                {
+                    // For subdirectories within watch folder, maintain relative path structure
+                    var relativePath = Path.GetRelativePath(_config.WatchFolder, projectPath);
+                    var destinationSubPath = Path.Combine(ftpUploadDirectory, relativePath);
+                    
+                    // Copy the subdirectory with its structure preserved
+                    await CopyDirectoryAsync(projectPath, destinationSubPath);
+                    result.OutputPath = destinationSubPath;
+                }
+                else
+                {
+                    // Standard folder processing - copy entire folder
+                    // If destination already exists, remove it first
+                    if (Directory.Exists(destinationPath))
+                    {
+                        Directory.Delete(destinationPath, true);
+                        _logger.LogInfo($"Removed existing destination: {destinationPath}");
+                    }
+
+                    // Copy all files and subdirectories
+                    await CopyDirectoryAsync(projectPath, destinationPath);
+                    result.OutputPath = destinationPath;
+                }
+
+                result.Success = true;
+                result.Message = $"Successfully processed Simple FTP Upload for: {projectPath}";
+                result.OutputPath = result.OutputPath ?? ftpUploadDirectory;
+                _logger.LogInfo(result.Message);
+            }
+            catch (Exception ex)
+            {
+                result.Message = $"Error processing Simple FTP Upload: {ex.Message}";
+                result.Errors.Add(ex.ToString());
+                _logger.LogError(result.Message, ex);
             }
 
             return result;
+        }
+
+        private async Task CopyDirectoryAsync(string sourceDir, string destDir)
+        {
+            // Create destination directory
+            Directory.CreateDirectory(destDir);
+
+            // Copy all files
+            foreach (var file in Directory.GetFiles(sourceDir))
+            {
+                var fileName = Path.GetFileName(file);
+                var destFile = Path.Combine(destDir, fileName);
+                File.Copy(file, destFile, true);
+                _logger.LogInfo($"Copied file: {fileName}");
+            }
+
+            // Copy all subdirectories recursively
+            foreach (var subDir in Directory.GetDirectories(sourceDir))
+            {
+                var dirName = Path.GetFileName(subDir);
+                var destSubDir = Path.Combine(destDir, dirName);
+                await CopyDirectoryAsync(subDir, destSubDir);
+            }
         }
 
         public ProjectInfo AnalyzeProject(string projectPath)
@@ -527,35 +670,19 @@ namespace CNCFTPSyncCore.Services
                 {
                     _logger.LogInfo($"Processing CYC file: {Path.GetFileName(cycFile)}");
 
-                    // Load and process XML
-                    var xmlDoc = new XmlDocument();
-                    xmlDoc.Load(cycFile);
-
-                    var fieldsToUpdate = xmlDoc.SelectNodes("//Field[@Name='Y']");
-                    var updatedFields = 0;
-
-                    if (fieldsToUpdate != null)
-                    {
-                        foreach (XmlNode field in fieldsToUpdate)
-                        {
-                            if (field.InnerText != null && double.TryParse(field.InnerText, out double currentValue))
-                            {
-                                if (currentValue < 0)
-                                {
-                                    var newValue = Math.Abs(currentValue);
-                                    field.InnerText = newValue.ToString();
-                                    _logger.LogInfo($"Y value updated: {currentValue} to {newValue}");
-                                    updatedFields++;
-                                }
-                            }
-                        }
-                    }
-
-                    // Save the updated XML
-                    xmlDoc.Save(cycFile);
-
-                    // Convert to UTF-8
+                    // Read file content and process with simple string replacement
                     var content = File.ReadAllText(cycFile);
+                    var originalContent = content;
+                    
+                    // Replace negative Y values: look for <Field Name="Y" Value="-xxx" and remove the minus
+                    var pattern = @"(<Field Name=""Y"" Value="")(-)([\d\.]+""[^>]*>)";
+                    var replacement = "$1$3"; // Keep everything except the minus sign
+                    
+                    content = System.Text.RegularExpressions.Regex.Replace(content, pattern, replacement);
+                    
+                    var updatedFields = System.Text.RegularExpressions.Regex.Matches(originalContent, pattern).Count;
+                    
+                    // Write the updated content back to file as UTF-8
                     File.WriteAllText(cycFile, content, Encoding.UTF8);
 
                     _logger.LogInfo($"CYC file processed: {Path.GetFileName(cycFile)} - {updatedFields} Y coordinates updated, converted to UTF-8");
@@ -671,6 +798,142 @@ namespace CNCFTPSyncCore.Services
                     CopyDirectory(subDir.FullName, newDestinationDir, true);
                 }
             }
+        }
+
+        private async Task ProcessIndividualFilesAsync(string folderPath, string ftpUploadDirectory)
+        {
+            if (_folderWatcher == null)
+            {
+                _logger.LogWarning("FolderWatcher not available for individual file processing, processing entire folder");
+                await ProcessEntireFolderAsync(folderPath, ftpUploadDirectory);
+                return;
+            }
+
+            // Get the timestamp when activity started in this root folder
+            var activityTimestamp = _folderWatcher.GetRootFolderTimestamp(folderPath);
+            
+            if (activityTimestamp == null)
+            {
+                _logger.LogWarning($"No activity timestamp found for folder: {folderPath}");
+                return;
+            }
+
+            _logger.LogInfo($"Processing files in root folder: {folderPath} created since {activityTimestamp}");
+
+            // Find all files in the folder tree that were created since the activity timestamp
+            var recentFiles = GetFilesCreatedSince(folderPath, activityTimestamp.Value);
+            
+            _logger.LogInfo($"Found {recentFiles.Count} files created since {activityTimestamp}");
+
+            if (recentFiles.Count == 0)
+            {
+                _logger.LogWarning($"No recent files found in folder: {folderPath}");
+                _folderWatcher.ClearRootFolderTimestamp(folderPath);
+                return;
+            }
+
+            // Process each recent file
+            foreach (var filePath in recentFiles)
+            {
+                try
+                {
+                    if (!File.Exists(filePath))
+                    {
+                        _logger.LogWarning($"File no longer exists, skipping: {filePath}");
+                        continue;
+                    }
+
+                    // Calculate the relative path from the watch folder to maintain structure
+                    var relativePath = Path.GetRelativePath(_config.WatchFolder, filePath);
+                    var destPath = Path.Combine(ftpUploadDirectory, relativePath);
+                    
+                    // Ensure destination directory exists
+                    var destDir = Path.GetDirectoryName(destPath);
+                    if (!string.IsNullOrEmpty(destDir))
+                    {
+                        Directory.CreateDirectory(destDir);
+                    }
+                    
+                    // Copy the specific file
+                    File.Copy(filePath, destPath, true);
+                    _logger.LogInfo($"Copied recent file: {filePath} -> {destPath}");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError($"Failed to copy file {filePath}: {ex.Message}");
+                }
+            }
+
+            // Clear the timestamp for this folder since it's been processed
+            _folderWatcher.ClearRootFolderTimestamp(folderPath);
+            
+            await Task.CompletedTask;
+        }
+
+        private async Task ProcessEntireFolderAsync(string folderPath, string ftpUploadDirectory)
+        {
+            // Fallback method for when folder watcher is not available
+            _logger.LogInfo($"Processing entire folder: {folderPath}");
+            
+            var files = Directory.GetFiles(folderPath, "*", SearchOption.AllDirectories);
+            
+            foreach (var filePath in files)
+            {
+                try
+                {
+                    var relativePath = Path.GetRelativePath(_config.WatchFolder, filePath);
+                    var destPath = Path.Combine(ftpUploadDirectory, relativePath);
+                    
+                    var destDir = Path.GetDirectoryName(destPath);
+                    if (!string.IsNullOrEmpty(destDir))
+                    {
+                        Directory.CreateDirectory(destDir);
+                    }
+                    
+                    File.Copy(filePath, destPath, true);
+                    _logger.LogInfo($"Copied file: {filePath} -> {destPath}");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError($"Failed to copy file {filePath}: {ex.Message}");
+                }
+            }
+            
+            await Task.CompletedTask;
+        }
+
+        private List<string> GetFilesCreatedSince(string folderPath, DateTime timestamp)
+        {
+            var recentFiles = new List<string>();
+            
+            try
+            {
+                // Get all files in the folder tree
+                var allFiles = Directory.GetFiles(folderPath, "*", SearchOption.AllDirectories);
+                
+                foreach (var filePath in allFiles)
+                {
+                    try
+                    {
+                        var fileInfo = new FileInfo(filePath);
+                        // Check if file was created since the timestamp (with small buffer for timing precision)
+                        if (fileInfo.CreationTime >= timestamp.AddSeconds(-1) || fileInfo.LastWriteTime >= timestamp.AddSeconds(-1))
+                        {
+                            recentFiles.Add(filePath);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning($"Could not check file timestamps for {filePath}: {ex.Message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error scanning folder for recent files {folderPath}: {ex.Message}");
+            }
+            
+            return recentFiles;
         }
     }
 }

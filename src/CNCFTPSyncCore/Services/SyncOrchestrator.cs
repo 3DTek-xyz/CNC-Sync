@@ -12,6 +12,7 @@ namespace CNCFTPSyncCore.Services
         Task StartAsync();
         Task StopAsync();
         Task<ProcessingResult> ProcessFolderManuallyAsync(string folderPath);
+        void RefreshConfiguration(); // Add method to refresh config
         bool IsRunning { get; }
         string CurrentStatus { get; }
     }
@@ -84,6 +85,10 @@ namespace CNCFTPSyncCore.Services
                 _logger.LogInfo($"STARTUP TIMING: Creating folder watcher at {orchestratorStopwatch.ElapsedMilliseconds}ms");
                 _folderWatcher = new FolderWatcherService(_logger, _config);
                 _folderWatcher.FolderCreated += OnFolderCreated;
+                
+                // Inject folder watcher into GCode processor for individual file tracking
+                _gCodeProcessor.SetFolderWatcher(_folderWatcher);
+                
                 _logger.LogInfo($"STARTUP TIMING: Starting folder watcher at {orchestratorStopwatch.ElapsedMilliseconds}ms");
                 _folderWatcher.Start();
                 _logger.LogInfo($"STARTUP TIMING: Folder watcher started at {orchestratorStopwatch.ElapsedMilliseconds}ms");
@@ -284,6 +289,21 @@ namespace CNCFTPSyncCore.Services
         {
             _currentStatus = status;
             StatusChanged?.Invoke(status);
+        }
+
+        public void RefreshConfiguration()
+        {
+            _logger.LogInfo("Refreshing configuration and restarting folder watcher");
+            
+            // Reload configuration
+            _config = _configService.LoadConfiguration();
+            
+            // Update folder watcher configuration and restart if it's running
+            if (_folderWatcher?.IsRunning == true)
+            {
+                _folderWatcher.UpdateConfiguration(_config);
+                _folderWatcher.Restart();
+            }
         }
 
         public void Dispose()

@@ -15,7 +15,7 @@
                        Keywords="CNC, File Transfer, FTP, G-Code" />
 
     <!-- Major upgrade configuration for automatic updates -->
-    <MajorUpgrade AllowSameVersionUpgrades="no"
+    <MajorUpgrade AllowSameVersionUpgrades="yes"
                   AllowDowngrades="no"
                   DowngradeErrorMessage="A newer version of [ProductName] is already installed."
                   Schedule="afterInstallInitialize" />
@@ -111,6 +111,13 @@
                       Name="CNCFTPSyncService"
                       Start="install"
                       Wait="no" />
+      
+      <!-- Service Control for Uninstall - Stop and remove existing service during uninstall -->
+      <ServiceControl Id="StopAndRemoveServiceOnUninstall"
+                      Name="CNCFTPSyncService"
+                      Stop="uninstall"
+                      Remove="uninstall"
+                      Wait="yes" />
       
       <!-- Registry key to track service management -->
       <RegistryValue Root="HKLM"

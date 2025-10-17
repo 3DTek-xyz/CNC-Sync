@@ -115,8 +115,18 @@ echo.
 echo Step 6: Check outputs
 if exist "bin\Release\CNCFTPSync.Installer.msi" (
     echo SUCCESS: MSI created at bin\Release\CNCFTPSync.Installer.msi
+    echo.
+    echo Step 7: Auto-installing after successful build
+    echo Running installer...
+    msiexec /i "bin\Release\CNCFTPSync.Installer.msi" /l*v install.log
+    if %errorLevel% equ 0 (
+        echo OK: Installation completed successfully
+    ) else (
+        echo WARNING: Installation may have failed (exit code %errorLevel%)
+        echo Check install.log for details
+    )
 ) else (
-    echo WARNING: MSI not found
+    echo WARNING: MSI not found - cannot install
 )
 echo.
 

@@ -45,6 +45,7 @@ namespace CNCFTPSyncCore.Models
         public bool AutoUploadAfterProcessing { get; set; } = true;
         public bool UseExternalProcessor { get; set; } = false;
         public string ExternalProcessorPath { get; set; } = string.Empty;
+        public string InternalProcessingType { get; set; } = "Mozaik=>SyntecLabel+CNC";
     }
 
     public class FtpFileInfo
