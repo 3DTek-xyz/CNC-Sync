@@ -1,0 +1,71 @@
+using CBWSSSync.Core.Configuration;
+using CommunityToolkit.Mvvm.ComponentModel;
+
+namespace CBWSSSync.App.ViewModels;
+
+public partial class WatchProfileItemViewModel : ObservableObject
+{
+    [ObservableProperty]
+    private string id = Guid.NewGuid().ToString("N");
+
+    [ObservableProperty]
+    private string name = string.Empty;
+
+    [ObservableProperty]
+    private bool enabled = true;
+
+    [ObservableProperty]
+    private string watchFolder = string.Empty;
+
+    [ObservableProperty]
+    private string stagingFolder = string.Empty;
+
+    [ObservableProperty]
+    private string remoteSubfolder = string.Empty;
+
+    [ObservableProperty]
+    private string processingMode = "Default";
+
+    [ObservableProperty]
+    private string ftpDestinationId = string.Empty;
+
+    [ObservableProperty]
+    private int stabilityDelaySeconds = 30;
+
+    [ObservableProperty]
+    private int stabilityPollingSeconds = 5;
+
+    public string DisplayName => string.IsNullOrWhiteSpace(Name) ? "Unnamed watch profile" : Name;
+
+    partial void OnNameChanged(string value) => OnPropertyChanged(nameof(DisplayName));
+
+    public static WatchProfileItemViewModel FromSettings(WatchProfileSettings settings) =>
+        new()
+        {
+            Id = settings.Id,
+            Name = settings.Name,
+            Enabled = settings.Enabled,
+            WatchFolder = settings.WatchFolder,
+            StagingFolder = settings.StagingFolder,
+            RemoteSubfolder = settings.RemoteSubfolder,
+            ProcessingMode = settings.ProcessingMode,
+            FtpDestinationId = settings.FtpDestinationId,
+            StabilityDelaySeconds = settings.StabilityDelaySeconds,
+            StabilityPollingSeconds = settings.StabilityPollingSeconds
+        };
+
+    public WatchProfileSettings ToSettings() =>
+        new()
+        {
+            Id = Id,
+            Name = Name,
+            Enabled = Enabled,
+            WatchFolder = WatchFolder,
+            StagingFolder = StagingFolder,
+            RemoteSubfolder = RemoteSubfolder,
+            ProcessingMode = ProcessingMode,
+            FtpDestinationId = FtpDestinationId,
+            StabilityDelaySeconds = StabilityDelaySeconds,
+            StabilityPollingSeconds = StabilityPollingSeconds
+        };
+}

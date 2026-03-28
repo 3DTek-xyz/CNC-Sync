@@ -1,37 +1,26 @@
-# Build artifacts and output directories
 bin/
 obj/
-*.exe
-*.dll
-*.pdb
-*.msi
+.DS_Store
 
-# WiX Installer build artifacts
-*.wixpdb
-*.cab
-*.wixobj
-
-# Visual Studio / MSBuild
+# User and IDE files
+.idea/
 .vs/
 *.user
 *.suo
-*.sln.docstates
 
-# NuGet packages
-packages/
+# Avalonia / .NET artifacts
+TestResults/
 *.nupkg
+*.snupkg
 
-# Logs
-*.log
-logs/
+# Local tooling
+.vscode/
 
-# macOS metadata files that cause Windows Git issues
-Icon?
-Icon
-.DS_Store
-._*
-.Spotlight-V100
-.Trashes
-.fseventsd
-.TemporaryItems
-*.cyc
+# Legacy archive noise
+Original/**/bin/
+Original/**/obj/
+Original/**/*.log
+Original/**/*.dll
+Original/**/*.exe
+Original/**/*.pdb
+Original/**/*.msi
