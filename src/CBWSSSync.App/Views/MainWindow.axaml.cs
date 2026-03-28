@@ -3,6 +3,7 @@ using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using CBWSSSync.App.ViewModels;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
@@ -51,14 +52,30 @@ public partial class MainWindow : Window
 
     private async void BrowseProcessingScript_OnClick(object? sender, RoutedEventArgs e)
     {
-        var scriptsPath = (DataContext as MainWindowViewModel)?.ScriptsPath;
-        var selectedPath = await PickFileAsync(scriptsPath);
-        if (selectedPath is not null &&
-            DataContext is MainWindowViewModel viewModel &&
-            viewModel.SelectedProcessingSetup is not null)
+        if (DataContext is not MainWindowViewModel viewModel ||
+            viewModel.SelectedProcessingSetup is null)
+        {
+            return;
+        }
+
+        var initialDirectory = ResolveInitialScriptDirectory(viewModel);
+        var selectedPath = await PickFileAsync(initialDirectory);
+        if (selectedPath is not null)
         {
             viewModel.SelectedProcessingSetup.ScriptPath = selectedPath;
         }
+    }
+
+    private void OpenScriptsFolder_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel ||
+            string.IsNullOrWhiteSpace(viewModel.ScriptsPath) ||
+            !Directory.Exists(viewModel.ScriptsPath))
+        {
+            return;
+        }
+
+        OpenFolderInShell(viewModel.ScriptsPath);
     }
 
     private async Task<string?> PickFolderAsync()
@@ -78,7 +95,7 @@ public partial class MainWindow : Window
         IStorageFolder? suggestedStartLocation = null;
         if (!string.IsNullOrWhiteSpace(initialDirectory) && Directory.Exists(initialDirectory))
         {
-            suggestedStartLocation = await StorageProvider.TryGetFolderFromPathAsync(new Uri(initialDirectory));
+            suggestedStartLocation = await StorageProvider.TryGetFolderFromPathAsync(ToFileUri(initialDirectory));
         }
 
         var files = await StorageProvider.OpenFilePickerAsync(
@@ -90,5 +107,54 @@ public partial class MainWindow : Window
             });
 
         return files.FirstOrDefault()?.Path.LocalPath;
+    }
+
+    private static string? ResolveInitialScriptDirectory(MainWindowViewModel viewModel)
+    {
+        var currentScriptPath = viewModel.SelectedProcessingSetup?.ScriptPath;
+        if (!string.IsNullOrWhiteSpace(currentScriptPath) && File.Exists(currentScriptPath))
+        {
+            return Path.GetDirectoryName(currentScriptPath);
+        }
+
+        return viewModel.ScriptsPath;
+    }
+
+    private static Uri ToFileUri(string path)
+    {
+        var normalizedPath = Path.GetFullPath(path);
+        return new Uri(normalizedPath, UriKind.Absolute);
+    }
+
+    private static void OpenFolderInShell(string path)
+    {
+        if (OperatingSystem.IsMacOS())
+        {
+            var startInfo = new ProcessStartInfo("open")
+            {
+                UseShellExecute = false
+            };
+            startInfo.ArgumentList.Add(path);
+            Process.Start(startInfo);
+            return;
+        }
+
+        if (OperatingSystem.IsWindows())
+        {
+            var startInfo = new ProcessStartInfo("explorer.exe")
+            {
+                UseShellExecute = false
+            };
+            startInfo.ArgumentList.Add(path);
+            Process.Start(startInfo);
+            return;
+        }
+
+        var linuxStartInfo = new ProcessStartInfo("xdg-open")
+        {
+            UseShellExecute = false
+        };
+        linuxStartInfo.ArgumentList.Add(path);
+        Process.Start(linuxStartInfo);
     }
 }

@@ -11,12 +11,14 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
     };
 
     private readonly string _settingsDirectory;
+    private readonly string _legacySettingsDirectory;
     private readonly string _bundledScriptsDirectory;
 
     public JsonAppSettingsStore()
     {
         var appDataRoot = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        _settingsDirectory = Path.Combine(appDataRoot, "CBWSSSync");
+        _settingsDirectory = Path.Combine(appDataRoot, "CNC Sync");
+        _legacySettingsDirectory = Path.Combine(appDataRoot, "CBWSSSync");
         SettingsFilePath = Path.Combine(_settingsDirectory, "settings.json");
         ScriptsDirectoryPath = Path.Combine(_settingsDirectory, "Scripts");
         _bundledScriptsDirectory = Path.Combine(AppContext.BaseDirectory, "BundledScripts");
@@ -27,6 +29,7 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
 
     public AppSettings Load()
     {
+        MigrateLegacyDataIfNeeded();
         Directory.CreateDirectory(_settingsDirectory);
         Directory.CreateDirectory(ScriptsDirectoryPath);
         SeedBundledScripts();
@@ -48,6 +51,7 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
 
     public async Task SaveAsync(AppSettings settings, CancellationToken cancellationToken = default)
     {
+        MigrateLegacyDataIfNeeded();
         Directory.CreateDirectory(_settingsDirectory);
         Directory.CreateDirectory(ScriptsDirectoryPath);
         SeedBundledScripts();
@@ -74,6 +78,32 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
             }
 
             // Only seed missing files so user-modified examples are not overwritten.
+            if (!File.Exists(destinationPath))
+            {
+                File.Copy(sourcePath, destinationPath);
+            }
+        }
+    }
+
+    private void MigrateLegacyDataIfNeeded()
+    {
+        if (!Directory.Exists(_legacySettingsDirectory))
+        {
+            return;
+        }
+
+        Directory.CreateDirectory(_settingsDirectory);
+
+        foreach (var sourcePath in Directory.EnumerateFiles(_legacySettingsDirectory, "*", SearchOption.AllDirectories))
+        {
+            var relativePath = Path.GetRelativePath(_legacySettingsDirectory, sourcePath);
+            var destinationPath = Path.Combine(_settingsDirectory, relativePath);
+            var destinationDirectory = Path.GetDirectoryName(destinationPath);
+            if (!string.IsNullOrWhiteSpace(destinationDirectory))
+            {
+                Directory.CreateDirectory(destinationDirectory);
+            }
+
             if (!File.Exists(destinationPath))
             {
                 File.Copy(sourcePath, destinationPath);
