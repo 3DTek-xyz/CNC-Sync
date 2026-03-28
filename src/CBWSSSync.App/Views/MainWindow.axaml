@@ -20,28 +20,32 @@
 
     <Grid RowDefinitions="Auto,Auto,*" Margin="24">
         <StackPanel Spacing="6">
+            <TextBlock Classes="sectionEyebrow" Text="Tray Utility" />
             <TextBlock Text="{Binding AppTitle}" FontSize="28" FontWeight="Bold" />
+            <TextBlock Classes="muted" Text="Monitor local CNC export folders, optionally process them, and upload the result to FTP." TextWrapping="Wrap" />
         </StackPanel>
 
         <Grid Grid.Row="1" Margin="0,20,0,0" ColumnDefinitions="*,*">
-            <Border Margin="0,0,8,0" Padding="16" CornerRadius="12">
+            <Border Classes="heroCard" Margin="0,0,8,0" Padding="18" CornerRadius="16">
                 <StackPanel Spacing="8">
+                    <TextBlock Classes="sectionEyebrow" Text="Live Status" />
                     <TextBlock Text="Monitoring" FontSize="18" FontWeight="SemiBold" />
                     <TextBlock Text="{Binding MonitoringStatus, StringFormat=Status: {0}}" />
-                    <TextBlock Text="{Binding ActiveMonitoringProfilesSummary}" TextWrapping="Wrap" Opacity="0.8" />
+                    <TextBlock Classes="muted" Text="{Binding ActiveMonitoringProfilesSummary}" TextWrapping="Wrap" />
                     <TextBlock Text="{Binding CurrentTask, StringFormat=Current task: {0}}" TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding LastProcessingSummary}" TextWrapping="Wrap" Opacity="0.8" />
+                    <TextBlock Classes="muted" Text="{Binding LastProcessingSummary}" TextWrapping="Wrap" />
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Button Content="Start" Command="{Binding StartMonitoringCommand}" />
-                        <Button Content="Stop" Command="{Binding StopMonitoringCommand}" />
+                        <Button Classes="primary" Content="Start" Command="{Binding StartMonitoringCommand}" />
+                        <Button Classes="subtle" Content="Stop" Command="{Binding StopMonitoringCommand}" />
                     </StackPanel>
                 </StackPanel>
             </Border>
 
-            <Border Grid.Column="1" Margin="8,0,0,0" Padding="16" CornerRadius="12">
+            <Border Classes="card" Grid.Column="1" Margin="8,0,0,0" Padding="18" CornerRadius="16">
                 <StackPanel Spacing="8">
+                    <TextBlock Classes="sectionEyebrow" Text="Recovery" />
                     <TextBlock Text="Manual Catch-Up" FontSize="18" FontWeight="SemiBold" />
-                    <TextBlock Text="{Binding ManualActionSummary}" TextWrapping="Wrap" />
+                    <TextBlock Classes="muted" Text="{Binding ManualActionSummary}" TextWrapping="Wrap" />
                     <Grid ColumnDefinitions="180,*">
                         <TextBlock VerticalAlignment="Center" Text="Watch Profile" />
                         <ComboBox Grid.Column="1"
@@ -54,7 +58,7 @@
                             </ComboBox.ItemTemplate>
                         </ComboBox>
                     </Grid>
-                    <Button HorizontalAlignment="Left" Content="Catch Up Missing Files" Command="{Binding ManualProcessCommand}" />
+                    <Button Classes="primary" HorizontalAlignment="Left" Content="Catch Up Missing Files" Command="{Binding ManualProcessCommand}" />
                 </StackPanel>
             </Border>
         </Grid>
@@ -65,23 +69,24 @@
                               HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="0,0,20,0" Spacing="16">
-                        <Border Padding="16" CornerRadius="12">
+                        <Border Classes="card" Padding="18" CornerRadius="16">
                             <StackPanel Spacing="12">
                                 <StackPanel Spacing="4">
+                                    <TextBlock Classes="sectionEyebrow" Text="Global" />
                                     <TextBlock Text="App Settings" FontSize="20" FontWeight="SemiBold" />
-                                    <TextBlock Text="These settings affect the whole app. Use this tab for startup behaviour, loading saved settings, and checking whether the current configuration is valid." Opacity="0.8" TextWrapping="Wrap" />
+                                    <TextBlock Classes="muted" Text="These settings affect the whole app. Use this tab for startup behaviour, loading saved settings, and checking whether the current configuration is valid." TextWrapping="Wrap" />
                                 </StackPanel>
 
                                 <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <Button Content="Load Settings" Command="{Binding LoadSettingsCommand}" />
-                                    <Button Content="Validate Settings" Command="{Binding ValidateSettingsCommand}" />
+                                    <Button Classes="subtle" Content="Load Settings" Command="{Binding LoadSettingsCommand}" />
+                                    <Button Classes="primary" Content="Validate Settings" Command="{Binding ValidateSettingsCommand}" />
                                 </StackPanel>
 
-                                <TextBlock Text="{Binding SaveMessage}" Opacity="0.8" TextWrapping="Wrap" />
+                                <TextBlock Classes="muted" Text="{Binding SaveMessage}" TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 
-                        <Border Padding="16" CornerRadius="12">
+                        <Border Classes="card" Padding="18" CornerRadius="16">
                             <StackPanel Spacing="12">
                                 <TextBlock Text="App Behavior" FontSize="18" FontWeight="SemiBold" />
                                 <Grid ColumnDefinitions="220,*">
@@ -95,11 +100,11 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Padding="16" CornerRadius="12">
+                        <Border Classes="card" Padding="18" CornerRadius="16">
                             <StackPanel Spacing="12">
                                 <StackPanel Spacing="4">
                                     <TextBlock Text="Validation" FontSize="18" FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding ValidationSummary}" TextWrapping="Wrap" Opacity="0.8" />
+                                    <TextBlock Classes="muted" Text="{Binding ValidationSummary}" TextWrapping="Wrap" />
                                 </StackPanel>
 
                                 <ListBox Height="160" ItemsSource="{Binding ValidationErrors}" />
@@ -114,20 +119,21 @@
                               HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="0,0,20,0" Spacing="16">
-                        <Border Padding="16" CornerRadius="12">
+                        <Border Classes="card" Padding="18" CornerRadius="16">
                             <StackPanel Spacing="8">
+                                <TextBlock Classes="sectionEyebrow" Text="Live Rules" />
                                 <TextBlock Text="Folder Watches" FontSize="20" FontWeight="SemiBold" />
-                                <TextBlock Text="A folder watch is the live rule that watches one local folder, stages output, chooses a processing setup, and uploads to a selected FTP destination." Opacity="0.8" TextWrapping="Wrap" />
+                                <TextBlock Classes="muted" Text="A folder watch is the live rule that watches one local folder, stages output, chooses a processing setup, and uploads to a selected FTP destination." TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 
                         <Grid ColumnDefinitions="320,*">
-                            <Border Margin="0,0,8,0" Padding="16" CornerRadius="12">
+                            <Border Classes="card" Margin="0,0,8,0" Padding="18" CornerRadius="16">
                                 <StackPanel Spacing="12">
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <TextBlock VerticalAlignment="Center" Text="Watch Profiles" FontSize="18" FontWeight="SemiBold" />
-                                        <Button Content="Add" Command="{Binding AddWatchProfileCommand}" />
-                                        <Button Content="Remove" Command="{Binding RemoveWatchProfileCommand}" />
+                                        <Button Classes="subtle" Content="Add" Command="{Binding AddWatchProfileCommand}" />
+                                        <Button Classes="subtle" Content="Remove" Command="{Binding RemoveWatchProfileCommand}" />
                                     </StackPanel>
 
                                     <ListBox ItemsSource="{Binding WatchProfiles}" SelectedItem="{Binding SelectedWatchProfile}">
@@ -143,7 +149,7 @@
                                 </StackPanel>
                             </Border>
 
-                            <Border Grid.Column="1" Margin="8,0,0,0" Padding="16" CornerRadius="12">
+                            <Border Classes="card" Grid.Column="1" Margin="8,0,0,0" Padding="18" CornerRadius="16">
                                 <StackPanel Spacing="12">
                                     <TextBlock Text="Selected Watch Profile" FontSize="18" FontWeight="SemiBold" />
 
@@ -239,20 +245,21 @@
                               HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="0,0,20,0" Spacing="16">
-                        <Border Padding="16" CornerRadius="12">
+                        <Border Classes="card" Padding="18" CornerRadius="16">
                             <StackPanel Spacing="8">
+                                <TextBlock Classes="sectionEyebrow" Text="Reusable Logic" />
                                 <TextBlock Text="Processing Setups" FontSize="20" FontWeight="SemiBold" />
-                                <TextBlock Text="Define reusable pre-upload behaviour once, then assign it to any watch profile. Use default copy-to-staging when nothing special is needed, or external scripts for custom processing workflows." Opacity="0.8" TextWrapping="Wrap" />
+                                <TextBlock Classes="muted" Text="Define reusable pre-upload behaviour once, then assign it to any watch profile. Use default copy-to-staging when nothing special is needed, or external scripts for custom processing workflows." TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 
                         <Grid ColumnDefinitions="320,*">
-                            <Border Margin="0,0,8,0" Padding="16" CornerRadius="12">
+                            <Border Classes="card" Margin="0,0,8,0" Padding="18" CornerRadius="16">
                                 <StackPanel Spacing="12">
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <TextBlock VerticalAlignment="Center" Text="Processing Setups" FontSize="18" FontWeight="SemiBold" />
-                                        <Button Content="Add" Command="{Binding AddProcessingSetupCommand}" />
-                                        <Button Content="Remove" Command="{Binding RemoveProcessingSetupCommand}" />
+                                        <Button Classes="subtle" Content="Add" Command="{Binding AddProcessingSetupCommand}" />
+                                        <Button Classes="subtle" Content="Remove" Command="{Binding RemoveProcessingSetupCommand}" />
                                     </StackPanel>
 
                                     <ListBox ItemsSource="{Binding ProcessingSetups}" SelectedItem="{Binding SelectedProcessingSetup}">
@@ -268,7 +275,7 @@
                                 </StackPanel>
                             </Border>
 
-                            <Border Grid.Column="1" Margin="8,0,0,0" Padding="16" CornerRadius="12">
+                            <Border Classes="card" Grid.Column="1" Margin="8,0,0,0" Padding="18" CornerRadius="16">
                                 <StackPanel Spacing="12">
                                     <TextBlock Text="Selected Processing Setup" FontSize="18" FontWeight="SemiBold" />
 
@@ -339,20 +346,21 @@
                               HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="0,0,20,0" Spacing="16">
-                        <Border Padding="16" CornerRadius="12">
+                        <Border Classes="card" Padding="18" CornerRadius="16">
                             <StackPanel Spacing="8">
+                                <TextBlock Classes="sectionEyebrow" Text="Destinations" />
                                 <TextBlock Text="FTP Setups" FontSize="20" FontWeight="SemiBold" />
-                                <TextBlock Text="Create reusable FTP destinations here, then assign them to any number of folder watches. This avoids re-entering the same server details repeatedly." Opacity="0.8" TextWrapping="Wrap" />
+                                <TextBlock Classes="muted" Text="Create reusable FTP destinations here, then assign them to any number of folder watches. This avoids re-entering the same server details repeatedly." TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 
                         <Grid ColumnDefinitions="320,*">
-                            <Border Margin="0,0,8,0" Padding="16" CornerRadius="12">
+                            <Border Classes="card" Margin="0,0,8,0" Padding="18" CornerRadius="16">
                                 <StackPanel Spacing="12">
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <TextBlock VerticalAlignment="Center" Text="FTP Destinations" FontSize="18" FontWeight="SemiBold" />
-                                        <Button Content="Add" Command="{Binding AddFtpDestinationCommand}" />
-                                        <Button Content="Remove" Command="{Binding RemoveFtpDestinationCommand}" />
+                                        <Button Classes="subtle" Content="Add" Command="{Binding AddFtpDestinationCommand}" />
+                                        <Button Classes="subtle" Content="Remove" Command="{Binding RemoveFtpDestinationCommand}" />
                                     </StackPanel>
 
                                     <ListBox ItemsSource="{Binding FtpDestinations}" SelectedItem="{Binding SelectedFtpDestination}">
@@ -368,7 +376,7 @@
                                 </StackPanel>
                             </Border>
 
-                            <Border Grid.Column="1" Margin="8,0,0,0" Padding="16" CornerRadius="12">
+                            <Border Classes="card" Grid.Column="1" Margin="8,0,0,0" Padding="18" CornerRadius="16">
                                 <StackPanel Spacing="12">
                                     <TextBlock Text="Selected FTP Destination" FontSize="18" FontWeight="SemiBold" />
 
@@ -430,6 +438,7 @@
                                     </Grid>
 
                                     <Button HorizontalAlignment="Left"
+                                            Classes="primary"
                                             Content="Test This FTP Setup"
                                             Command="{Binding TestFtpCommand}" />
                                 </StackPanel>
@@ -441,7 +450,7 @@
 
             <TabItem Header="Activity">
                 <Grid RowDefinitions="Auto,*" Margin="0,12,0,0">
-                    <TextBlock Text="Recent events from monitoring, processing, catch-up, and FTP activity. Use this tab to trace what happened and when." Opacity="0.8" />
+                    <TextBlock Classes="muted" Text="Recent events from monitoring, processing, catch-up, and FTP activity. Use this tab to trace what happened and when." />
                     <ListBox Grid.Row="1" Margin="0,12,0,0" ItemsSource="{Binding ActivityItems}">
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="core:ActivityLogEntry">
@@ -461,14 +470,15 @@
                               HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="0,0,20,0" Spacing="16">
-                        <Border Padding="16" CornerRadius="12">
+                        <Border Classes="card" Padding="18" CornerRadius="16">
                             <StackPanel Spacing="8">
+                                <TextBlock Classes="sectionEyebrow" Text="Support" />
                                 <TextBlock Text="Getting Started" FontSize="20" FontWeight="SemiBold" />
                                 <TextBlock Text="CNC Sync works best when you set things up in this order: FTP setup, processing setup, folder watch, validation, then monitoring." TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 
-                        <Border Padding="16" CornerRadius="12">
+                        <Border Classes="card" Padding="18" CornerRadius="16">
                             <StackPanel Spacing="8">
                                 <TextBlock Text="Recommended Setup Order" FontSize="18" FontWeight="SemiBold" />
                                 <TextBlock Text="1. Create an FTP setup with the correct host, port, login, and optional remote base path." TextWrapping="Wrap" />
@@ -479,7 +489,7 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Padding="16" CornerRadius="12">
+                        <Border Classes="card" Padding="18" CornerRadius="16">
                             <StackPanel Spacing="8">
                                 <TextBlock Text="External Script Contract" FontSize="18" FontWeight="SemiBold" />
                                 <TextBlock Text="External scripts are run locally. They should exit with code 0 on success and may optionally print OUTPUT_PATH=/path/to/folder if the final upload folder is different from the prepared output path." TextWrapping="Wrap" />
@@ -487,7 +497,7 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Padding="16" CornerRadius="12">
+                        <Border Classes="card" Padding="18" CornerRadius="16">
                             <StackPanel Spacing="8">
                                 <TextBlock Text="Manual Catch-Up" FontSize="18" FontWeight="SemiBold" />
                                 <TextBlock Text="Manual catch-up checks the selected watch profile against the configured FTP path and only processes/uploads missing or changed items. For files, it compares name plus file size." TextWrapping="Wrap" />
