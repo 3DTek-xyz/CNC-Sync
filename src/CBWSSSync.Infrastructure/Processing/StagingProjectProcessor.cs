@@ -1,14 +1,21 @@
 using CBWSSSync.Core.Configuration;
 using CBWSSSync.Core.Processing;
 using CBWSSSync.Core.Services;
+using System.Diagnostics;
+using System.Text;
 
 namespace CBWSSSync.Infrastructure.Processing;
 
 public sealed class StagingProjectProcessor : IProjectProcessor
 {
-    public Task<ProcessingResult> ProcessAsync(string sourcePath, WatchProfileSettings profile, CancellationToken cancellationToken = default)
+    public async Task<ProcessingResult> ProcessAsync(
+        string sourcePath,
+        WatchProfileSettings profile,
+        ProcessingSetupSettings processingSetup,
+        CancellationToken cancellationToken = default)
     {
         var startedAt = DateTime.UtcNow;
+        var preparedOutputPath = string.Empty;
 
         try
         {
@@ -21,57 +28,211 @@ public sealed class StagingProjectProcessor : IProjectProcessor
                 sourceName = "work-item";
             }
 
-            var outputPath = Path.Combine(profile.StagingFolder, $"{sourceName}-{stamp}");
-            Directory.CreateDirectory(outputPath);
+            preparedOutputPath = Path.Combine(profile.StagingFolder, $"{sourceName}-{stamp}");
+            Directory.CreateDirectory(preparedOutputPath);
+
+            if (processingSetup.Mode == ProcessingMode.ExternalScript)
+            {
+                return await RunExternalScriptAsync(sourcePath, preparedOutputPath, processingSetup, startedAt, cancellationToken);
+            }
 
             List<string> processedFiles;
             if (Directory.Exists(sourcePath))
             {
-                processedFiles = CopyDirectory(sourcePath, outputPath, cancellationToken);
+                processedFiles = CopyDirectory(sourcePath, preparedOutputPath, cancellationToken);
             }
             else if (File.Exists(sourcePath))
             {
                 var fileName = Path.GetFileName(sourcePath);
-                File.Copy(sourcePath, Path.Combine(outputPath, fileName), overwrite: true);
+                File.Copy(sourcePath, Path.Combine(preparedOutputPath, fileName), overwrite: true);
                 processedFiles = [fileName];
             }
             else
             {
-                return Task.FromResult(new ProcessingResult
+                return new ProcessingResult
                 {
                     Success = false,
                     Message = $"Source path does not exist: {sourcePath}",
                     SourcePath = sourcePath,
-                    OutputPath = outputPath,
+                    OutputPath = preparedOutputPath,
                     StartedAtUtc = startedAt,
                     FinishedAtUtc = DateTime.UtcNow,
                     Errors = [$"Source path does not exist: {sourcePath}"]
-                });
+                };
             }
 
-            return Task.FromResult(new ProcessingResult
+            return new ProcessingResult
             {
                 Success = true,
-                Message = $"Processed {processedFiles.Count} file(s) into {outputPath}",
+                Message = $"Processed {processedFiles.Count} file(s) into {preparedOutputPath}",
                 SourcePath = sourcePath,
-                OutputPath = outputPath,
+                OutputPath = preparedOutputPath,
                 StartedAtUtc = startedAt,
                 FinishedAtUtc = DateTime.UtcNow,
                 ProcessedFiles = processedFiles
-            });
+            };
         }
         catch (Exception ex)
         {
-            return Task.FromResult(new ProcessingResult
+            return new ProcessingResult
             {
                 Success = false,
                 Message = $"Processing failed: {ex.Message}",
                 SourcePath = sourcePath,
+                OutputPath = preparedOutputPath,
                 StartedAtUtc = startedAt,
                 FinishedAtUtc = DateTime.UtcNow,
                 Errors = [ex.ToString()]
-            });
+            };
         }
+    }
+
+    private static async Task<ProcessingResult> RunExternalScriptAsync(
+        string sourcePath,
+        string defaultOutputPath,
+        ProcessingSetupSettings processingSetup,
+        DateTime startedAt,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(processingSetup.ScriptPath) || !File.Exists(processingSetup.ScriptPath))
+        {
+            return new ProcessingResult
+            {
+                Success = false,
+                Message = "External processing failed because the script path is missing or invalid.",
+                SourcePath = sourcePath,
+                OutputPath = defaultOutputPath,
+                StartedAtUtc = startedAt,
+                FinishedAtUtc = DateTime.UtcNow
+            };
+        }
+
+        var (fileName, arguments) = BuildProcessStart(processingSetup, sourcePath, defaultOutputPath);
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = fileName,
+            Arguments = arguments,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true,
+            WorkingDirectory = Path.GetDirectoryName(processingSetup.ScriptPath) ?? Environment.CurrentDirectory
+        };
+
+        using var process = new Process { StartInfo = startInfo };
+        var stdout = new StringBuilder();
+        var stderr = new StringBuilder();
+        process.OutputDataReceived += (_, args) =>
+        {
+            if (!string.IsNullOrWhiteSpace(args.Data))
+            {
+                stdout.AppendLine(args.Data);
+            }
+        };
+        process.ErrorDataReceived += (_, args) =>
+        {
+            if (!string.IsNullOrWhiteSpace(args.Data))
+            {
+                stderr.AppendLine(args.Data);
+            }
+        };
+
+        process.Start();
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+        await process.WaitForExitAsync(cancellationToken);
+
+        var scriptOutputPath = ParseOutputPath(stdout.ToString()) ?? defaultOutputPath;
+        if (process.ExitCode != 0)
+        {
+            return new ProcessingResult
+            {
+                Success = false,
+                Message = $"External script failed with exit code {process.ExitCode}.",
+                SourcePath = sourcePath,
+                OutputPath = scriptOutputPath,
+                StartedAtUtc = startedAt,
+                FinishedAtUtc = DateTime.UtcNow,
+                Errors = [stderr.ToString().Trim()]
+            };
+        }
+
+        if (!Directory.Exists(scriptOutputPath))
+        {
+            return new ProcessingResult
+            {
+                Success = false,
+                Message = $"External script succeeded but output folder was not found: {scriptOutputPath}",
+                SourcePath = sourcePath,
+                OutputPath = scriptOutputPath,
+                StartedAtUtc = startedAt,
+                FinishedAtUtc = DateTime.UtcNow
+            };
+        }
+
+        var processedFiles = Directory.GetFiles(scriptOutputPath, "*", SearchOption.AllDirectories)
+            .Select(path => Path.GetRelativePath(scriptOutputPath, path))
+            .ToList();
+
+        return new ProcessingResult
+        {
+            Success = true,
+            Message = $"External script prepared {processedFiles.Count} file(s) into {scriptOutputPath}",
+            SourcePath = sourcePath,
+            OutputPath = scriptOutputPath,
+            StartedAtUtc = startedAt,
+            FinishedAtUtc = DateTime.UtcNow,
+            ProcessedFiles = processedFiles
+        };
+    }
+
+    private static (string FileName, string Arguments) BuildProcessStart(
+        ProcessingSetupSettings processingSetup,
+        string sourcePath,
+        string outputPath)
+    {
+        var runnerMode = processingSetup.RunnerMode == ScriptRunnerMode.Auto
+            ? DetectRunnerMode(processingSetup.ScriptPath)
+            : processingSetup.RunnerMode;
+
+        var resolvedArgs = (string.IsNullOrWhiteSpace(processingSetup.ArgumentsTemplate)
+                ? "\"{sourcePath}\" \"{outputPath}\""
+                : processingSetup.ArgumentsTemplate)
+            .Replace("{sourcePath}", sourcePath)
+            .Replace("{outputPath}", outputPath)
+            .Replace("{scriptPath}", processingSetup.ScriptPath);
+
+        return runnerMode switch
+        {
+            ScriptRunnerMode.PowerShell => ("pwsh", $"-NoProfile -File \"{processingSetup.ScriptPath}\" {resolvedArgs}"),
+            ScriptRunnerMode.Bash => ("bash", $"\"{processingSetup.ScriptPath}\" {resolvedArgs}"),
+            ScriptRunnerMode.Python => ("python3", $"\"{processingSetup.ScriptPath}\" {resolvedArgs}"),
+            ScriptRunnerMode.Command => (OperatingSystem.IsWindows() ? "cmd.exe" : "sh", OperatingSystem.IsWindows()
+                ? $"/c \"\"{processingSetup.ScriptPath}\" {resolvedArgs}\""
+                : $"\"{processingSetup.ScriptPath}\" {resolvedArgs}"),
+            ScriptRunnerMode.Direct => (processingSetup.ScriptPath, resolvedArgs),
+            _ => (processingSetup.ScriptPath, resolvedArgs)
+        };
+    }
+
+    private static ScriptRunnerMode DetectRunnerMode(string scriptPath)
+    {
+        return Path.GetExtension(scriptPath).ToLowerInvariant() switch
+        {
+            ".ps1" => ScriptRunnerMode.PowerShell,
+            ".sh" => ScriptRunnerMode.Bash,
+            ".py" => ScriptRunnerMode.Python,
+            ".bat" or ".cmd" => ScriptRunnerMode.Command,
+            _ => ScriptRunnerMode.Direct
+        };
+    }
+
+    private static string? ParseOutputPath(string stdout)
+    {
+        var line = stdout
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .FirstOrDefault(item => item.StartsWith("OUTPUT_PATH=", StringComparison.OrdinalIgnoreCase));
+        return line is null ? null : line["OUTPUT_PATH=".Length..].Trim();
     }
 
     private static List<string> CopyDirectory(string sourceDirectory, string destinationDirectory, CancellationToken cancellationToken)

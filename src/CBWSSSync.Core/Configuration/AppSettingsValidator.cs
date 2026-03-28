@@ -9,10 +9,19 @@ public sealed class AppSettingsValidator
             .Where(destination => !string.IsNullOrWhiteSpace(destination.Id))
             .GroupBy(destination => destination.Id, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+        var processingSetupsById = settings.ProcessingSetups
+            .Where(setup => !string.IsNullOrWhiteSpace(setup.Id))
+            .GroupBy(setup => setup.Id, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
 
         if (settings.WatchProfiles.Count == 0)
         {
             result.Errors.Add("At least one watch profile is required.");
+        }
+
+        if (settings.ProcessingSetups.Count == 0)
+        {
+            result.Errors.Add("At least one processing setup is required.");
         }
 
         for (var index = 0; index < settings.FtpDestinations.Count; index++)
@@ -40,6 +49,31 @@ public sealed class AppSettingsValidator
             if (!destination.UseAnonymousFtp && string.IsNullOrWhiteSpace(destination.Username))
             {
                 result.Errors.Add($"{label} username is required when anonymous FTP is disabled.");
+            }
+        }
+
+        for (var index = 0; index < settings.ProcessingSetups.Count; index++)
+        {
+            var setup = settings.ProcessingSetups[index];
+            var label = string.IsNullOrWhiteSpace(setup.Name)
+                ? $"Processing setup #{index + 1}"
+                : $"Processing setup '{setup.Name}'";
+
+            if (string.IsNullOrWhiteSpace(setup.Name))
+            {
+                result.Errors.Add($"{label} needs a name.");
+            }
+
+            if (setup.Mode == ProcessingMode.ExternalScript)
+            {
+                if (string.IsNullOrWhiteSpace(setup.ScriptPath))
+                {
+                    result.Errors.Add($"{label} script path is required for external script mode.");
+                }
+                else if (!File.Exists(setup.ScriptPath))
+                {
+                    result.Errors.Add($"{label} script path does not exist.");
+                }
             }
         }
 
@@ -88,6 +122,12 @@ public sealed class AppSettingsValidator
                 !destinationsById.ContainsKey(profile.FtpDestinationId))
             {
                 result.Errors.Add($"{label} references an FTP destination that does not exist.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(profile.ProcessingSetupId) &&
+                !processingSetupsById.ContainsKey(profile.ProcessingSetupId))
+            {
+                result.Errors.Add($"{label} references a processing setup that does not exist.");
             }
         }
 

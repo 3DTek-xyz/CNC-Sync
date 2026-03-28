@@ -57,12 +57,14 @@ public sealed class SyncCoordinator : ISyncCoordinator
         string path,
         WatchProfileSettings profile,
         FtpDestinationSettings? destination,
+        ProcessingSetupSettings processingSetup,
         CancellationToken cancellationToken = default)
     {
         return await ExecuteProcessAsync(
             path,
             profile,
             destination,
+            processingSetup,
             destination?.AutoUpload == true,
             cancellationToken);
     }
@@ -70,6 +72,7 @@ public sealed class SyncCoordinator : ISyncCoordinator
     public async Task<(bool Success, string Message)> CatchUpMissingItemsAsync(
         WatchProfileSettings profile,
         FtpDestinationSettings destination,
+        ProcessingSetupSettings processingSetup,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(profile.WatchFolder))
@@ -128,7 +131,8 @@ public sealed class SyncCoordinator : ISyncCoordinator
             foreach (var missingItem in missingItems)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var result = await ExecuteProcessAsync(missingItem, profile, destination, shouldUpload: true, cancellationToken);
+                var result = await ExecuteProcessAsync(missingItem, profile, destination, processingSetup, shouldUpload: true, cancellationToken);
+                
                 if (result.Success)
                 {
                     uploadedCount++;
@@ -159,6 +163,7 @@ public sealed class SyncCoordinator : ISyncCoordinator
         string path,
         WatchProfileSettings profile,
         FtpDestinationSettings? destination,
+        ProcessingSetupSettings? processingSetup,
         bool shouldUpload,
         CancellationToken cancellationToken)
     {
@@ -180,7 +185,13 @@ public sealed class SyncCoordinator : ISyncCoordinator
             SetStatus($"Processing {profile.Name}");
             LogActivity($"Processing started: {path}", profile.Name);
 
-            var result = await _projectProcessor.ProcessAsync(path, profile, cancellationToken);
+            var effectiveProcessingSetup = processingSetup ?? new ProcessingSetupSettings
+            {
+                Name = "Default Processing",
+                Mode = ProcessingMode.CopyToStaging
+            };
+
+            var result = await _projectProcessor.ProcessAsync(path, profile, effectiveProcessingSetup, cancellationToken);
             LogActivity(result.Message, profile.Name);
 
             if (result.Success && shouldUpload && destination is not null)
@@ -281,12 +292,14 @@ public sealed class SyncCoordinator : ISyncCoordinator
 
         var destination = settings.FtpDestinations.FirstOrDefault(
             item => string.Equals(item.Id, workItem.Profile.FtpDestinationId, StringComparison.OrdinalIgnoreCase));
+        var processingSetup = settings.ProcessingSetups.FirstOrDefault(
+            item => string.Equals(item.Id, workItem.Profile.ProcessingSetupId, StringComparison.OrdinalIgnoreCase));
 
         _ = Task.Run(async () =>
         {
             try
             {
-                await ProcessPathAsync(workItem.Path, workItem.Profile, destination);
+                await ProcessPathAsync(workItem.Path, workItem.Profile, destination, processingSetup ?? ProcessingSetupSettings.CreateDefault("Default Processing"));
             }
             catch (Exception ex)
             {

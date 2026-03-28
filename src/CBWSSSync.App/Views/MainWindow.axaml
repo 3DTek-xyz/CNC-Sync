@@ -21,8 +21,6 @@
     <Grid RowDefinitions="Auto,Auto,*" Margin="24">
         <StackPanel Spacing="6">
             <TextBlock Text="{Binding AppTitle}" FontSize="28" FontWeight="Bold" />
-            <TextBlock Text="{Binding Subtitle}" Opacity="0.8" />
-            <TextBlock Text="{Binding SettingsPath, StringFormat=Settings file: {0}}" FontSize="12" Opacity="0.65" />
         </StackPanel>
 
         <Grid Grid.Row="1" Margin="0,20,0,0" ColumnDefinitions="*,*">
@@ -62,27 +60,6 @@
         </Grid>
 
         <TabControl Grid.Row="2" Margin="0,20,0,0">
-            <TabItem Header="Dashboard">
-                <StackPanel Margin="0,12,0,0" Spacing="16">
-                    <Border Padding="16" CornerRadius="12">
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="Overview" FontSize="20" FontWeight="SemiBold" />
-                            <TextBlock Text="This rebuild now supports multiple watch profiles and reusable FTP destinations." TextWrapping="Wrap" />
-                            <TextBlock Text="{Binding ActiveMonitoringProfilesSummary}" TextWrapping="Wrap" Opacity="0.8" />
-                            <TextBlock Text="{Binding LastProcessingSummary}" TextWrapping="Wrap" Opacity="0.8" />
-                        </StackPanel>
-                    </Border>
-
-                    <Border Padding="16" CornerRadius="12">
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="Current Activity" FontSize="18" FontWeight="SemiBold" />
-                            <TextBlock Text="{Binding MonitoringStatus, StringFormat=Status: {0}}" />
-                            <TextBlock Text="{Binding CurrentTask, StringFormat=Current task: {0}}" TextWrapping="Wrap" />
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-            </TabItem>
-
             <TabItem Header="App Settings">
                 <ScrollViewer Margin="0,12,0,0"
                               HorizontalScrollBarVisibility="Disabled"
@@ -92,7 +69,7 @@
                             <StackPanel Spacing="12">
                                 <StackPanel Spacing="4">
                                     <TextBlock Text="App Settings" FontSize="20" FontWeight="SemiBold" />
-                                    <TextBlock Text="Configure the application itself: startup behavior, save/load actions, and overall validation state." Opacity="0.8" TextWrapping="Wrap" />
+                                    <TextBlock Text="These settings affect the whole app. Use this tab for startup behaviour, loading saved settings, and checking whether the current configuration is valid." Opacity="0.8" TextWrapping="Wrap" />
                                 </StackPanel>
 
                                 <StackPanel Orientation="Horizontal" Spacing="8">
@@ -140,7 +117,7 @@
                         <Border Padding="16" CornerRadius="12">
                             <StackPanel Spacing="8">
                                 <TextBlock Text="Folder Watches" FontSize="20" FontWeight="SemiBold" />
-                                <TextBlock Text="Each watch profile controls one source folder, its staging area, processing mode, and which FTP destination it uses." Opacity="0.8" TextWrapping="Wrap" />
+                                <TextBlock Text="A folder watch is the live rule that watches one local folder, stages output, chooses a processing setup, and uploads to a selected FTP destination." Opacity="0.8" TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 
@@ -204,8 +181,16 @@
                                     </Grid>
 
                                     <Grid ColumnDefinitions="220,*">
-                                        <TextBlock VerticalAlignment="Center" Text="Processing Mode" />
-                                        <TextBox Grid.Column="1" Text="{Binding SelectedWatchProfile.ProcessingMode, UpdateSourceTrigger=LostFocus}" Watermark="Default" />
+                                        <TextBlock VerticalAlignment="Center" Text="Processing Setup" />
+                                        <ComboBox Grid.Column="1"
+                                                  ItemsSource="{Binding ProcessingSetups}"
+                                                  SelectedItem="{Binding SelectedProfileProcessingSetup}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:ProcessingSetupItemViewModel">
+                                                    <TextBlock Text="{Binding DisplayName}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
                                     </Grid>
 
                                     <Grid ColumnDefinitions="220,*">
@@ -249,6 +234,106 @@
                 </ScrollViewer>
             </TabItem>
 
+            <TabItem Header="Processing Setups">
+                <ScrollViewer Margin="0,12,0,0"
+                              HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="0,0,20,0" Spacing="16">
+                        <Border Padding="16" CornerRadius="12">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Processing Setups" FontSize="20" FontWeight="SemiBold" />
+                                <TextBlock Text="Define reusable pre-upload behaviour once, then assign it to any watch profile. Use default copy-to-staging when nothing special is needed, or external scripts for custom processing workflows." Opacity="0.8" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <Grid ColumnDefinitions="320,*">
+                            <Border Margin="0,0,8,0" Padding="16" CornerRadius="12">
+                                <StackPanel Spacing="12">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock VerticalAlignment="Center" Text="Processing Setups" FontSize="18" FontWeight="SemiBold" />
+                                        <Button Content="Add" Command="{Binding AddProcessingSetupCommand}" />
+                                        <Button Content="Remove" Command="{Binding RemoveProcessingSetupCommand}" />
+                                    </StackPanel>
+
+                                    <ListBox ItemsSource="{Binding ProcessingSetups}" SelectedItem="{Binding SelectedProcessingSetup}">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:ProcessingSetupItemViewModel">
+                                                <StackPanel Margin="0,4,0,4" Spacing="2">
+                                                    <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
+                                                    <TextBlock Text="{Binding Mode}" FontSize="12" Opacity="0.7" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Grid.Column="1" Margin="8,0,0,0" Padding="16" CornerRadius="12">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Text="Selected Processing Setup" FontSize="18" FontWeight="SemiBold" />
+
+                                    <Grid ColumnDefinitions="220,*">
+                                        <TextBlock VerticalAlignment="Center" Text="Setup Name" />
+                                        <TextBox Grid.Column="1" Text="{Binding SelectedProcessingSetup.Name, UpdateSourceTrigger=LostFocus}" Watermark="Mozaik External Script" />
+                                    </Grid>
+
+                                    <Grid ColumnDefinitions="220,*">
+                                        <TextBlock VerticalAlignment="Center" Text="Mode" />
+                                        <ComboBox Grid.Column="1"
+                                                  ItemsSource="{Binding AvailableProcessingModes}"
+                                                  SelectedItem="{Binding SelectedProcessingSetup.Mode}" />
+                                    </Grid>
+
+                                    <Grid ColumnDefinitions="220,*">
+                                        <TextBlock VerticalAlignment="Center" Text="Runner" />
+                                        <ComboBox Grid.Column="1"
+                                                  IsEnabled="{Binding SelectedProcessingSetup.UsesExternalScript}"
+                                                  Opacity="{Binding SelectedProcessingSetup.UsesExternalScript, Converter={StaticResource BooleanOpacityConverter}}"
+                                                  ItemsSource="{Binding AvailableRunnerModes}"
+                                                  SelectedItem="{Binding SelectedProcessingSetup.RunnerMode}" />
+                                    </Grid>
+
+                                    <Grid ColumnDefinitions="220,*">
+                                        <TextBlock VerticalAlignment="Center" Text="Script Path" />
+                                        <Grid Grid.Column="1" ColumnDefinitions="*,Auto">
+                                            <TextBox Grid.Column="0"
+                                                     Margin="0,0,8,0"
+                                                     IsEnabled="{Binding SelectedProcessingSetup.UsesExternalScript}"
+                                                     Opacity="{Binding SelectedProcessingSetup.UsesExternalScript, Converter={StaticResource BooleanOpacityConverter}}"
+                                                     Text="{Binding SelectedProcessingSetup.ScriptPath, UpdateSourceTrigger=LostFocus}"
+                                                     Watermark="/path/to/script.ps1 or script.sh" />
+                                            <Button Grid.Column="1"
+                                                    Content="Browse..."
+                                                    IsEnabled="{Binding SelectedProcessingSetup.UsesExternalScript}"
+                                                    Opacity="{Binding SelectedProcessingSetup.UsesExternalScript, Converter={StaticResource BooleanOpacityConverter}}"
+                                                    Click="BrowseProcessingScript_OnClick" />
+                                        </Grid>
+                                    </Grid>
+
+                                    <Grid ColumnDefinitions="220,*">
+                                        <TextBlock VerticalAlignment="Center" Text="Arguments Template" />
+                                        <TextBox Grid.Column="1"
+                                                 IsEnabled="{Binding SelectedProcessingSetup.UsesExternalScript}"
+                                                 Opacity="{Binding SelectedProcessingSetup.UsesExternalScript, Converter={StaticResource BooleanOpacityConverter}}"
+                                                 Text="{Binding SelectedProcessingSetup.ArgumentsTemplate, UpdateSourceTrigger=LostFocus}"
+                                                 Watermark="&quot;{sourcePath}&quot; &quot;{outputPath}&quot;" />
+                                    </Grid>
+
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Available placeholders" FontWeight="SemiBold" Opacity="0.85" />
+                                        <TextBlock Text="{}{sourcePath} - the detected source file or folder" Opacity="0.75" TextWrapping="Wrap" />
+                                        <TextBlock Text="{}{outputPath} - the prepared output folder for processed files" Opacity="0.75" TextWrapping="Wrap" />
+                                        <TextBlock Text="{}{scriptPath} - the selected script path" Opacity="0.75" TextWrapping="Wrap" />
+                                        <TextBlock Text="Any other text is passed through literally. For example, if you type &quot;watch name&quot;, the script receives the text &quot;watch name&quot; exactly as written." Opacity="0.75" TextWrapping="Wrap" />
+                                        <TextBlock Text="External scripts should exit 0 on success and can optionally print OUTPUT_PATH=/path/to/folder." Opacity="0.75" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
             <TabItem Header="FTP Setups">
                 <ScrollViewer Margin="0,12,0,0"
                               HorizontalScrollBarVisibility="Disabled"
@@ -257,7 +342,7 @@
                         <Border Padding="16" CornerRadius="12">
                             <StackPanel Spacing="8">
                                 <TextBlock Text="FTP Setups" FontSize="20" FontWeight="SemiBold" />
-                                <TextBlock Text="Manage destination connections separately, then reuse them across as many folder watches as you need." Opacity="0.8" TextWrapping="Wrap" />
+                                <TextBlock Text="Create reusable FTP destinations here, then assign them to any number of folder watches. This avoids re-entering the same server details repeatedly." Opacity="0.8" TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 
@@ -356,7 +441,7 @@
 
             <TabItem Header="Activity">
                 <Grid RowDefinitions="Auto,*" Margin="0,12,0,0">
-                    <TextBlock Text="Recent activity and processing events." Opacity="0.8" />
+                    <TextBlock Text="Recent events from monitoring, processing, catch-up, and FTP activity. Use this tab to trace what happened and when." Opacity="0.8" />
                     <ListBox Grid.Row="1" Margin="0,12,0,0" ItemsSource="{Binding ActivityItems}">
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="core:ActivityLogEntry">
@@ -369,6 +454,48 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
                 </Grid>
+            </TabItem>
+
+            <TabItem Header="Help">
+                <ScrollViewer Margin="0,12,0,0"
+                              HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="0,0,20,0" Spacing="16">
+                        <Border Padding="16" CornerRadius="12">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Getting Started" FontSize="20" FontWeight="SemiBold" />
+                                <TextBlock Text="CNC Sync works best when you set things up in this order: FTP setup, processing setup, folder watch, validation, then monitoring." TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Padding="16" CornerRadius="12">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Recommended Setup Order" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock Text="1. Create an FTP setup with the correct host, port, login, and optional remote base path." TextWrapping="Wrap" />
+                                <TextBlock Text="2. Create a processing setup. Use the default copy mode if no transformation is needed, or an external script if files need local preparation first." TextWrapping="Wrap" />
+                                <TextBlock Text="3. Create a folder watch and select both the FTP setup and processing setup it should use." TextWrapping="Wrap" />
+                                <TextBlock Text="4. Validate settings to catch missing folders, scripts, or broken references." TextWrapping="Wrap" />
+                                <TextBlock Text="5. Start monitoring." TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Padding="16" CornerRadius="12">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="External Script Contract" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock Text="External scripts are run locally. They should exit with code 0 on success and may optionally print OUTPUT_PATH=/path/to/folder if the final upload folder is different from the prepared output path." TextWrapping="Wrap" />
+                                <TextBlock Text="Supported argument placeholders: {sourcePath}, {outputPath}, {scriptPath}. Any other text is passed through literally." TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Padding="16" CornerRadius="12">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Manual Catch-Up" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock Text="Manual catch-up checks the selected watch profile against the configured FTP path and only processes/uploads missing or changed items. For files, it compares name plus file size." TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
         </TabControl>
     </Grid>

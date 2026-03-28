@@ -24,7 +24,7 @@ public partial class WatchProfileItemViewModel : ObservableObject
     private string remoteSubfolder = string.Empty;
 
     [ObservableProperty]
-    private string processingMode = "Default";
+    private string processingSetupId = string.Empty;
 
     [ObservableProperty]
     private string ftpDestinationId = string.Empty;
@@ -48,7 +48,7 @@ public partial class WatchProfileItemViewModel : ObservableObject
             WatchFolder = settings.WatchFolder,
             StagingFolder = settings.StagingFolder,
             RemoteSubfolder = settings.RemoteSubfolder,
-            ProcessingMode = settings.ProcessingMode,
+            ProcessingSetupId = settings.ProcessingSetupId,
             FtpDestinationId = settings.FtpDestinationId,
             StabilityDelaySeconds = settings.StabilityDelaySeconds,
             StabilityPollingSeconds = settings.StabilityPollingSeconds
@@ -63,7 +63,7 @@ public partial class WatchProfileItemViewModel : ObservableObject
             WatchFolder = WatchFolder,
             StagingFolder = StagingFolder,
             RemoteSubfolder = RemoteSubfolder,
-            ProcessingMode = ProcessingMode,
+            ProcessingSetupId = ProcessingSetupId,
             FtpDestinationId = FtpDestinationId,
             StabilityDelaySeconds = StabilityDelaySeconds,
             StabilityPollingSeconds = StabilityPollingSeconds

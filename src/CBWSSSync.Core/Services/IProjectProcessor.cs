@@ -5,5 +5,5 @@ namespace CBWSSSync.Core.Services;
 
 public interface IProjectProcessor
 {
-    Task<ProcessingResult> ProcessAsync(string sourcePath, WatchProfileSettings profile, CancellationToken cancellationToken = default);
+    Task<ProcessingResult> ProcessAsync(string sourcePath, WatchProfileSettings profile, ProcessingSetupSettings processingSetup, CancellationToken cancellationToken = default);
 }

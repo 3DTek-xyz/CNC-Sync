@@ -47,6 +47,17 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void BrowseProcessingScript_OnClick(object? sender, RoutedEventArgs e)
+    {
+        var selectedPath = await PickFileAsync();
+        if (selectedPath is not null &&
+            DataContext is MainWindowViewModel viewModel &&
+            viewModel.SelectedProcessingSetup is not null)
+        {
+            viewModel.SelectedProcessingSetup.ScriptPath = selectedPath;
+        }
+    }
+
     private async Task<string?> PickFolderAsync()
     {
         var folders = await StorageProvider.OpenFolderPickerAsync(
@@ -57,5 +68,17 @@ public partial class MainWindow : Window
             });
 
         return folders.FirstOrDefault()?.Path.LocalPath;
+    }
+
+    private async Task<string?> PickFileAsync()
+    {
+        var files = await StorageProvider.OpenFilePickerAsync(
+            new FilePickerOpenOptions
+            {
+                AllowMultiple = false,
+                Title = "Choose script"
+            });
+
+        return files.FirstOrDefault()?.Path.LocalPath;
     }
 }

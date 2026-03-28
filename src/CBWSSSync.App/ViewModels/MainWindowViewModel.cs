@@ -23,7 +23,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private string appTitle = "CNC Sync";
 
     [ObservableProperty]
-    private string subtitle = "Cross-platform tray-first rebuild";
+    private string subtitle = string.Empty;
 
     [ObservableProperty]
     private string monitoringStatus = "Stopped";
@@ -58,6 +58,9 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private WatchProfileItemViewModel? selectedManualWatchProfile;
 
+    [ObservableProperty]
+    private ProcessingSetupItemViewModel? selectedProcessingSetup;
+
     public MainWindowViewModel(
         IAppSettingsStore settingsStore,
         AppSettingsValidator validator,
@@ -70,6 +73,7 @@ public partial class MainWindowViewModel : ViewModelBase
         PropertyChanged += OnViewModelPropertyChanged;
         WatchProfiles.CollectionChanged += OnWatchProfilesCollectionChanged;
         FtpDestinations.CollectionChanged += OnFtpDestinationsCollectionChanged;
+        ProcessingSetups.CollectionChanged += OnProcessingSetupsCollectionChanged;
 
         SettingsPath = _settingsStore.SettingsFilePath;
         Apply(initialSettings);
@@ -99,6 +103,12 @@ public partial class MainWindowViewModel : ViewModelBase
     public ObservableCollection<WatchProfileItemViewModel> WatchProfiles { get; } = [];
 
     public ObservableCollection<FtpDestinationItemViewModel> FtpDestinations { get; } = [];
+
+    public ObservableCollection<ProcessingSetupItemViewModel> ProcessingSetups { get; } = [];
+
+    public IReadOnlyList<ProcessingMode> AvailableProcessingModes { get; } = Enum.GetValues<ProcessingMode>();
+
+    public IReadOnlyList<ScriptRunnerMode> AvailableRunnerModes { get; } = Enum.GetValues<ScriptRunnerMode>();
 
     public string ActiveMonitoringProfilesSummary
     {
@@ -142,6 +152,30 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    public ProcessingSetupItemViewModel? SelectedProfileProcessingSetup
+    {
+        get
+        {
+            if (SelectedWatchProfile is null)
+            {
+                return null;
+            }
+
+            return ProcessingSetups.FirstOrDefault(setup =>
+                string.Equals(setup.Id, SelectedWatchProfile.ProcessingSetupId, StringComparison.OrdinalIgnoreCase));
+        }
+        set
+        {
+            if (SelectedWatchProfile is null)
+            {
+                return;
+            }
+
+            SelectedWatchProfile.ProcessingSetupId = value?.Id ?? string.Empty;
+            OnPropertyChanged();
+        }
+    }
+
     public bool HasSelectedWatchProfile => SelectedWatchProfile is not null;
 
     public bool HasSelectedFtpDestination => SelectedFtpDestination is not null;
@@ -162,6 +196,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(HasSelectedWatchProfile));
         OnPropertyChanged(nameof(SelectedProfileDestination));
+        OnPropertyChanged(nameof(SelectedProfileProcessingSetup));
     }
 
     partial void OnSelectedFtpDestinationChanged(FtpDestinationItemViewModel? value)
@@ -178,8 +213,12 @@ public partial class MainWindowViewModel : ViewModelBase
     private void AddWatchProfile()
     {
         var firstDestination = FtpDestinations.FirstOrDefault();
+        var firstProcessingSetup = ProcessingSetups.FirstOrDefault();
         var profile = WatchProfileItemViewModel.FromSettings(
-            WatchProfileSettings.CreateDefault($"Watch Profile {WatchProfiles.Count + 1}", firstDestination?.Id ?? string.Empty));
+            WatchProfileSettings.CreateDefault(
+                $"Watch Profile {WatchProfiles.Count + 1}",
+                firstDestination?.Id ?? string.Empty,
+                firstProcessingSetup?.Id ?? string.Empty));
         WatchProfiles.Add(profile);
         SelectedWatchProfile = profile;
         ValidationSummary = "Profile added. Run validation to check settings.";
@@ -242,6 +281,46 @@ public partial class MainWindowViewModel : ViewModelBase
 
         OnPropertyChanged(nameof(SelectedProfileDestination));
         ValidationSummary = "FTP destination removed. Run validation to refresh issues.";
+    }
+
+    [RelayCommand]
+    private void AddProcessingSetup()
+    {
+        var setup = ProcessingSetupItemViewModel.FromSettings(
+            ProcessingSetupSettings.CreateDefault($"Processing Setup {ProcessingSetups.Count + 1}"));
+        ProcessingSetups.Add(setup);
+        SelectedProcessingSetup = setup;
+
+        if (SelectedWatchProfile is not null && string.IsNullOrWhiteSpace(SelectedWatchProfile.ProcessingSetupId))
+        {
+            SelectedWatchProfile.ProcessingSetupId = setup.Id;
+            OnPropertyChanged(nameof(SelectedProfileProcessingSetup));
+        }
+    }
+
+    [RelayCommand]
+    private void RemoveProcessingSetup()
+    {
+        if (SelectedProcessingSetup is null)
+        {
+            return;
+        }
+
+        var removedId = SelectedProcessingSetup.Id;
+        var index = ProcessingSetups.IndexOf(SelectedProcessingSetup);
+        ProcessingSetups.Remove(SelectedProcessingSetup);
+
+        foreach (var profile in WatchProfiles.Where(profile =>
+                     string.Equals(profile.ProcessingSetupId, removedId, StringComparison.OrdinalIgnoreCase)))
+        {
+            profile.ProcessingSetupId = string.Empty;
+        }
+
+        SelectedProcessingSetup = ProcessingSetups.Count == 0
+            ? null
+            : ProcessingSetups[Math.Clamp(index, 0, ProcessingSetups.Count - 1)];
+
+        OnPropertyChanged(nameof(SelectedProfileProcessingSetup));
     }
 
     [RelayCommand]
@@ -314,10 +393,20 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
+        var processingSetup = ProcessingSetups.FirstOrDefault(item =>
+            string.Equals(item.Id, SelectedManualWatchProfile.ProcessingSetupId, StringComparison.OrdinalIgnoreCase));
+
+        if (processingSetup is null)
+        {
+            AddActivity("Manual catch-up skipped because the selected watch profile has no processing setup.");
+            return;
+        }
+
         CurrentTask = $"Checking FTP for missing items in {SelectedManualWatchProfile.DisplayName}";
         var result = await _syncCoordinator.CatchUpMissingItemsAsync(
             SelectedManualWatchProfile.ToSettings(),
-            destination.ToSettings());
+            destination.ToSettings(),
+            processingSetup.ToSettings());
         LastProcessingSummary = result.Message;
         CurrentTask = result.Message;
     }
@@ -354,6 +443,11 @@ public partial class MainWindowViewModel : ViewModelBase
             profile.PropertyChanged -= OnWatchProfilePropertyChanged;
         }
 
+        foreach (var setup in ProcessingSetups)
+        {
+            setup.PropertyChanged -= OnProcessingSetupPropertyChanged;
+        }
+
         LaunchAtLogin = settings.LaunchAtLogin;
         StartMinimized = settings.StartMinimized;
 
@@ -363,6 +457,12 @@ public partial class MainWindowViewModel : ViewModelBase
             FtpDestinations.Add(FtpDestinationItemViewModel.FromSettings(destination));
         }
 
+        ProcessingSetups.Clear();
+        foreach (var setup in settings.ProcessingSetups)
+        {
+            ProcessingSetups.Add(ProcessingSetupItemViewModel.FromSettings(setup));
+        }
+
         WatchProfiles.Clear();
         foreach (var profile in settings.WatchProfiles)
         {
@@ -370,6 +470,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         SelectedFtpDestination = FtpDestinations.FirstOrDefault();
+        SelectedProcessingSetup = ProcessingSetups.FirstOrDefault();
         SelectedWatchProfile = WatchProfiles.FirstOrDefault();
         SelectedManualWatchProfile = SelectedManualWatchProfile is not null
             ? WatchProfiles.FirstOrDefault(profile => profile.Id == SelectedManualWatchProfile.Id) ?? WatchProfiles.FirstOrDefault()
@@ -383,6 +484,7 @@ public partial class MainWindowViewModel : ViewModelBase
             LaunchAtLogin = LaunchAtLogin,
             StartMinimized = StartMinimized,
             FtpDestinations = FtpDestinations.Select(destination => destination.ToSettings()).ToList(),
+            ProcessingSetups = ProcessingSetups.Select(setup => setup.ToSettings()).ToList(),
             WatchProfiles = WatchProfiles.Select(profile => profile.ToSettings()).ToList()
         };
 
@@ -500,6 +602,35 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    private void OnProcessingSetupsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.OldItems is not null)
+        {
+            foreach (var item in e.OldItems.OfType<ProcessingSetupItemViewModel>())
+            {
+                item.PropertyChanged -= OnProcessingSetupPropertyChanged;
+            }
+        }
+
+        if (e.NewItems is not null)
+        {
+            foreach (var item in e.NewItems.OfType<ProcessingSetupItemViewModel>())
+            {
+                item.PropertyChanged += OnProcessingSetupPropertyChanged;
+            }
+        }
+
+        if (!_isApplyingSettings)
+        {
+            RequestAutoSave();
+        }
+
+        if (SelectedProcessingSetup is null)
+        {
+            SelectedProcessingSetup = ProcessingSetups.FirstOrDefault();
+        }
+    }
+
     private void OnWatchProfilePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (_isApplyingSettings || e.PropertyName == nameof(WatchProfileItemViewModel.DisplayName))
@@ -519,6 +650,16 @@ public partial class MainWindowViewModel : ViewModelBase
     private void OnFtpDestinationPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (_isApplyingSettings || e.PropertyName == nameof(FtpDestinationItemViewModel.DisplayName))
+        {
+            return;
+        }
+
+        RequestAutoSave();
+    }
+
+    private void OnProcessingSetupPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (_isApplyingSettings || e.PropertyName == nameof(ProcessingSetupItemViewModel.DisplayName))
         {
             return;
         }
@@ -583,6 +724,7 @@ public partial class MainWindowViewModel : ViewModelBase
             string path,
             WatchProfileSettings profile,
             FtpDestinationSettings? destination,
+            ProcessingSetupSettings processingSetup,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(new ProcessingResult
             {
@@ -600,6 +742,7 @@ public partial class MainWindowViewModel : ViewModelBase
         public Task<(bool Success, string Message)> CatchUpMissingItemsAsync(
             WatchProfileSettings profile,
             FtpDestinationSettings destination,
+            ProcessingSetupSettings processingSetup,
             CancellationToken cancellationToken = default) =>
             Task.FromResult<(bool Success, string Message)>((true, $"Design-time catch-up complete for {profile.Name}."));
 
