@@ -32,4 +32,11 @@
     <ProjectReference Include="..\CBWSSSync.Core\CBWSSSync.Core.csproj" />
     <ProjectReference Include="..\CBWSSSync.Infrastructure\CBWSSSync.Infrastructure.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\examples\scripts\**\*">
+      <Link>BundledScripts\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 </Project>

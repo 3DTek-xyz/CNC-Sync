@@ -35,6 +35,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private string settingsPath = string.Empty;
 
     [ObservableProperty]
+    private string scriptsPath = string.Empty;
+
+    [ObservableProperty]
     private bool launchAtLogin;
 
     [ObservableProperty]
@@ -76,6 +79,7 @@ public partial class MainWindowViewModel : ViewModelBase
         ProcessingSetups.CollectionChanged += OnProcessingSetupsCollectionChanged;
 
         SettingsPath = _settingsStore.SettingsFilePath;
+        ScriptsPath = _settingsStore.ScriptsDirectoryPath;
         Apply(initialSettings);
         ValidationSummary = "Run validation to check saved settings.";
 
@@ -701,6 +705,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private sealed class DesignSettingsStore : IAppSettingsStore
     {
         public string SettingsFilePath => "~/.config/cbwss-sync/settings.json";
+        public string ScriptsDirectoryPath => "~/.config/cbwss-sync/Scripts";
 
         public Task<AppSettings> LoadAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(AppSettings.CreateDefault());

@@ -2,6 +2,8 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using CBWSSSync.App.ViewModels;
+using System;
+using System.IO;
 using System.Linq;
 
 namespace CBWSSSync.App.Views;
@@ -49,7 +51,8 @@ public partial class MainWindow : Window
 
     private async void BrowseProcessingScript_OnClick(object? sender, RoutedEventArgs e)
     {
-        var selectedPath = await PickFileAsync();
+        var scriptsPath = (DataContext as MainWindowViewModel)?.ScriptsPath;
+        var selectedPath = await PickFileAsync(scriptsPath);
         if (selectedPath is not null &&
             DataContext is MainWindowViewModel viewModel &&
             viewModel.SelectedProcessingSetup is not null)
@@ -70,13 +73,20 @@ public partial class MainWindow : Window
         return folders.FirstOrDefault()?.Path.LocalPath;
     }
 
-    private async Task<string?> PickFileAsync()
+    private async Task<string?> PickFileAsync(string? initialDirectory = null)
     {
+        IStorageFolder? suggestedStartLocation = null;
+        if (!string.IsNullOrWhiteSpace(initialDirectory) && Directory.Exists(initialDirectory))
+        {
+            suggestedStartLocation = await StorageProvider.TryGetFolderFromPathAsync(new Uri(initialDirectory));
+        }
+
         var files = await StorageProvider.OpenFilePickerAsync(
             new FilePickerOpenOptions
             {
                 AllowMultiple = false,
-                Title = "Choose script"
+                Title = "Choose script",
+                SuggestedStartLocation = suggestedStartLocation
             });
 
         return files.FirstOrDefault()?.Path.LocalPath;
