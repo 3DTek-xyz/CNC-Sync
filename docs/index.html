@@ -142,6 +142,12 @@
       font-size: .95rem;
     }
 
+    .muted-note {
+      margin-top: .85rem;
+      font-size: .95rem;
+      color: var(--muted);
+    }
+
     a { color: var(--accent); }
   </style>
 </head>
@@ -155,9 +161,34 @@
         uploads it to FTP, and supports manual catch-up when a server or connection was unavailable.
       </p>
       <div class="actions">
-        <a class="button primary" href="./updates/win/3DTek.CNCSync-win-Setup.exe">Download Windows Installer</a>
+        <a class="button primary" href="https://github.com/3DTek-xyz/CNC-FTPSync/releases/latest/download/3DTek.CNCSync-win-Setup.exe">Download Windows Installer</a>
+        <a class="button secondary" href="https://github.com/3DTek-xyz/CNC-FTPSync/releases/latest">Open Latest Release</a>
         <a class="button secondary" href="./user-guide.md">Open User Guide</a>
       </div>
+      <p class="muted-note">
+        Direct download links become active once the first CNC Sync GitHub release has been published from the new build pipeline.
+      </p>
+    </section>
+
+    <h2 class="section-title">Downloads</h2>
+    <section class="grid">
+      <article class="card">
+        <h3>Windows</h3>
+        <p><a href="https://github.com/3DTek-xyz/CNC-FTPSync/releases/latest/download/3DTek.CNCSync-win-Setup.exe">Installer</a></p>
+        <p><a href="https://github.com/3DTek-xyz/CNC-FTPSync/releases/latest/download/3DTek.CNCSync-win-Portable.zip">Portable ZIP</a></p>
+      </article>
+      <article class="card">
+        <h3>macOS</h3>
+        <p><a href="https://github.com/3DTek-xyz/CNC-FTPSync/releases/latest/download/cnc-sync-macos-arm64-latest.zip">Apple Silicon ZIP</a></p>
+      </article>
+      <article class="card">
+        <h3>Linux</h3>
+        <p><a href="https://github.com/3DTek-xyz/CNC-FTPSync/releases/latest/download/cnc-sync-linux-x64-latest.tar.gz">Linux x64 tarball</a></p>
+      </article>
+      <article class="card">
+        <h3>Release Notes</h3>
+        <p><a href="https://github.com/3DTek-xyz/CNC-FTPSync/releases/latest">Latest GitHub release</a></p>
+      </article>
     </section>
 
     <h2 class="section-title">What It Does</h2>
@@ -180,36 +211,41 @@
       </article>
     </section>
 
-    <h2 class="section-title">Windows Updates</h2>
+    <h2 class="section-title">Software Updates</h2>
     <section class="grid">
       <article class="card">
         <h3>Public Update Feed</h3>
-        <p>Installed Windows builds check the public update feed at:</p>
+        <p>Installed builds check the public software update feed at:</p>
         <p><span class="code">https://3dtek-xyz.github.io/CNC-FTPSync/updates/win</span></p>
       </article>
       <article class="card">
         <h3>How It Works</h3>
         <ul>
-          <li>Install CNC Sync with the Windows installer.</li>
+          <li>Install CNC Sync from the release downloads.</li>
           <li>Use <strong>Check for Updates</strong> inside the app.</li>
           <li>If a newer release is available, download and restart to apply it.</li>
         </ul>
       </article>
+      <article class="card">
+        <h3>Current Scope</h3>
+        <p>The public feed is currently used by installed Windows builds. macOS and Linux downloads are distributed through GitHub Releases.</p>
+      </article>
     </section>
 
-    <h2 class="section-title">Release Files</h2>
+    <h2 class="section-title">Feed Files</h2>
     <section class="grid">
       <article class="card">
-        <h3>Windows Installer</h3>
-        <p><a href="./updates/win/3DTek.CNCSync-win-Setup.exe">3DTek.CNCSync-win-Setup.exe</a></p>
-      </article>
-      <article class="card">
-        <h3>Portable Package</h3>
-        <p><a href="./updates/win/3DTek.CNCSync-win-Portable.zip">3DTek.CNCSync-win-Portable.zip</a></p>
-      </article>
-      <article class="card">
-        <h3>Release Feed</h3>
+        <h3>Windows Feed</h3>
         <p><a href="./updates/win/RELEASES">RELEASES</a></p>
+      </article>
+      <article class="card">
+        <h3>Windows Packages</h3>
+        <p><a href="./updates/win/3DTek.CNCSync-win-Setup.exe">Setup.exe</a></p>
+        <p><a href="./updates/win/3DTek.CNCSync-win-Portable.zip">Portable ZIP</a></p>
+      </article>
+      <article class="card">
+        <h3>Publishing Note</h3>
+        <p>These feed files are published to Pages by the tagged release workflow, so they only appear after a release build has completed.</p>
       </article>
     </section>
 
