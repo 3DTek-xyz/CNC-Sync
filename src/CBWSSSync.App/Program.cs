@@ -1,16 +1,26 @@
 ﻿using Avalonia;
 using System;
+using System.Threading;
+using Velopack;
 
 namespace CBWSSSync.App;
 
 sealed class Program
 {
+    private static Mutex? _singleInstanceMutex;
+
     // Initialization code. Don't use any Avalonia, third-party APIs or any
     // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
     // yet and stuff might break.
     [STAThread]
     public static void Main(string[] args)
     {
+        if (!AcquireSingleInstanceMutex())
+        {
+            return;
+        }
+
+        VelopackApp.Build().Run();
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 
@@ -37,5 +47,18 @@ sealed class Program
         var processPath = Environment.ProcessPath;
         return !string.IsNullOrWhiteSpace(processPath) &&
                processPath.Contains(".app/Contents/MacOS/", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool AcquireSingleInstanceMutex()
+    {
+        _singleInstanceMutex = new Mutex(true, "CNC Sync", out var createdNew);
+        if (createdNew)
+        {
+            return true;
+        }
+
+        _singleInstanceMutex.Dispose();
+        _singleInstanceMutex = null;
+        return false;
     }
 }

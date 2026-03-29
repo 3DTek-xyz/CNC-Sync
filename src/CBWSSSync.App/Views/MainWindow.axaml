@@ -7,7 +7,7 @@
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="CBWSSSync.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Icon="/Assets/avalonia-logo.ico"
+        Icon="/Assets/cnc-sync.ico"
         Width="1180"
         Height="820"
         MinWidth="980"
@@ -79,9 +79,12 @@
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <Button Classes="subtle" Content="Load Settings" Command="{Binding LoadSettingsCommand}" />
                                     <Button Classes="primary" Content="Validate Settings" Command="{Binding ValidateSettingsCommand}" />
+                                    <Button Classes="subtle" Content="Check for Updates" Command="{Binding CheckForUpdatesCommand}" />
+                                    <Button Classes="subtle" Content="Download and Restart" Command="{Binding DownloadAndRestartUpdateCommand}" IsEnabled="{Binding CanApplyUpdate}" />
                                 </StackPanel>
 
                                 <TextBlock Classes="muted" Text="{Binding SaveMessage}" TextWrapping="Wrap" />
+                                <TextBlock Classes="muted" Text="{Binding UpdateStatus}" TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 

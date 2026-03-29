@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="${ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 VERSION="${VERSION:-0.1.0}"
-BUILD_DIR="${BUILD_DIR:-$ROOT/src/CBWSSSync.App/bin/Release/net9.0/osx-arm64/publish}"
+BUILD_DIR="${BUILD_DIR:-$ROOT/src/CBWSSSync.App/bin/Release/net10.0/osx-arm64/publish}"
 DIST_DIR="${DIST_DIR:-$ROOT/dist/macos}"
 APP_DIR="$DIST_DIR/CNC Sync.app"
 CONTENTS_DIR="$APP_DIR/Contents"

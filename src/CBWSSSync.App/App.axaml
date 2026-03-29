@@ -86,7 +86,7 @@
 
     <TrayIcon.Icons>
         <TrayIcons>
-            <TrayIcon Icon="/Assets/tray-icon-macos.png"
+            <TrayIcon Icon="/Assets/cnc-sync-tray.png"
                       controls:MacOSProperties.IsTemplateIcon="False"
                       ToolTipText="CNC Sync"
                       IsVisible="True"

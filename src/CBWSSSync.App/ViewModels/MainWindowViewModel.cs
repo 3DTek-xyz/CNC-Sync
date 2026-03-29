@@ -6,6 +6,7 @@ using Avalonia.Threading;
 using CBWSSSync.Core.Configuration;
 using CBWSSSync.Core.Processing;
 using CBWSSSync.Core.Services;
+using CBWSSSync.App.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -17,6 +18,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly AppSettingsValidator _validator;
     private readonly ISyncCoordinator _syncCoordinator;
     private readonly IFtpService _ftpService;
+    private readonly IAppUpdateService _updateService;
     private readonly SemaphoreSlim _saveLock = new(1, 1);
     private bool _isApplyingSettings;
 
@@ -46,6 +48,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private string saveMessage = "Changes save automatically.";
+
+    [ObservableProperty]
+    private string updateStatus = "Windows installer and updates use GitHub Releases with Velopack.";
 
     [ObservableProperty]
     private string validationSummary = "Validation has not been run.";
@@ -79,12 +84,14 @@ public partial class MainWindowViewModel : ViewModelBase
         AppSettingsValidator validator,
         ISyncCoordinator syncCoordinator,
         IFtpService ftpService,
+        IAppUpdateService updateService,
         AppSettings initialSettings)
     {
         _settingsStore = settingsStore;
         _validator = validator;
         _syncCoordinator = syncCoordinator;
         _ftpService = ftpService;
+        _updateService = updateService;
         PropertyChanged += OnViewModelPropertyChanged;
         WatchProfiles.CollectionChanged += OnWatchProfilesCollectionChanged;
         FtpDestinations.CollectionChanged += OnFtpDestinationsCollectionChanged;
@@ -92,6 +99,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
         SettingsPath = _settingsStore.SettingsFilePath;
         ScriptsPath = _settingsStore.ScriptsDirectoryPath;
+        UpdateStatus = _updateService.IsSupported
+            ? "Update checks are available for installed Windows releases from GitHub Releases."
+            : "Automatic updates are currently enabled for installed Windows builds only.";
         Apply(initialSettings);
         ValidationSummary = "Run validation to check saved settings.";
 
@@ -109,6 +119,7 @@ public partial class MainWindowViewModel : ViewModelBase
             new AppSettingsValidator(),
             new DesignSyncCoordinator(),
             new DesignFtpService(),
+            new DesignAppUpdateService(),
             AppSettings.CreateDefault())
     {
     }
@@ -205,12 +216,20 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public bool CanStopMonitoring => string.Equals(MonitoringStatus, "Running", StringComparison.OrdinalIgnoreCase);
 
+    public bool CanApplyUpdate => _updateService.CanApplyUpdate;
+
     partial void OnMonitoringStatusChanged(string value)
     {
         OnPropertyChanged(nameof(CanStartMonitoring));
         OnPropertyChanged(nameof(CanStopMonitoring));
         StartMonitoringCommand.NotifyCanExecuteChanged();
         StopMonitoringCommand.NotifyCanExecuteChanged();
+    }
+
+    partial void OnUpdateStatusChanged(string value)
+    {
+        OnPropertyChanged(nameof(CanApplyUpdate));
+        DownloadAndRestartUpdateCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnSelectedWatchProfileChanged(WatchProfileItemViewModel? value)
@@ -369,6 +388,30 @@ public partial class MainWindowViewModel : ViewModelBase
     private void ValidateSettings()
     {
         ValidateCurrentSettings();
+    }
+
+    [RelayCommand]
+    private async Task CheckForUpdatesAsync()
+    {
+        CurrentTask = "Checking for updates";
+        var result = await _updateService.CheckForUpdatesAsync();
+        UpdateStatus = result.Message;
+        AddActivity(result.Message);
+        CurrentTask = result.Message;
+        OnPropertyChanged(nameof(CanApplyUpdate));
+        DownloadAndRestartUpdateCommand.NotifyCanExecuteChanged();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanApplyUpdate))]
+    private async Task DownloadAndRestartUpdateAsync()
+    {
+        CurrentTask = "Downloading update";
+        var result = await _updateService.DownloadAndApplyUpdateAsync();
+        UpdateStatus = result.Message;
+        AddActivity(result.Message);
+        CurrentTask = result.Message;
+        OnPropertyChanged(nameof(CanApplyUpdate));
+        DownloadAndRestartUpdateCommand.NotifyCanExecuteChanged();
     }
 
     [RelayCommand(CanExecute = nameof(CanStartMonitoring))]

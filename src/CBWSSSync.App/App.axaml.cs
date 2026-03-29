@@ -14,6 +14,7 @@ using CBWSSSync.Infrastructure.Networking;
 using CBWSSSync.Infrastructure.Processing;
 using CBWSSSync.Core.Configuration;
 using CBWSSSync.Core.Services;
+using CBWSSSync.App.Services;
 
 namespace CBWSSSync.App;
 
@@ -52,9 +53,10 @@ public partial class App : Application
             var folderMonitor = new FileSystemFolderMonitor();
             var projectProcessor = new StagingProjectProcessor();
             var ftpService = new FtpService();
+            var updateService = new VelopackUpdateService();
             var coordinator = new SyncCoordinator(folderMonitor, projectProcessor, ftpService, validator);
             var initialSettings = settingsStore.Load();
-            _mainWindowViewModel = new MainWindowViewModel(settingsStore, validator, coordinator, ftpService, initialSettings);
+            _mainWindowViewModel = new MainWindowViewModel(settingsStore, validator, coordinator, ftpService, updateService, initialSettings);
             coordinator.StatusChanged += OnCoordinatorStatusChanged;
             coordinator.ActivityLogged += OnCoordinatorActivityLogged;
             // On macOS we currently prefer a visible first launch over risking an inaccessible

@@ -8,7 +8,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 if ([string]::IsNullOrWhiteSpace($BuildDir)) {
-    $BuildDir = Join-Path $Root "src\\CBWSSSync.App\\bin\\Release\\net9.0\\win-x64\\publish"
+    $BuildDir = Join-Path $Root "src\\CBWSSSync.App\\bin\\Release\\net10.0\\win-x64\\publish"
 }
 
 if ([string]::IsNullOrWhiteSpace($DistDir)) {

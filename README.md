@@ -34,8 +34,13 @@ See [`docs/avalonia-rebuild-spec.md`](/Users/benharper/Coding/CBWSS-Sync/docs/av
 - GitHub Actions release workflow: [`.github/workflows/release.yml`](/Users/benharper/Coding/CBWSS-Sync/.github/workflows/release.yml)
 - Packaging scripts:
   - macOS: [`packaging/macos/package-app.sh`](/Users/benharper/Coding/CBWSS-Sync/packaging/macos/package-app.sh)
-  - Windows: [`packaging/windows/package-zip.ps1`](/Users/benharper/Coding/CBWSS-Sync/packaging/windows/package-zip.ps1)
+  - Windows installer/update packaging: [`packaging/windows/package-velopack.ps1`](/Users/benharper/Coding/CBWSS-Sync/packaging/windows/package-velopack.ps1)
+  - Windows zip packaging: [`packaging/windows/package-zip.ps1`](/Users/benharper/Coding/CBWSS-Sync/packaging/windows/package-zip.ps1)
   - Linux: [`packaging/linux/package-tarball.sh`](/Users/benharper/Coding/CBWSS-Sync/packaging/linux/package-tarball.sh)
+- Windows installer path:
+  - Velopack `Setup.exe` installs by default to `%LocalAppData%\\3DTek.CNCSync`
+- Windows update feed:
+  - packaged Windows releases check GitHub Releases for updates
 
 ## Notes
 
