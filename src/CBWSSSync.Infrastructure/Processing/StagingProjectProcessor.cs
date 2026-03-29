@@ -21,27 +21,36 @@ public sealed class StagingProjectProcessor : IProjectProcessor
         {
             Directory.CreateDirectory(profile.StagingFolder);
 
-            var stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
             var sourceName = Path.GetFileName(sourcePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
             if (string.IsNullOrWhiteSpace(sourceName))
             {
                 sourceName = "work-item";
             }
 
-            preparedOutputPath = Path.Combine(profile.StagingFolder, $"{sourceName}-{stamp}");
+            var sourceIsDirectory = Directory.Exists(sourcePath);
+            var sourceIsFile = File.Exists(sourcePath);
+            var remoteFolderName = sourceIsDirectory ? sourceName : null;
+
+            preparedOutputPath = Path.Combine(profile.StagingFolder, sourceName);
+
+            if (Directory.Exists(preparedOutputPath))
+            {
+                Directory.Delete(preparedOutputPath, recursive: true);
+            }
+
             Directory.CreateDirectory(preparedOutputPath);
 
             if (processingSetup.Mode == ProcessingMode.ExternalScript)
             {
-                return await RunExternalScriptAsync(sourcePath, preparedOutputPath, processingSetup, startedAt, cancellationToken);
+                return await RunExternalScriptAsync(sourcePath, preparedOutputPath, processingSetup, startedAt, remoteFolderName, cancellationToken);
             }
 
             List<string> processedFiles;
-            if (Directory.Exists(sourcePath))
+            if (sourceIsDirectory)
             {
                 processedFiles = CopyDirectory(sourcePath, preparedOutputPath, cancellationToken);
             }
-            else if (File.Exists(sourcePath))
+            else if (sourceIsFile)
             {
                 var fileName = Path.GetFileName(sourcePath);
                 File.Copy(sourcePath, Path.Combine(preparedOutputPath, fileName), overwrite: true);
@@ -67,6 +76,7 @@ public sealed class StagingProjectProcessor : IProjectProcessor
                 Message = $"Processed {processedFiles.Count} file(s) into {preparedOutputPath}",
                 SourcePath = sourcePath,
                 OutputPath = preparedOutputPath,
+                RemoteFolderName = remoteFolderName,
                 StartedAtUtc = startedAt,
                 FinishedAtUtc = DateTime.UtcNow,
                 ProcessedFiles = processedFiles
@@ -92,6 +102,7 @@ public sealed class StagingProjectProcessor : IProjectProcessor
         string defaultOutputPath,
         ProcessingSetupSettings processingSetup,
         DateTime startedAt,
+        string? remoteFolderName,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(processingSetup.ScriptPath) || !File.Exists(processingSetup.ScriptPath))
@@ -102,6 +113,7 @@ public sealed class StagingProjectProcessor : IProjectProcessor
                 Message = "External processing failed because the script path is missing or invalid.",
                 SourcePath = sourcePath,
                 OutputPath = defaultOutputPath,
+                RemoteFolderName = remoteFolderName,
                 StartedAtUtc = startedAt,
                 FinishedAtUtc = DateTime.UtcNow
             };
@@ -145,15 +157,21 @@ public sealed class StagingProjectProcessor : IProjectProcessor
         var scriptOutputPath = ParseOutputPath(stdout.ToString()) ?? defaultOutputPath;
         if (process.ExitCode != 0)
         {
+            var errorText = stderr.ToString().Trim();
+            var message = string.IsNullOrWhiteSpace(errorText)
+                ? $"External script failed with exit code {process.ExitCode}."
+                : $"External script failed with exit code {process.ExitCode}: {errorText}";
+
             return new ProcessingResult
             {
                 Success = false,
-                Message = $"External script failed with exit code {process.ExitCode}.",
+                Message = message,
                 SourcePath = sourcePath,
                 OutputPath = scriptOutputPath,
+                RemoteFolderName = remoteFolderName,
                 StartedAtUtc = startedAt,
                 FinishedAtUtc = DateTime.UtcNow,
-                Errors = [stderr.ToString().Trim()]
+                Errors = string.IsNullOrWhiteSpace(errorText) ? [] : [errorText]
             };
         }
 
@@ -165,6 +183,7 @@ public sealed class StagingProjectProcessor : IProjectProcessor
                 Message = $"External script succeeded but output folder was not found: {scriptOutputPath}",
                 SourcePath = sourcePath,
                 OutputPath = scriptOutputPath,
+                RemoteFolderName = remoteFolderName,
                 StartedAtUtc = startedAt,
                 FinishedAtUtc = DateTime.UtcNow
             };
@@ -180,6 +199,7 @@ public sealed class StagingProjectProcessor : IProjectProcessor
             Message = $"External script prepared {processedFiles.Count} file(s) into {scriptOutputPath}",
             SourcePath = sourcePath,
             OutputPath = scriptOutputPath,
+            RemoteFolderName = remoteFolderName,
             StartedAtUtc = startedAt,
             FinishedAtUtc = DateTime.UtcNow,
             ProcessedFiles = processedFiles
@@ -204,7 +224,7 @@ public sealed class StagingProjectProcessor : IProjectProcessor
 
         return runnerMode switch
         {
-            ScriptRunnerMode.PowerShell => ("pwsh", $"-NoProfile -File \"{processingSetup.ScriptPath}\" {resolvedArgs}"),
+            ScriptRunnerMode.PowerShell => (ResolvePowerShellExecutable(), $"-NoProfile -File \"{processingSetup.ScriptPath}\" {resolvedArgs}"),
             ScriptRunnerMode.Bash => ("bash", $"\"{processingSetup.ScriptPath}\" {resolvedArgs}"),
             ScriptRunnerMode.Python => ("python3", $"\"{processingSetup.ScriptPath}\" {resolvedArgs}"),
             ScriptRunnerMode.Command => (OperatingSystem.IsWindows() ? "cmd.exe" : "sh", OperatingSystem.IsWindows()
@@ -213,6 +233,45 @@ public sealed class StagingProjectProcessor : IProjectProcessor
             ScriptRunnerMode.Direct => (processingSetup.ScriptPath, resolvedArgs),
             _ => (processingSetup.ScriptPath, resolvedArgs)
         };
+    }
+
+    private static string ResolvePowerShellExecutable()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return "pwsh";
+        }
+
+        return CommandExistsOnPath("pwsh.exe") || CommandExistsOnPath("pwsh")
+            ? "pwsh"
+            : "powershell.exe";
+    }
+
+    private static bool CommandExistsOnPath(string commandName)
+    {
+        var pathValue = Environment.GetEnvironmentVariable("PATH");
+        if (string.IsNullOrWhiteSpace(pathValue))
+        {
+            return false;
+        }
+
+        foreach (var directory in pathValue.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            try
+            {
+                var candidatePath = Path.Combine(directory, commandName);
+                if (File.Exists(candidatePath))
+                {
+                    return true;
+                }
+            }
+            catch
+            {
+                // Ignore malformed PATH entries and keep checking.
+            }
+        }
+
+        return false;
     }
 
     private static ScriptRunnerMode DetectRunnerMode(string scriptPath)

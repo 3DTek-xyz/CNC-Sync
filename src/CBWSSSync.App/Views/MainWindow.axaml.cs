@@ -78,6 +78,21 @@ public partial class MainWindow : Window
         OpenFolderInShell(viewModel.ScriptsPath);
     }
 
+    private void RemoteBrowserList_OnDoubleTapped(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel ||
+            viewModel.SelectedRemoteBrowserItem is null ||
+            !viewModel.SelectedRemoteBrowserItem.IsDirectory)
+        {
+            return;
+        }
+
+        if (viewModel.OpenSelectedRemoteFolderCommand.CanExecute(null))
+        {
+            viewModel.OpenSelectedRemoteFolderCommand.Execute(null);
+        }
+    }
+
     private async Task<string?> PickFolderAsync()
     {
         var folders = await StorageProvider.OpenFolderPickerAsync(

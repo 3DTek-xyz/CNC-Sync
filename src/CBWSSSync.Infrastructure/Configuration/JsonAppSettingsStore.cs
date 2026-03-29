@@ -77,11 +77,7 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
                 Directory.CreateDirectory(destinationDirectory);
             }
 
-            // Only seed missing files so user-modified examples are not overwritten.
-            if (!File.Exists(destinationPath))
-            {
-                File.Copy(sourcePath, destinationPath);
-            }
+            File.Copy(sourcePath, destinationPath, overwrite: true);
         }
     }
 

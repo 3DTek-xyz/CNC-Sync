@@ -4,6 +4,10 @@
     <ProjectReference Include="..\CBWSSSync.Core\CBWSSSync.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="FluentFTP" Version="53.0.2" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>

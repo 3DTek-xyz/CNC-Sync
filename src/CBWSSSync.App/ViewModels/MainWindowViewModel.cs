@@ -16,6 +16,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IAppSettingsStore _settingsStore;
     private readonly AppSettingsValidator _validator;
     private readonly ISyncCoordinator _syncCoordinator;
+    private readonly IFtpService _ftpService;
     private readonly SemaphoreSlim _saveLock = new(1, 1);
     private bool _isApplyingSettings;
 
@@ -64,15 +65,26 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private ProcessingSetupItemViewModel? selectedProcessingSetup;
 
+    [ObservableProperty]
+    private string remoteBrowserPath = "/";
+
+    [ObservableProperty]
+    private string remoteBrowserStatus = "Choose an FTP server and refresh to browse the remote path.";
+
+    [ObservableProperty]
+    private RemoteBrowserItemViewModel? selectedRemoteBrowserItem;
+
     public MainWindowViewModel(
         IAppSettingsStore settingsStore,
         AppSettingsValidator validator,
         ISyncCoordinator syncCoordinator,
+        IFtpService ftpService,
         AppSettings initialSettings)
     {
         _settingsStore = settingsStore;
         _validator = validator;
         _syncCoordinator = syncCoordinator;
+        _ftpService = ftpService;
         PropertyChanged += OnViewModelPropertyChanged;
         WatchProfiles.CollectionChanged += OnWatchProfilesCollectionChanged;
         FtpDestinations.CollectionChanged += OnFtpDestinationsCollectionChanged;
@@ -96,6 +108,7 @@ public partial class MainWindowViewModel : ViewModelBase
             new DesignSettingsStore(),
             new AppSettingsValidator(),
             new DesignSyncCoordinator(),
+            new DesignFtpService(),
             AppSettings.CreateDefault())
     {
     }
@@ -109,6 +122,8 @@ public partial class MainWindowViewModel : ViewModelBase
     public ObservableCollection<FtpDestinationItemViewModel> FtpDestinations { get; } = [];
 
     public ObservableCollection<ProcessingSetupItemViewModel> ProcessingSetups { get; } = [];
+
+    public ObservableCollection<RemoteBrowserItemViewModel> RemoteBrowserItems { get; } = [];
 
     public IReadOnlyList<ProcessingMode> AvailableProcessingModes { get; } = Enum.GetValues<ProcessingMode>();
 
@@ -184,6 +199,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public bool HasSelectedFtpDestination => SelectedFtpDestination is not null;
 
+    public bool HasSelectedRemoteBrowserItem => SelectedRemoteBrowserItem is not null;
+
     public bool CanStartMonitoring => !string.Equals(MonitoringStatus, "Running", StringComparison.OrdinalIgnoreCase);
 
     public bool CanStopMonitoring => string.Equals(MonitoringStatus, "Running", StringComparison.OrdinalIgnoreCase);
@@ -206,6 +223,17 @@ public partial class MainWindowViewModel : ViewModelBase
     partial void OnSelectedFtpDestinationChanged(FtpDestinationItemViewModel? value)
     {
         OnPropertyChanged(nameof(HasSelectedFtpDestination));
+        ResetRemoteBrowserState(value);
+
+        if (!_isApplyingSettings && value is not null)
+        {
+            _ = RefreshRemoteBrowserAsync();
+        }
+    }
+
+    partial void OnSelectedRemoteBrowserItemChanged(RemoteBrowserItemViewModel? value)
+    {
+        OnPropertyChanged(nameof(HasSelectedRemoteBrowserItem));
     }
 
     partial void OnSelectedManualWatchProfileChanged(WatchProfileItemViewModel? value)
@@ -380,6 +408,99 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private async Task RefreshRemoteBrowserAsync()
+    {
+        if (SelectedFtpDestination is null)
+        {
+            RemoteBrowserStatus = "Choose an FTP server first.";
+            return;
+        }
+
+        var effectivePath = NormalizeRemoteBrowserPath(RemoteBrowserPath, SelectedFtpDestination.RemoteBasePath);
+        RemoteBrowserPath = effectivePath;
+        var result = await _ftpService.ListRootEntriesAsync(SelectedFtpDestination.ToSettings(), effectivePath);
+
+        RemoteBrowserItems.Clear();
+        if (!result.Success)
+        {
+            RemoteBrowserStatus = result.Message;
+            AddActivity(result.Message);
+            return;
+        }
+
+        foreach (var entry in result.Entries
+                     .OrderByDescending(item => item.IsDirectory)
+                     .ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            RemoteBrowserItems.Add(RemoteBrowserItemViewModel.FromRemoteEntry(entry));
+        }
+
+        RemoteBrowserStatus = $"{RemoteBrowserItems.Count} item(s) loaded from {effectivePath}.";
+    }
+
+    [RelayCommand]
+    private async Task OpenSelectedRemoteFolderAsync()
+    {
+        if (SelectedRemoteBrowserItem is null || !SelectedRemoteBrowserItem.IsDirectory)
+        {
+            RemoteBrowserStatus = "Choose a remote folder to open.";
+            return;
+        }
+
+        RemoteBrowserPath = SelectedRemoteBrowserItem.FullPath;
+        await RefreshRemoteBrowserAsync();
+    }
+
+    [RelayCommand]
+    private async Task BrowseRemoteParentAsync()
+    {
+        if (SelectedFtpDestination is null)
+        {
+            return;
+        }
+
+        var basePath = NormalizeRemoteBrowserPath(SelectedFtpDestination.RemoteBasePath, string.Empty);
+        var currentPath = NormalizeRemoteBrowserPath(RemoteBrowserPath, basePath);
+        if (string.Equals(currentPath, basePath, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var parentPath = GetParentRemotePath(currentPath, basePath);
+        RemoteBrowserPath = parentPath;
+        await RefreshRemoteBrowserAsync();
+    }
+
+    [RelayCommand]
+    private async Task DeleteSelectedRemoteItemAsync()
+    {
+        if (SelectedFtpDestination is null || SelectedRemoteBrowserItem is null)
+        {
+            RemoteBrowserStatus = "Choose a remote item to delete.";
+            return;
+        }
+
+        CurrentTask = $"Deleting remote {(SelectedRemoteBrowserItem.IsDirectory ? "folder" : "file")} {SelectedRemoteBrowserItem.Name}";
+        var result = await _ftpService.DeleteRemoteItemAsync(
+            SelectedFtpDestination.ToSettings(),
+            SelectedRemoteBrowserItem.FullPath,
+            SelectedRemoteBrowserItem.IsDirectory);
+        AddActivity(result.Message);
+        RemoteBrowserStatus = result.Message;
+        CurrentTask = MonitoringStatus switch
+        {
+            "Running" => "Watching configured profiles for stable files and folders",
+            "Stopped" => "Idle",
+            _ => MonitoringStatus
+        };
+
+        if (result.Success)
+        {
+            await RefreshRemoteBrowserAsync();
+        }
+    }
+
+    [RelayCommand]
     private async Task ManualProcessAsync()
     {
         if (SelectedManualWatchProfile is null)
@@ -406,13 +527,32 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
+        var processingSetupSettings = processingSetup.ToSettings();
+        if (processingSetupSettings.Mode == ProcessingMode.ExternalScript &&
+            string.IsNullOrWhiteSpace(processingSetupSettings.ScriptPath))
+        {
+            var message =
+                $"Manual catch-up skipped because processing setup '{processingSetup.DisplayName}' is set to External Script but has no script path.";
+            AddActivity(message);
+            CurrentTask = message;
+            LastProcessingSummary = message;
+            return;
+        }
+
         CurrentTask = $"Checking FTP for missing items in {SelectedManualWatchProfile.DisplayName}";
         var result = await _syncCoordinator.CatchUpMissingItemsAsync(
             SelectedManualWatchProfile.ToSettings(),
             destination.ToSettings(),
-            processingSetup.ToSettings());
+            processingSetupSettings);
         LastProcessingSummary = result.Message;
         CurrentTask = result.Message;
+
+        if (result.Success &&
+            SelectedFtpDestination is not null &&
+            string.Equals(SelectedFtpDestination.Id, destination.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            await RefreshRemoteBrowserAsync();
+        }
     }
 
     private void ValidateCurrentSettings()
@@ -479,6 +619,7 @@ public partial class MainWindowViewModel : ViewModelBase
         SelectedManualWatchProfile = SelectedManualWatchProfile is not null
             ? WatchProfiles.FirstOrDefault(profile => profile.Id == SelectedManualWatchProfile.Id) ?? WatchProfiles.FirstOrDefault()
             : WatchProfiles.FirstOrDefault();
+        ResetRemoteBrowserState(SelectedFtpDestination);
         _isApplyingSettings = false;
     }
 
@@ -543,6 +684,64 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             RequestAutoSave();
         }
+    }
+
+    private void ResetRemoteBrowserState(FtpDestinationItemViewModel? destination)
+    {
+        RemoteBrowserItems.Clear();
+        SelectedRemoteBrowserItem = null;
+        RemoteBrowserPath = NormalizeRemoteBrowserPath(destination?.RemoteBasePath, "/");
+        RemoteBrowserStatus = destination is null
+            ? "Choose an FTP server and refresh to browse the remote path."
+            : $"Remote browser is ready for {destination.DisplayName}.";
+    }
+
+    private static string NormalizeRemoteBrowserPath(string? path, string? fallbackPath)
+    {
+        var candidate = string.IsNullOrWhiteSpace(path) ? fallbackPath : path;
+        if (string.IsNullOrWhiteSpace(candidate))
+        {
+            return "/";
+        }
+
+        var normalized = candidate.Replace('\\', '/').Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return "/";
+        }
+
+        normalized = "/" + normalized.Trim('/');
+        return normalized.Length == 0 ? "/" : normalized;
+    }
+
+    private static string GetParentRemotePath(string currentPath, string basePath)
+    {
+        var normalizedCurrent = NormalizeRemoteBrowserPath(currentPath, "/");
+        var normalizedBase = NormalizeRemoteBrowserPath(basePath, "/");
+        if (string.Equals(normalizedCurrent, normalizedBase, StringComparison.OrdinalIgnoreCase))
+        {
+            return normalizedBase;
+        }
+
+        var trimmed = normalizedCurrent.TrimEnd('/');
+        var lastSlashIndex = trimmed.LastIndexOf('/');
+        if (lastSlashIndex <= 0)
+        {
+            return normalizedBase;
+        }
+
+        var parent = trimmed[..lastSlashIndex];
+        if (string.IsNullOrWhiteSpace(parent))
+        {
+            parent = "/";
+        }
+
+        if (parent.Length < normalizedBase.Length)
+        {
+            return normalizedBase;
+        }
+
+        return parent;
     }
 
     private void OnWatchProfilesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -752,5 +951,29 @@ public partial class MainWindowViewModel : ViewModelBase
             Task.FromResult<(bool Success, string Message)>((true, $"Design-time catch-up complete for {profile.Name}."));
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    private sealed class DesignFtpService : IFtpService
+    {
+        public Task<(bool Success, string Message)> TestConnectionAsync(FtpDestinationSettings destination, CancellationToken cancellationToken = default) =>
+            Task.FromResult<(bool Success, string Message)>((true, "Design-time FTP test complete."));
+
+        public Task<(bool Success, string Message)> UploadDirectoryAsync(string localPath, FtpDestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
+            Task.FromResult<(bool Success, string Message)>((true, "Design-time FTP upload complete."));
+
+        public Task<(bool Success, IReadOnlyList<RemoteEntryInfo> Entries, string Message)> ListRootEntriesAsync(FtpDestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
+            Task.FromResult<(bool Success, IReadOnlyList<RemoteEntryInfo> Entries, string Message)>(
+                (true,
+                    [
+                        new RemoteEntryInfo { Name = "NC", FullPath = "/NC", IsDirectory = true },
+                        new RemoteEntryInfo { Name = "demo.nc", FullPath = "/demo.nc", IsDirectory = false, SizeBytes = 4096 }
+                    ],
+                    "Design-time FTP browser listing complete."));
+
+        public Task<(bool Exists, long? SizeBytes, string Message)> TryGetFileSizeAsync(FtpDestinationSettings destination, string remoteFilePath, CancellationToken cancellationToken = default) =>
+            Task.FromResult((true, 4096L as long?, "Design-time remote file size complete."));
+
+        public Task<(bool Success, string Message)> DeleteRemoteItemAsync(FtpDestinationSettings destination, string remotePath, bool isDirectory, CancellationToken cancellationToken = default) =>
+            Task.FromResult<(bool Success, string Message)>((true, $"Design-time delete complete: {remotePath}"));
     }
 }

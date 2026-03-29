@@ -20,7 +20,6 @@
 
     <Grid RowDefinitions="Auto,Auto,*" Margin="24">
         <StackPanel Spacing="6">
-            <TextBlock Classes="sectionEyebrow" Text="Tray Utility" />
             <TextBlock Text="{Binding AppTitle}" FontSize="28" FontWeight="Bold" />
             <TextBlock Classes="muted" Text="Monitor local CNC export folders, optionally process them, and upload the result to FTP." TextWrapping="Wrap" />
         </StackPanel>
@@ -114,7 +113,7 @@
                 </ScrollViewer>
             </TabItem>
 
-            <TabItem Header="Folder Watches">
+            <TabItem Header="Watch Folders">
                 <ScrollViewer Margin="0,12,0,0"
                               HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto">
@@ -122,7 +121,7 @@
                         <Border Classes="card" Padding="18" CornerRadius="16">
                             <StackPanel Spacing="8">
                                 <TextBlock Classes="sectionEyebrow" Text="Live Rules" />
-                                <TextBlock Text="Folder Watches" FontSize="20" FontWeight="SemiBold" />
+                                <TextBlock Text="Watch Folders" FontSize="20" FontWeight="SemiBold" />
                                 <TextBlock Classes="muted" Text="A folder watch is the live rule that watches one local folder, stages output, chooses a processing setup, and uploads to a selected FTP destination." TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
@@ -249,7 +248,7 @@
                             <StackPanel Spacing="8">
                                 <TextBlock Classes="sectionEyebrow" Text="Reusable Logic" />
                                 <TextBlock Text="Processing Setups" FontSize="20" FontWeight="SemiBold" />
-                                <TextBlock Classes="muted" Text="Define reusable pre-upload behaviour once, then assign it to any watch profile. Use default copy-to-staging when nothing special is needed, or external scripts for custom processing workflows." TextWrapping="Wrap" />
+                                <TextBlock Classes="muted" Text="Define reusable pre-upload behaviour once, then assign it to any watch profile. Use Default Upload when nothing special is needed, or external scripts for custom processing workflows." TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 
@@ -289,6 +288,13 @@
                                         <ComboBox Grid.Column="1"
                                                   ItemsSource="{Binding AvailableProcessingModes}"
                                                   SelectedItem="{Binding SelectedProcessingSetup.Mode}" />
+                                    </Grid>
+
+                                    <Grid ColumnDefinitions="220,*">
+                                        <TextBlock VerticalAlignment="Center" Text="Upload Behaviour" />
+                                        <CheckBox Grid.Column="1"
+                                                  Content="Replace remote folder contents before upload"
+                                                  IsChecked="{Binding SelectedProcessingSetup.ReplaceRemoteFolderOnUpload}" />
                                     </Grid>
 
                                     <Grid ColumnDefinitions="220,*">
@@ -338,6 +344,7 @@
                                         <TextBlock Text="{}{scriptPath} - the selected script path" Opacity="0.75" TextWrapping="Wrap" />
                                         <TextBlock Text="Any other text is passed through literally. For example, if you type &quot;watch name&quot;, the script receives the text &quot;watch name&quot; exactly as written." Opacity="0.75" TextWrapping="Wrap" />
                                         <TextBlock Text="External scripts should exit 0 on success and can optionally print OUTPUT_PATH=/path/to/folder." Opacity="0.75" TextWrapping="Wrap" />
+                                        <TextBlock Text="Replace remote folder contents is most useful for folder-based jobs like SampleJob where each upload should replace the previous revision." Opacity="0.75" TextWrapping="Wrap" />
                                     </StackPanel>
                                 </StackPanel>
                             </Border>
@@ -346,7 +353,7 @@
                 </ScrollViewer>
             </TabItem>
 
-            <TabItem Header="FTP Setups">
+            <TabItem Header="FTP Servers">
                 <ScrollViewer Margin="0,12,0,0"
                               HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto">
@@ -354,7 +361,7 @@
                         <Border Classes="card" Padding="18" CornerRadius="16">
                             <StackPanel Spacing="8">
                                 <TextBlock Classes="sectionEyebrow" Text="Destinations" />
-                                <TextBlock Text="FTP Setups" FontSize="20" FontWeight="SemiBold" />
+                                <TextBlock Text="FTP Servers" FontSize="20" FontWeight="SemiBold" />
                                 <TextBlock Classes="muted" Text="Create reusable FTP destinations here, then assign them to any number of folder watches. This avoids re-entering the same server details repeatedly." TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
@@ -362,11 +369,22 @@
                         <Grid ColumnDefinitions="320,*">
                             <Border Classes="card" Margin="0,0,8,0" Padding="18" CornerRadius="16">
                                 <StackPanel Spacing="12">
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <TextBlock VerticalAlignment="Center" Text="FTP Destinations" FontSize="18" FontWeight="SemiBold" />
-                                        <Button Classes="subtle" Content="Add" Command="{Binding AddFtpDestinationCommand}" />
-                                        <Button Classes="subtle" Content="Remove" Command="{Binding RemoveFtpDestinationCommand}" />
-                                    </StackPanel>
+                                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0"
+                                                   VerticalAlignment="Center"
+                                                   Text="FTP Destinations"
+                                                   FontSize="18"
+                                                   FontWeight="SemiBold"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <Button Grid.Column="1"
+                                                Classes="subtle"
+                                                Content="Add"
+                                                Command="{Binding AddFtpDestinationCommand}" />
+                                        <Button Grid.Column="2"
+                                                Classes="subtle"
+                                                Content="Remove"
+                                                Command="{Binding RemoveFtpDestinationCommand}" />
+                                    </Grid>
 
                                     <ListBox ItemsSource="{Binding FtpDestinations}" SelectedItem="{Binding SelectedFtpDestination}">
                                         <ListBox.ItemTemplate>
@@ -446,6 +464,64 @@
                                             Classes="primary"
                                             Content="Test This FTP Setup"
                                             Command="{Binding TestFtpCommand}" />
+
+                                    <Border Classes="card" Padding="16" CornerRadius="14" Margin="0,8,0,0">
+                                        <StackPanel Spacing="10">
+                                            <StackPanel Spacing="4">
+                                                <TextBlock Text="Remote Browser" FontSize="18" FontWeight="SemiBold" />
+                                                <TextBlock Classes="muted"
+                                                           Text="Open the selected FTP server and quickly verify what is on the remote path. This is intentionally lightweight: browse, refresh, and delete if needed."
+                                                           TextWrapping="Wrap" />
+                                            </StackPanel>
+
+                                            <Grid ColumnDefinitions="220,*">
+                                                <TextBlock VerticalAlignment="Center" Text="Current Remote Path" />
+                                                <TextBox Grid.Column="1"
+                                                         IsReadOnly="True"
+                                                         Text="{Binding RemoteBrowserPath}" />
+                                            </Grid>
+
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <Button Classes="primary"
+                                                        Content="Refresh"
+                                                        Command="{Binding RefreshRemoteBrowserCommand}" />
+                                                <Button Classes="subtle"
+                                                        Content="Up"
+                                                        Command="{Binding BrowseRemoteParentCommand}" />
+                                                <Button Classes="subtle"
+                                                        Content="Open Selected Folder"
+                                                        Command="{Binding OpenSelectedRemoteFolderCommand}" />
+                                                <Button Classes="subtle"
+                                                        Content="Delete Selected"
+                                                        Command="{Binding DeleteSelectedRemoteItemCommand}" />
+                                            </StackPanel>
+
+                                            <TextBlock Classes="muted"
+                                                       Text="{Binding RemoteBrowserStatus}"
+                                                       TextWrapping="Wrap" />
+
+                                            <ListBox Height="220"
+                                                     ItemsSource="{Binding RemoteBrowserItems}"
+                                                     SelectedItem="{Binding SelectedRemoteBrowserItem}"
+                                                     DoubleTapped="RemoteBrowserList_OnDoubleTapped">
+                                                <ListBox.ItemTemplate>
+                                                    <DataTemplate x:DataType="vm:RemoteBrowserItemViewModel">
+                                                        <Grid Margin="0,2,0,2" ColumnDefinitions="*,110,140">
+                                                            <TextBlock Grid.Column="0"
+                                                                       Text="{Binding Name}"
+                                                                       FontWeight="SemiBold"
+                                                                       TextTrimming="CharacterEllipsis" />
+                                                            <TextBlock Grid.Column="1"
+                                                                       Margin="12,0,12,0"
+                                                                       Text="{Binding Kind}" />
+                                                            <TextBlock Grid.Column="2"
+                                                                       Text="{Binding SizeDisplay}" />
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ListBox.ItemTemplate>
+                                            </ListBox>
+                                        </StackPanel>
+                                    </Border>
                                 </StackPanel>
                             </Border>
                         </Grid>

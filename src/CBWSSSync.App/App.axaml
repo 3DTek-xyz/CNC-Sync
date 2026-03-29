@@ -80,6 +80,7 @@
 
         <Style Selector="TabItem">
             <Setter Property="Padding" Value="16,10" />
+            <Setter Property="Margin" Value="0,0,8,0" />
         </Style>
     </Application.Styles>
 

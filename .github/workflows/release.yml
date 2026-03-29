@@ -1,0 +1,109 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          ref="${GITHUB_REF_NAME:-}"
+          if [[ "$ref" == v* ]]; then
+            version="${ref#v}"
+          else
+            version="0.1.0"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Publish Windows build
+        run: dotnet publish src/CBWSSSync.App/CBWSSSync.App.csproj -c Release -r win-x64 --self-contained true -p:Version=${{ steps.version.outputs.version }} -p:InformationalVersion=${{ steps.version.outputs.version }}
+      - name: Package Windows zip
+        shell: pwsh
+        run: ./packaging/windows/package-zip.ps1 -Root $env:GITHUB_WORKSPACE -Version ${{ steps.version.outputs.version }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: dist/windows/*.zip
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          ref="${GITHUB_REF_NAME:-}"
+          if [[ "$ref" == v* ]]; then
+            version="${ref#v}"
+          else
+            version="0.1.0"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Publish macOS build
+        run: dotnet publish src/CBWSSSync.App/CBWSSSync.App.csproj -c Release -r osx-arm64 --self-contained true -p:UseAppHost=true -p:Version=${{ steps.version.outputs.version }} -p:InformationalVersion=${{ steps.version.outputs.version }}
+      - name: Package macOS app
+        run: VERSION=${{ steps.version.outputs.version }} ./packaging/macos/package-app.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-release
+          path: dist/macos/*.zip
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          ref="${GITHUB_REF_NAME:-}"
+          if [[ "$ref" == v* ]]; then
+            version="${ref#v}"
+          else
+            version="0.1.0"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Publish Linux build
+        run: dotnet publish src/CBWSSSync.App/CBWSSSync.App.csproj -c Release -r linux-x64 --self-contained true -p:Version=${{ steps.version.outputs.version }} -p:InformationalVersion=${{ steps.version.outputs.version }}
+      - name: Package Linux tarball
+        run: VERSION=${{ steps.version.outputs.version }} ./packaging/linux/package-tarball.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-release
+          path: dist/linux/*.tar.gz
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs:
+      - build-windows
+      - build-macos
+      - build-linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/windows-release/*.zip
+            artifacts/macos-release/*.zip
+            artifacts/linux-release/*.tar.gz

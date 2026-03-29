@@ -124,26 +124,33 @@ public sealed class SyncCoordinator : ISyncCoordinator
             }
 
             LogActivity(
-                $"Manual catch-up found {missingItems.Count} missing item(s) out of {localItems.Count} local item(s).",
+                BuildMissingItemsMessage(missingItems, localItems.Count),
                 profile.Name);
 
             var uploadedCount = 0;
+            var failedCount = 0;
             foreach (var missingItem in missingItems)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var result = await ExecuteProcessAsync(missingItem, profile, destination, processingSetup, shouldUpload: true, cancellationToken);
+                var result = await UploadMissingItemAsync(missingItem, profile, destination, processingSetup, cancellationToken);
                 
                 if (result.Success)
                 {
                     uploadedCount++;
                 }
+                else
+                {
+                    failedCount++;
+                }
             }
 
             var summaryMessage =
-                $"Manual catch-up finished for {profile.Name}: uploaded {uploadedCount} missing item(s), skipped {localItems.Count - missingItems.Count} already present item(s).";
+                failedCount == 0
+                    ? $"Manual catch-up finished for {profile.Name}: uploaded {uploadedCount} missing item(s), skipped {localItems.Count - missingItems.Count} already present item(s)."
+                    : $"Manual catch-up finished for {profile.Name}: uploaded {uploadedCount} missing item(s), failed {failedCount} missing item(s), skipped {localItems.Count - missingItems.Count} already present item(s).";
             LogActivity(summaryMessage, profile.Name);
             SetStatus(IsRunning ? "Running" : "Stopped");
-            return (uploadedCount == missingItems.Count, summaryMessage);
+            return (failedCount == 0 && uploadedCount == missingItems.Count, summaryMessage);
         }
         catch (Exception ex)
         {
@@ -152,6 +159,45 @@ public sealed class SyncCoordinator : ISyncCoordinator
             SetStatus("Error");
             return (false, errorMessage);
         }
+    }
+
+    private async Task<ProcessingResult> UploadMissingItemAsync(
+        string sourcePath,
+        WatchProfileSettings profile,
+        FtpDestinationSettings destination,
+        ProcessingSetupSettings processingSetup,
+        CancellationToken cancellationToken)
+    {
+        var stagedOutputPath = GetStableStagedOutputPath(profile, sourcePath);
+        var remoteFolderName = Directory.Exists(sourcePath)
+            ? Path.GetFileName(sourcePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
+            : null;
+
+        if (Directory.Exists(stagedOutputPath) &&
+            Directory.EnumerateFiles(stagedOutputPath, "*", SearchOption.AllDirectories).Any())
+        {
+            LogActivity($"Manual catch-up reusing staged output for {Path.GetFileName(sourcePath)}.", profile.Name);
+            return await UploadPreparedOutputAsync(
+                new ProcessingResult
+                {
+                    Success = true,
+                    Message = $"Reused staged output from {stagedOutputPath}",
+                    SourcePath = sourcePath,
+                    OutputPath = stagedOutputPath,
+                    RemoteFolderName = remoteFolderName,
+                    StartedAtUtc = DateTime.UtcNow,
+                    FinishedAtUtc = DateTime.UtcNow,
+                    ProcessedFiles = Directory.GetFiles(stagedOutputPath, "*", SearchOption.AllDirectories)
+                        .Select(path => Path.GetRelativePath(stagedOutputPath, path))
+                        .ToList()
+                },
+                profile,
+                destination,
+                processingSetup,
+                cancellationToken);
+        }
+
+        return await ExecuteProcessAsync(sourcePath, profile, destination, processingSetup, shouldUpload: true, cancellationToken);
     }
 
     public Task<(bool Success, string Message)> TestFtpAsync(FtpDestinationSettings destination, CancellationToken cancellationToken = default)
@@ -175,6 +221,9 @@ public sealed class SyncCoordinator : ISyncCoordinator
                 Success = false,
                 Message = "That path is already being processed for this profile.",
                 SourcePath = path,
+                RemoteFolderName = Directory.Exists(path)
+                    ? Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
+                    : null,
                 StartedAtUtc = DateTime.UtcNow,
                 FinishedAtUtc = DateTime.UtcNow
             };
@@ -188,7 +237,7 @@ public sealed class SyncCoordinator : ISyncCoordinator
             var effectiveProcessingSetup = processingSetup ?? new ProcessingSetupSettings
             {
                 Name = "Default Processing",
-                Mode = ProcessingMode.CopyToStaging
+                Mode = ProcessingMode.DefaultUpload
             };
 
             var result = await _projectProcessor.ProcessAsync(path, profile, effectiveProcessingSetup, cancellationToken);
@@ -196,9 +245,11 @@ public sealed class SyncCoordinator : ISyncCoordinator
 
             if (result.Success && shouldUpload && destination is not null)
             {
-                var remoteDirectoryPath = BuildRemoteDirectoryPath(destination, profile);
-                var uploadResult = await _ftpService.UploadDirectoryAsync(result.OutputPath, destination, remoteDirectoryPath, cancellationToken);
-                LogActivity(uploadResult.Message, profile.Name);
+                result = await UploadPreparedOutputAsync(result, profile, destination, effectiveProcessingSetup, cancellationToken);
+                if (!result.Success)
+                {
+                    return result;
+                }
             }
 
             ProcessingCompleted?.Invoke(result);
@@ -209,6 +260,54 @@ public sealed class SyncCoordinator : ISyncCoordinator
         {
             _inFlightPaths.TryRemove(inFlightKey, out _);
         }
+    }
+
+    private async Task<ProcessingResult> UploadPreparedOutputAsync(
+        ProcessingResult result,
+        WatchProfileSettings profile,
+        FtpDestinationSettings destination,
+        ProcessingSetupSettings processingSetup,
+        CancellationToken cancellationToken)
+    {
+        var remoteDirectoryPath = BuildRemoteDirectoryPath(destination, profile);
+        var effectiveRemotePath = CombineRemoteDirectoryPath(remoteDirectoryPath, result.RemoteFolderName);
+
+        if (processingSetup.ReplaceRemoteFolderOnUpload &&
+            !string.IsNullOrWhiteSpace(result.RemoteFolderName))
+        {
+            var deleteResult = await _ftpService.DeleteRemoteItemAsync(destination, effectiveRemotePath, isDirectory: true, cancellationToken);
+            if (deleteResult.Success)
+            {
+                LogActivity($"Replaced previous remote folder contents at {effectiveRemotePath}.", profile.Name);
+            }
+        }
+
+        LogActivity($"FTP upload starting to {(string.IsNullOrWhiteSpace(effectiveRemotePath) ? "/" : effectiveRemotePath)} from {result.OutputPath}", profile.Name);
+        var uploadResult = await _ftpService.UploadDirectoryAsync(result.OutputPath, destination, effectiveRemotePath, cancellationToken);
+        LogActivity(uploadResult.Message, profile.Name);
+
+        if (!uploadResult.Success)
+        {
+            var failedUploadResult = new ProcessingResult
+            {
+                Success = false,
+                Message = uploadResult.Message,
+                SourcePath = result.SourcePath,
+                OutputPath = result.OutputPath,
+                RemoteFolderName = result.RemoteFolderName,
+                StartedAtUtc = result.StartedAtUtc,
+                FinishedAtUtc = DateTime.UtcNow,
+                ProcessedFiles = result.ProcessedFiles,
+                Errors = result.Errors.Concat([uploadResult.Message]).ToList()
+            };
+
+            ProcessingCompleted?.Invoke(failedUploadResult);
+            SetStatus("Error");
+            return failedUploadResult;
+        }
+
+        TryCleanupStagedOutput(result.OutputPath, profile.StagingFolder, profile.Name);
+        return result;
     }
 
     private async Task<bool> RemoteContainsItemAsync(
@@ -280,6 +379,65 @@ public sealed class SyncCoordinator : ISyncCoordinator
 
         var combined = string.Join("/", segments);
         return string.IsNullOrWhiteSpace(combined) ? string.Empty : $"/{combined}";
+    }
+
+    private static string GetStableStagedOutputPath(WatchProfileSettings profile, string sourcePath)
+    {
+        var sourceName = Path.GetFileName(sourcePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        return Path.Combine(profile.StagingFolder, string.IsNullOrWhiteSpace(sourceName) ? "work-item" : sourceName);
+    }
+
+    private static string BuildMissingItemsMessage(IReadOnlyList<string> missingItems, int localItemCount)
+    {
+        var missingNames = missingItems
+            .Select(Path.GetFileName)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Cast<string>()
+            .ToList();
+
+        if (missingNames.Count == 1)
+        {
+            return $"Manual catch-up found 1 missing item out of {localItemCount} local item(s): {missingNames[0]}.";
+        }
+
+        if (missingNames.Count is > 1 and <= 3)
+        {
+            return $"Manual catch-up found {missingNames.Count} missing item(s) out of {localItemCount} local item(s): {string.Join(", ", missingNames)}.";
+        }
+
+        return $"Manual catch-up found {missingItems.Count} missing item(s) out of {localItemCount} local item(s).";
+    }
+
+    private void TryCleanupStagedOutput(string outputPath, string stagingRoot, string profileName)
+    {
+        if (string.IsNullOrWhiteSpace(outputPath) ||
+            string.IsNullOrWhiteSpace(stagingRoot) ||
+            !Directory.Exists(outputPath) ||
+            !Directory.Exists(stagingRoot))
+        {
+            return;
+        }
+
+        try
+        {
+            var normalizedOutputPath = Path.GetFullPath(outputPath)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var normalizedStagingRoot = Path.GetFullPath(stagingRoot)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var stagingRootPrefix = normalizedStagingRoot + Path.DirectorySeparatorChar;
+
+            if (!normalizedOutputPath.StartsWith(stagingRootPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            Directory.Delete(normalizedOutputPath, recursive: true);
+            LogActivity($"Cleaned staged output: {normalizedOutputPath}", profileName);
+        }
+        catch (Exception ex)
+        {
+            LogActivity($"Staged output cleanup skipped: {ex.Message}", profileName);
+        }
     }
 
     private void OnWorkItemReady(WorkItemReadyEvent workItem)

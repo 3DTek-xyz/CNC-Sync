@@ -12,7 +12,10 @@ public partial class ProcessingSetupItemViewModel : ObservableObject
     private string name = string.Empty;
 
     [ObservableProperty]
-    private ProcessingMode mode = ProcessingMode.CopyToStaging;
+    private ProcessingMode mode = ProcessingMode.DefaultUpload;
+
+    [ObservableProperty]
+    private bool replaceRemoteFolderOnUpload;
 
     [ObservableProperty]
     private string scriptPath = string.Empty;
@@ -37,6 +40,7 @@ public partial class ProcessingSetupItemViewModel : ObservableObject
             Id = settings.Id,
             Name = settings.Name,
             Mode = settings.Mode,
+            ReplaceRemoteFolderOnUpload = settings.ReplaceRemoteFolderOnUpload,
             ScriptPath = settings.ScriptPath,
             RunnerMode = settings.RunnerMode,
             ArgumentsTemplate = settings.ArgumentsTemplate
@@ -48,6 +52,7 @@ public partial class ProcessingSetupItemViewModel : ObservableObject
             Id = Id,
             Name = Name,
             Mode = Mode,
+            ReplaceRemoteFolderOnUpload = ReplaceRemoteFolderOnUpload,
             ScriptPath = ScriptPath,
             RunnerMode = RunnerMode,
             ArgumentsTemplate = ArgumentsTemplate

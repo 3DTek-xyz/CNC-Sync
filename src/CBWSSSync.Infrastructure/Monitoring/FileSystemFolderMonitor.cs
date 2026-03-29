@@ -81,7 +81,12 @@ public sealed class FileSystemFolderMonitor : IFolderMonitor
     {
         var workItemPath = ResolveWorkItemPath(profile, path);
         var key = BuildPendingKey(profile, workItemPath);
-        _pendingPaths[key] = new PendingWorkItem(profile, workItemPath, DateTime.UtcNow);
+        var now = DateTime.UtcNow;
+        _pendingPaths[key] = new PendingWorkItem(
+            profile,
+            workItemPath,
+            now,
+            now);
     }
 
     private async Task PollAsync(PeriodicTimer timer, CancellationToken cancellationToken)
@@ -91,6 +96,13 @@ public sealed class FileSystemFolderMonitor : IFolderMonitor
             var now = DateTime.UtcNow;
             foreach (var entry in _pendingPaths.ToArray())
             {
+                if (now - entry.Value.LastCheckedUtc < TimeSpan.FromSeconds(entry.Value.Profile.StabilityPollingSeconds))
+                {
+                    continue;
+                }
+
+                _pendingPaths[entry.Key] = entry.Value with { LastCheckedUtc = now };
+
                 if (now - entry.Value.LastUpdatedUtc < TimeSpan.FromSeconds(entry.Value.Profile.StabilityDelaySeconds))
                 {
                     continue;
@@ -139,7 +151,11 @@ public sealed class FileSystemFolderMonitor : IFolderMonitor
         await StopAsync();
     }
 
-    private sealed record PendingWorkItem(WatchProfileSettings Profile, string Path, DateTime LastUpdatedUtc);
+    private sealed record PendingWorkItem(
+        WatchProfileSettings Profile,
+        string Path,
+        DateTime LastUpdatedUtc,
+        DateTime LastCheckedUtc);
 
     private sealed record WatcherContext(
         WatchProfileSettings Profile,

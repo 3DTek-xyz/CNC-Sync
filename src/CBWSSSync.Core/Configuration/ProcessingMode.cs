@@ -2,6 +2,6 @@ namespace CBWSSSync.Core.Configuration;
 
 public enum ProcessingMode
 {
-    CopyToStaging = 0,
+    DefaultUpload = 0,
     ExternalScript = 1
 }

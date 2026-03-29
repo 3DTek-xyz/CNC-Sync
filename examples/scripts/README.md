@@ -51,19 +51,21 @@ If that line is printed, CNC Sync uploads that folder instead of the default out
 - `macos/latest_revision_picker.sh`
   - keeps only the highest `Rxx` revision set when revisioned files exist
 
-- `shared/cbwss_mozaik_example.py`
 - `windows/cbwss_mozaik_example.ps1`
 - `macos/cbwss_mozaik_example.sh`
   - example based on the legacy CBWSS/Mozaik flow
   - copies a project, selects the latest revision, builds `NC/` and `AutoStickLabel/`, moves files, and can optionally remove negative Y values in `.cyc` files
 
+  Example arguments template:
+
+  ```text
+  "{sourcePath}" "{outputPath}" --update-cyc-y
+  ```
+
 ## Suggested Runner Modes
 
 - `.ps1` files: `PowerShell` or `Auto`
 - `.sh` files: `Bash` or `Auto`
-- Python-based launchers:
-  - use the provided `.ps1` or `.sh` wrapper
-  - or point directly at the `.py` file and choose `Python`
 
 ## Notes
 

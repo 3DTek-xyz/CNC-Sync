@@ -1,6 +1,6 @@
-# CBWSS Sync
+# CNC Sync
 
-Cross-platform rebuild of CBWSS Sync using Avalonia UI and .NET.
+Cross-platform CNC file monitoring, processing, and FTP upload utility built with Avalonia UI and .NET.
 
 ## Workspace Layout
 
@@ -28,9 +28,16 @@ This rebuild is intentionally simpler than the original app:
 
 See [`docs/avalonia-rebuild-spec.md`](/Users/benharper/Coding/CBWSS-Sync/docs/avalonia-rebuild-spec.md) for the current rebuild spec.
 
-## Next Steps
+## Release
 
-1. Define the first real domain models and configuration schema.
-2. Build the monitoring and processing pipeline in `Core`.
-3. Add FTP and startup integration in `Infrastructure`.
-4. Replace the placeholder Avalonia shell with dashboard, settings, and activity views.
+- Current target version: `0.1.0`
+- GitHub Actions release workflow: [`.github/workflows/release.yml`](/Users/benharper/Coding/CBWSS-Sync/.github/workflows/release.yml)
+- Packaging scripts:
+  - macOS: [`packaging/macos/package-app.sh`](/Users/benharper/Coding/CBWSS-Sync/packaging/macos/package-app.sh)
+  - Windows: [`packaging/windows/package-zip.ps1`](/Users/benharper/Coding/CBWSS-Sync/packaging/windows/package-zip.ps1)
+  - Linux: [`packaging/linux/package-tarball.sh`](/Users/benharper/Coding/CBWSS-Sync/packaging/linux/package-tarball.sh)
+
+## Notes
+
+- Local builds are still useful for testing.
+- Tagged releases like `v0.1.0` are intended to produce the official GitHub release artifacts.

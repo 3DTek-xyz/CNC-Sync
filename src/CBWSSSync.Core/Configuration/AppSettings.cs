@@ -65,6 +65,8 @@ public sealed class AppSettings
             processingSetup.ArgumentsTemplate = string.IsNullOrWhiteSpace(processingSetup.ArgumentsTemplate)
                 ? "\"{sourcePath}\" \"{outputPath}\""
                 : processingSetup.ArgumentsTemplate;
+
+            NormalizeBundledScriptArguments(processingSetup);
         }
 
         if (WatchProfiles.Count == 0)
@@ -114,5 +116,23 @@ public sealed class AppSettings
 
         var trimmed = path.Trim().Replace('\\', '/').Trim('/');
         return string.IsNullOrWhiteSpace(trimmed) ? string.Empty : $"/{trimmed}";
+    }
+
+    private static void NormalizeBundledScriptArguments(ProcessingSetupSettings processingSetup)
+    {
+        if (string.IsNullOrWhiteSpace(processingSetup.ScriptPath) ||
+            string.IsNullOrWhiteSpace(processingSetup.ArgumentsTemplate))
+        {
+            return;
+        }
+
+        var scriptName = Path.GetFileName(processingSetup.ScriptPath);
+        if (!string.Equals(scriptName, "cbwss_mozaik_example.sh", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(scriptName, "cbwss_mozaik_example.ps1", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        processingSetup.ArgumentsTemplate = processingSetup.ArgumentsTemplate.Replace("-UpdateCycY", "--update-cyc-y");
     }
 }

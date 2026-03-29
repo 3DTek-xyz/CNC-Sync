@@ -1,6 +1,7 @@
 using System.Net;
 using CBWSSSync.Core.Configuration;
 using CBWSSSync.Core.Services;
+using FluentFTP;
 
 namespace CBWSSSync.Infrastructure.Networking;
 
@@ -103,24 +104,38 @@ public sealed class FtpService : IFtpService
 
         try
         {
-            var request = CreateRequest(destination, remoteDirectoryPath, WebRequestMethods.Ftp.ListDirectory);
-            using var response = (FtpWebResponse)await GetResponseWithTimeoutAsync(request, cancellationToken);
-            await using var responseStream = response.GetResponseStream();
-            using var reader = new StreamReader(responseStream ?? Stream.Null);
-            var contents = await reader.ReadToEndAsync(cancellationToken);
-            var entryNames = contents
-                .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Where(entry => !string.IsNullOrWhiteSpace(entry))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
+            await using var client = CreateFluentClient(destination);
+            await client.AutoConnect(cancellationToken);
+            var fluentPath = ToFluentBrowserPath(remoteDirectoryPath);
+            var names = await client.GetNameListing(fluentPath, cancellationToken);
 
-            var entries = new List<RemoteEntryInfo>(entryNames.Count);
-            foreach (var entryName in entryNames)
+            var entries = new List<RemoteEntryInfo>(names.Length);
+            foreach (var rawName in names)
             {
-                var sizeResult = await TryGetFileSizeAsync(destination, CombineRemotePath(remoteDirectoryPath, entryName), cancellationToken);
+                var entryName = rawName?
+                    .Trim()
+                    .Replace('\\', '/')
+                    .TrimEnd('/')
+                    .Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .LastOrDefault();
+                if (string.IsNullOrWhiteSpace(entryName))
+                {
+                    continue;
+                }
+
+                if (entryName is "." or "..")
+                {
+                    continue;
+                }
+
+                var fullPath = CombineRemotePath(remoteDirectoryPath, entryName);
+                var sizeResult = await TryGetFileSizeAsync(destination, fullPath, cancellationToken);
+
                 entries.Add(new RemoteEntryInfo
                 {
                     Name = entryName,
+                    FullPath = fullPath,
+                    IsDirectory = !sizeResult.Exists,
                     SizeBytes = sizeResult.Exists ? sizeResult.SizeBytes : null
                 });
             }
@@ -167,6 +182,44 @@ public sealed class FtpService : IFtpService
         catch (WebException)
         {
             return (false, null, $"Could not read remote file size: {remoteFilePath}");
+        }
+    }
+
+    public async Task<(bool Success, string Message)> DeleteRemoteItemAsync(
+        FtpDestinationSettings destination,
+        string remotePath,
+        bool isDirectory,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(destination.Host))
+        {
+            return (false, "FTP delete skipped because no FTP host is configured.");
+        }
+
+        try
+        {
+            await using var client = CreateFluentClient(destination);
+            await client.AutoConnect(cancellationToken);
+            var fluentPath = ToFluentBrowserPath(remotePath);
+
+            if (isDirectory)
+            {
+                await client.DeleteDirectory(fluentPath, cancellationToken);
+            }
+            else
+            {
+                await client.DeleteFile(fluentPath, cancellationToken);
+            }
+
+            return (true, $"{(isDirectory ? "Remote folder" : "Remote file")} deleted: {remotePath}");
+        }
+        catch (TimeoutException)
+        {
+            return (false, $"No FTP server responded at {destination.Host}:{destination.Port} within {RequestTimeoutMilliseconds / 1000} seconds.");
+        }
+        catch (Exception ex)
+        {
+            return (false, $"FTP delete failed: {ex.Message}");
         }
     }
 
@@ -236,6 +289,28 @@ public sealed class FtpService : IFtpService
             ? new NetworkCredential("anonymous", "anonymous@example.com")
             : new NetworkCredential(destination.Username, destination.Password);
         return request;
+    }
+
+    private static AsyncFtpClient CreateFluentClient(FtpDestinationSettings destination)
+    {
+        var userName = destination.UseAnonymousFtp ? "anonymous" : destination.Username;
+        var password = destination.UseAnonymousFtp ? "anonymous@example.com" : destination.Password;
+        var client = new AsyncFtpClient(destination.Host, userName, password, destination.Port);
+        client.Config.ConnectTimeout = RequestTimeoutMilliseconds;
+        client.Config.ReadTimeout = RequestTimeoutMilliseconds;
+        client.Config.DataConnectionConnectTimeout = RequestTimeoutMilliseconds;
+        client.Config.DataConnectionReadTimeout = RequestTimeoutMilliseconds;
+        return client;
+    }
+
+    private static string ToFluentBrowserPath(string? remotePath)
+    {
+        if (string.IsNullOrWhiteSpace(remotePath) || remotePath == "/")
+        {
+            return ".";
+        }
+
+        return remotePath.Trim().Replace('\\', '/').TrimStart('/');
     }
 
     private static async Task<WebResponse> GetResponseWithTimeoutAsync(FtpWebRequest request, CancellationToken cancellationToken)

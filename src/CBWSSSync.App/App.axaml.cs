@@ -54,7 +54,7 @@ public partial class App : Application
             var ftpService = new FtpService();
             var coordinator = new SyncCoordinator(folderMonitor, projectProcessor, ftpService, validator);
             var initialSettings = settingsStore.Load();
-            _mainWindowViewModel = new MainWindowViewModel(settingsStore, validator, coordinator, initialSettings);
+            _mainWindowViewModel = new MainWindowViewModel(settingsStore, validator, coordinator, ftpService, initialSettings);
             coordinator.StatusChanged += OnCoordinatorStatusChanged;
             coordinator.ActivityLogged += OnCoordinatorActivityLogged;
             // On macOS we currently prefer a visible first launch over risking an inaccessible
