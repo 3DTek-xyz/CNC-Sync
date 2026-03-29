@@ -5,7 +5,7 @@ namespace CBWSSSync.App.Services;
 
 public sealed class VelopackUpdateService : IAppUpdateService
 {
-    private const string RepositoryUrl = "https://github.com/3DTek-xyz/CNC-FTPSync";
+    private const string UpdateFeedUrl = "https://3dtek-xyz.github.io/CNC-FTPSync/updates/win";
     private UpdateInfo? _pendingUpdate;
 
     public bool IsSupported => OperatingSystem.IsWindows();
@@ -69,7 +69,7 @@ public sealed class VelopackUpdateService : IAppUpdateService
 
     private static UpdateManager CreateManager()
     {
-        var source = new GithubSource(RepositoryUrl, string.Empty, prerelease: false);
+        var source = new SimpleWebSource(UpdateFeedUrl);
         return new UpdateManager(source);
     }
 }

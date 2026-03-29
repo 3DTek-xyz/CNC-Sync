@@ -50,7 +50,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private string saveMessage = "Changes save automatically.";
 
     [ObservableProperty]
-    private string updateStatus = "Windows installer and updates use GitHub Releases with Velopack.";
+    private string updateStatus = "Windows installer and updates use the public CNC Sync update feed with Velopack.";
 
     [ObservableProperty]
     private string validationSummary = "Validation has not been run.";
@@ -100,7 +100,7 @@ public partial class MainWindowViewModel : ViewModelBase
         SettingsPath = _settingsStore.SettingsFilePath;
         ScriptsPath = _settingsStore.ScriptsDirectoryPath;
         UpdateStatus = _updateService.IsSupported
-            ? "Update checks are available for installed Windows releases from GitHub Releases."
+            ? "Update checks are available for installed Windows releases from the public CNC Sync update feed."
             : "Automatic updates are currently enabled for installed Windows builds only.";
         Apply(initialSettings);
         ValidationSummary = "Run validation to check saved settings.";

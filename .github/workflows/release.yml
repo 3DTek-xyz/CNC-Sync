@@ -6,6 +6,9 @@ on:
       - "v*"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -113,3 +116,33 @@ jobs:
             artifacts/windows-release/*
             artifacts/macos-release/*.zip
             artifacts/linux-release/*.tar.gz
+
+  deploy-pages:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs:
+      - build-windows
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-release
+          path: artifacts/windows-release
+      - name: Prepare GitHub Pages update feed
+        run: |
+          mkdir -p site
+          cp -R docs/. site/
+          mkdir -p site/updates/win
+          cp artifacts/windows-release/* site/updates/win/
+          touch site/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - uses: actions/deploy-pages@v4
+        id: deployment

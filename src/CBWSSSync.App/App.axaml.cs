@@ -33,6 +33,7 @@ public partial class App : Application
     private NativeMenuItem? _trayRecentActivityMenuItem3;
     private NativeMenuItem? _trayStartMonitoringMenuItem;
     private NativeMenuItem? _trayStopMonitoringMenuItem;
+    private CancellationTokenSource? _singleInstanceCts;
 
     public override void Initialize()
     {
@@ -66,6 +67,26 @@ public partial class App : Application
             desktop.MainWindow = new MainWindow
             {
                 DataContext = _mainWindowViewModel,
+            };
+
+            _singleInstanceCts = new CancellationTokenSource();
+            _ = SingleInstanceSignal.RunServerAsync(
+                () =>
+                {
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        _exitRequested = true;
+                        _desktop?.Shutdown();
+                    });
+                    return Task.CompletedTask;
+                },
+                _singleInstanceCts.Token);
+
+            desktop.Exit += (_, _) =>
+            {
+                _singleInstanceCts?.Cancel();
+                _singleInstanceCts?.Dispose();
+                _singleInstanceCts = null;
             };
 
             desktop.MainWindow.Opened += (_, _) =>

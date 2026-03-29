@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CNC Sync</title>
+  <style>
+    :root {
+      --bg: #eff5fb;
+      --panel: #ffffff;
+      --ink: #14314d;
+      --muted: #56718c;
+      --line: #d6e2ef;
+      --accent: #0f6ad9;
+      --accent-soft: #dcebff;
+      --shadow: 0 24px 48px rgba(20, 49, 77, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Inter, system-ui, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(15,106,217,.14), transparent 28rem),
+        linear-gradient(180deg, #f5f9fd 0%, var(--bg) 100%);
+      color: var(--ink);
+    }
+
+    .shell {
+      max-width: 72rem;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem 4rem;
+    }
+
+    .hero {
+      background: linear-gradient(145deg, #153a63 0%, #0c5dbd 100%);
+      color: #fff;
+      border-radius: 1.5rem;
+      padding: 2.5rem;
+      box-shadow: var(--shadow);
+    }
+
+    .hero-badge {
+      display: inline-block;
+      padding: .4rem .75rem;
+      border-radius: 999px;
+      background: rgba(255,255,255,.16);
+      font-size: .9rem;
+      letter-spacing: .02em;
+    }
+
+    h1 {
+      margin: 1rem 0 .75rem;
+      font-size: clamp(2.2rem, 4vw, 3.5rem);
+      line-height: 1.05;
+    }
+
+    .hero p {
+      max-width: 46rem;
+      margin: 0;
+      color: rgba(255,255,255,.88);
+      font-size: 1.05rem;
+      line-height: 1.6;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .85rem;
+      margin-top: 1.5rem;
+    }
+
+    .button {
+      display: inline-block;
+      padding: .9rem 1.2rem;
+      border-radius: .95rem;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .button.primary {
+      background: #fff;
+      color: #0e4d99;
+    }
+
+    .button.secondary {
+      background: rgba(255,255,255,.12);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,.22);
+    }
+
+    .grid {
+      display: grid;
+      gap: 1rem;
+      margin-top: 1.5rem;
+      grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 1.25rem;
+      padding: 1.25rem;
+      box-shadow: var(--shadow);
+    }
+
+    .card h2,
+    .card h3 {
+      margin: 0 0 .6rem;
+    }
+
+    .card p,
+    .card li {
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .card ul {
+      margin: 0;
+      padding-left: 1.1rem;
+    }
+
+    .section-title {
+      margin: 2rem 0 .75rem;
+      font-size: 1.5rem;
+    }
+
+    .code {
+      display: inline-block;
+      background: var(--accent-soft);
+      color: #14457c;
+      padding: .25rem .5rem;
+      border-radius: .5rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: .92rem;
+    }
+
+    footer {
+      margin-top: 2rem;
+      color: var(--muted);
+      font-size: .95rem;
+    }
+
+    a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <span class="hero-badge">CNC Sync</span>
+      <h1>Watch local CNC export folders, process them, and deliver them to FTP reliably.</h1>
+      <p>
+        CNC Sync monitors watch folders, runs optional local processing scripts, stages the result,
+        uploads it to FTP, and supports manual catch-up when a server or connection was unavailable.
+      </p>
+      <div class="actions">
+        <a class="button primary" href="./updates/win/3DTek.CNCSync-win-Setup.exe">Download Windows Installer</a>
+        <a class="button secondary" href="./user-guide.md">Open User Guide</a>
+      </div>
+    </section>
+
+    <h2 class="section-title">What It Does</h2>
+    <section class="grid">
+      <article class="card">
+        <h3>Watch Folders</h3>
+        <p>Monitor one or more local export folders and wait for items to become stable before processing them.</p>
+      </article>
+      <article class="card">
+        <h3>Processing Setups</h3>
+        <p>Use default upload mode or run local scripts to reorganize, filter, or rewrite CNC jobs before upload.</p>
+      </article>
+      <article class="card">
+        <h3>FTP Servers</h3>
+        <p>Reuse named FTP server definitions across multiple watch folders, including remote base paths and credentials.</p>
+      </article>
+      <article class="card">
+        <h3>Manual Catch-Up</h3>
+        <p>Compare the watch folder with the remote FTP destination and upload what is missing, reusing staged output first.</p>
+      </article>
+    </section>
+
+    <h2 class="section-title">Windows Updates</h2>
+    <section class="grid">
+      <article class="card">
+        <h3>Public Update Feed</h3>
+        <p>Installed Windows builds check the public update feed at:</p>
+        <p><span class="code">https://3dtek-xyz.github.io/CNC-FTPSync/updates/win</span></p>
+      </article>
+      <article class="card">
+        <h3>How It Works</h3>
+        <ul>
+          <li>Install CNC Sync with the Windows installer.</li>
+          <li>Use <strong>Check for Updates</strong> inside the app.</li>
+          <li>If a newer release is available, download and restart to apply it.</li>
+        </ul>
+      </article>
+    </section>
+
+    <h2 class="section-title">Release Files</h2>
+    <section class="grid">
+      <article class="card">
+        <h3>Windows Installer</h3>
+        <p><a href="./updates/win/3DTek.CNCSync-win-Setup.exe">3DTek.CNCSync-win-Setup.exe</a></p>
+      </article>
+      <article class="card">
+        <h3>Portable Package</h3>
+        <p><a href="./updates/win/3DTek.CNCSync-win-Portable.zip">3DTek.CNCSync-win-Portable.zip</a></p>
+      </article>
+      <article class="card">
+        <h3>Release Feed</h3>
+        <p><a href="./updates/win/RELEASES">RELEASES</a></p>
+      </article>
+    </section>
+
+    <footer>
+      This Pages site now exists to host CNC Sync downloads and the public Windows update feed.
+    </footer>
+  </main>
+</body>
+</html>

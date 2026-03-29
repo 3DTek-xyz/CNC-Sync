@@ -18,51 +18,64 @@
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
-    <Grid RowDefinitions="Auto,Auto,*" Margin="24">
-        <StackPanel Spacing="6">
-            <TextBlock Text="{Binding AppTitle}" FontSize="28" FontWeight="Bold" />
-            <TextBlock Classes="muted" Text="Monitor local CNC export folders, optionally process them, and upload the result to FTP." TextWrapping="Wrap" />
-        </StackPanel>
+    <Grid Margin="24">
+        <TabControl>
+            <TabItem Header="Overview">
+                <ScrollViewer Margin="0,12,0,0"
+                              HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="0,0,20,0" Spacing="16">
+                        <Border Classes="card" Padding="18" CornerRadius="16">
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="sectionEyebrow" Text="Control Panel" />
+                                <TextBlock Text="{Binding AppTitle}" FontSize="28" FontWeight="Bold" />
+                                <TextBlock Classes="muted"
+                                           Text="Monitor local CNC export folders, optionally process them, and upload the result to FTP."
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
 
-        <Grid Grid.Row="1" Margin="0,20,0,0" ColumnDefinitions="*,*">
-            <Border Classes="heroCard" Margin="0,0,8,0" Padding="18" CornerRadius="16">
-                <StackPanel Spacing="8">
-                    <TextBlock Classes="sectionEyebrow" Text="Live Status" />
-                    <TextBlock Text="Monitoring" FontSize="18" FontWeight="SemiBold" />
-                    <TextBlock Text="{Binding MonitoringStatus, StringFormat=Status: {0}}" />
-                    <TextBlock Classes="muted" Text="{Binding ActiveMonitoringProfilesSummary}" TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding CurrentTask, StringFormat=Current task: {0}}" TextWrapping="Wrap" />
-                    <TextBlock Classes="muted" Text="{Binding LastProcessingSummary}" TextWrapping="Wrap" />
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Button Classes="primary" Content="Start" Command="{Binding StartMonitoringCommand}" />
-                        <Button Classes="subtle" Content="Stop" Command="{Binding StopMonitoringCommand}" />
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="16">
+                            <Border Classes="heroCard" Padding="18" CornerRadius="16">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Classes="sectionEyebrow" Text="Live Status" />
+                                    <TextBlock Text="Monitoring" FontSize="18" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding MonitoringStatus, StringFormat=Status: {0}}" />
+                                    <TextBlock Classes="muted" Text="{Binding ActiveMonitoringProfilesSummary}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding CurrentTask, StringFormat=Current task: {0}}" TextWrapping="Wrap" />
+                                    <TextBlock Classes="muted" Text="{Binding LastProcessingSummary}" TextWrapping="Wrap" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Button Classes="primary" Content="Start" Command="{Binding StartMonitoringCommand}" />
+                                        <Button Classes="subtle" Content="Stop" Command="{Binding StopMonitoringCommand}" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Classes="card" Grid.Column="1" Padding="18" CornerRadius="16">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Classes="sectionEyebrow" Text="Recovery" />
+                                    <TextBlock Text="Manual Catch-Up" FontSize="18" FontWeight="SemiBold" />
+                                    <TextBlock Classes="muted" Text="{Binding ManualActionSummary}" TextWrapping="Wrap" />
+                                    <Grid ColumnDefinitions="180,*">
+                                        <TextBlock VerticalAlignment="Center" Text="Watch Profile" />
+                                        <ComboBox Grid.Column="1"
+                                                  ItemsSource="{Binding WatchProfiles}"
+                                                  SelectedItem="{Binding SelectedManualWatchProfile}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:WatchProfileItemViewModel">
+                                                    <TextBlock Text="{Binding DisplayName}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </Grid>
+                                    <Button Classes="primary" HorizontalAlignment="Left" Content="Catch Up Missing Files" Command="{Binding ManualProcessCommand}" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
                     </StackPanel>
-                </StackPanel>
-            </Border>
+                </ScrollViewer>
+            </TabItem>
 
-            <Border Classes="card" Grid.Column="1" Margin="8,0,0,0" Padding="18" CornerRadius="16">
-                <StackPanel Spacing="8">
-                    <TextBlock Classes="sectionEyebrow" Text="Recovery" />
-                    <TextBlock Text="Manual Catch-Up" FontSize="18" FontWeight="SemiBold" />
-                    <TextBlock Classes="muted" Text="{Binding ManualActionSummary}" TextWrapping="Wrap" />
-                    <Grid ColumnDefinitions="180,*">
-                        <TextBlock VerticalAlignment="Center" Text="Watch Profile" />
-                        <ComboBox Grid.Column="1"
-                                  ItemsSource="{Binding WatchProfiles}"
-                                  SelectedItem="{Binding SelectedManualWatchProfile}">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate x:DataType="vm:WatchProfileItemViewModel">
-                                    <TextBlock Text="{Binding DisplayName}" />
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
-                    </Grid>
-                    <Button Classes="primary" HorizontalAlignment="Left" Content="Catch Up Missing Files" Command="{Binding ManualProcessCommand}" />
-                </StackPanel>
-            </Border>
-        </Grid>
-
-        <TabControl Grid.Row="2" Margin="0,20,0,0">
             <TabItem Header="App Settings">
                 <ScrollViewer Margin="0,12,0,0"
                               HorizontalScrollBarVisibility="Disabled"

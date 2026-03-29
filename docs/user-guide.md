@@ -8,18 +8,18 @@ The app is built around four reusable setup types:
 
 - `App Settings`
   - global behaviour for the app itself
-- `FTP Setups`
+- `FTP Servers`
   - named FTP destinations that can be reused by many watch profiles
 - `Processing Setups`
   - named processing rules, including simple passthrough or external scripts
-- `Folder Watches`
+- `Watch Folders`
   - the actual monitored folders that combine a watch path, a processing setup, and an FTP setup
 
 ## Typical Setup Flow
 
-1. Create an `FTP Setup`.
+1. Create an `FTP Server`.
 2. Create a `Processing Setup`.
-3. Create a `Folder Watch` that points to a local watch folder and staging folder, then select the FTP and processing setups it should use.
+3. Create a `Watch Folder` that points to a local watch folder and staging folder, then select the FTP server and processing setup it should use.
 4. Validate settings.
 5. Start monitoring.
 
@@ -38,9 +38,9 @@ Use `App Settings` for behaviour that applies to the whole app:
 
 Settings are saved automatically as you change them.
 
-## FTP Setups
+## FTP Servers
 
-An FTP setup defines one reusable destination:
+An FTP server defines one reusable destination:
 
 - `Destination Name`
   - friendly label shown in selectors
@@ -59,7 +59,7 @@ An FTP setup defines one reusable destination:
 
 The effective remote path is built from:
 
-- FTP setup base path
+- FTP server base path
 - plus watch profile remote subfolder
 
 Example:
@@ -72,7 +72,7 @@ Example:
 
 A processing setup defines what happens to a detected file or folder before upload.
 
-### Copy To Staging
+### Default Upload
 
 This is the default passthrough option.
 
@@ -132,7 +132,7 @@ OUTPUT_PATH=/path/to/final/output
 If `OUTPUT_PATH=` is printed, CNC Sync uploads that folder.
 If not, CNC Sync uploads the prepared output folder it already passed in.
 
-## Folder Watches
+## Watch Folders
 
 A folder watch ties everything together.
 
