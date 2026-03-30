@@ -23,21 +23,29 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          download_release_assets() {
+            local target_dir="$1"
+            shift
+            if ! gh release download --repo "$GITHUB_REPOSITORY" --clobber --dir "$target_dir" "$@"; then
+              echo "No release assets matched for $target_dir; continuing."
+            fi
+          }
+
           mkdir -p site
           cp -R docs/. site/
           mkdir -p site/downloads/win site/downloads/macos site/downloads/linux site/updates
           if gh release view --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release download --repo "$GITHUB_REPOSITORY" --clobber --dir site/downloads/win \
+            download_release_assets site/downloads/win \
               --pattern "3DTek.CNCSync-win-Setup.exe" \
               --pattern "3DTek.CNCSync-win-Portable.zip"
-            gh release download --repo "$GITHUB_REPOSITORY" --clobber --dir site/downloads/macos \
+            download_release_assets site/downloads/macos \
               --pattern "cnc-sync-macos-arm64-latest.pkg" \
               --pattern "cnc-sync-macos-arm64-latest.zip" \
               --pattern "cnc-sync-macos-x64-latest.pkg" \
               --pattern "cnc-sync-macos-x64-latest.zip"
-            gh release download --repo "$GITHUB_REPOSITORY" --clobber --dir site/downloads/linux \
+            download_release_assets site/downloads/linux \
               --pattern "cnc-sync-linux-x64-latest.AppImage"
-            gh release download --repo "$GITHUB_REPOSITORY" --clobber --dir site/updates \
+            download_release_assets site/updates \
               --pattern "RELEASES" \
               --pattern "RELEASES-osx-arm64" \
               --pattern "RELEASES-osx-x64" \
