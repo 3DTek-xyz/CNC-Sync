@@ -111,12 +111,24 @@ Supported placeholders:
 - `{scriptPath}`
   - the selected script path
 
-Any other text is passed through literally.
+Any other text is passed through literally, which means you can add extra fixed arguments if your script expects them.
 
 Example:
 
 ```text
 "{sourcePath}" "{outputPath}"
+```
+
+Example with one extra literal text argument:
+
+```text
+"{sourcePath}" "{outputPath}" "watch1"
+```
+
+The bundled CBWSS example uses one extra flag to enable the CYC Y-coordinate update:
+
+```text
+"{sourcePath}" "{outputPath}" --update-cyc-y
 ```
 
 Script contract:

@@ -358,7 +358,7 @@
                                         <TextBlock Text="{}{sourcePath} - the detected source file or folder" Opacity="0.75" TextWrapping="Wrap" />
                                         <TextBlock Text="{}{outputPath} - the prepared output folder for processed files" Opacity="0.75" TextWrapping="Wrap" />
                                         <TextBlock Text="{}{scriptPath} - the selected script path" Opacity="0.75" TextWrapping="Wrap" />
-                                        <TextBlock Text="Any other text is passed through literally. For example, if you type &quot;watch name&quot;, the script receives the text &quot;watch name&quot; exactly as written." Opacity="0.75" TextWrapping="Wrap" />
+                                        <TextBlock Text="Any other text is passed through literally, so you can add extra fixed arguments. Example: &quot;{sourcePath}&quot; &quot;{outputPath}&quot; &quot;watch1&quot; or &quot;{sourcePath}&quot; &quot;{outputPath}&quot; --update-cyc-y." Opacity="0.75" TextWrapping="Wrap" />
                                         <TextBlock Text="External scripts should exit 0 on success and can optionally print OUTPUT_PATH=/path/to/folder." Opacity="0.75" TextWrapping="Wrap" />
                                         <TextBlock Text="Replace remote folder contents is most useful for folder-based jobs like SampleJob where each upload should replace the previous revision." Opacity="0.75" TextWrapping="Wrap" />
                                     </StackPanel>
@@ -590,7 +590,7 @@
                             <StackPanel Spacing="8">
                                 <TextBlock Text="External Script Contract" FontSize="18" FontWeight="SemiBold" />
                                 <TextBlock Text="External scripts are run locally. They should exit with code 0 on success and may optionally print OUTPUT_PATH=/path/to/folder if the final upload folder is different from the prepared output path." TextWrapping="Wrap" />
-                                <TextBlock Text="Supported argument placeholders: {sourcePath}, {outputPath}, {scriptPath}. Any other text is passed through literally." TextWrapping="Wrap" />
+                                <TextBlock Text="Supported argument placeholders: {sourcePath}, {outputPath}, {scriptPath}. Any other text is passed through literally, so you can add extra fixed arguments like &quot;watch1&quot; or --update-cyc-y." TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 

@@ -328,8 +328,14 @@
             <li><code>{scriptPath}</code>: the selected script path.</li>
           </ul>
 
-          <p>Any other text is passed through literally.</p>
+          <p>Any other text is passed through literally, which means you can add extra fixed arguments if your script expects them.</p>
           <pre><code>"{sourcePath}" "{outputPath}"</code></pre>
+          <p>For example, if your script expects a literal text parameter after the normal source and output paths, you can write:</p>
+          <pre><code>"{sourcePath}" "{outputPath}" "watch1"</code></pre>
+          <p>In that case, the script receives the real source path, the real output path, and the literal text <code>watch1</code>.</p>
+          <p>The bundled CBWSS example uses one extra flag to enable the CYC Y-coordinate update:</p>
+          <pre><code>"{sourcePath}" "{outputPath}" --update-cyc-y</code></pre>
+          <p>That extra <code>--update-cyc-y</code> text is not replaced. It is passed straight through to the script as written.</p>
 
           <p>Script contract:</p>
           <ul>
