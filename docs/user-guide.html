@@ -234,6 +234,7 @@
           <li><a href="#monitoring">Monitoring</a></li>
           <li><a href="#manual-catch-up">Manual Catch-Up</a></li>
           <li><a href="#activity-log">Activity Log</a></li>
+          <li><a href="#security-prompts">Security Prompts</a></li>
           <li><a href="#notes">Notes</a></li>
         </ul>
       </aside>
@@ -402,6 +403,28 @@
             <li>message</li>
           </ul>
           <p>Timestamps include milliseconds so quick processing sequences are easier to follow.</p>
+        </section>
+
+        <section id="security-prompts">
+          <h2>Security Prompts</h2>
+          <p>
+            CNC Sync is not yet code signed on Windows and is not yet notarized on macOS, so the
+            first install or first launch may trigger platform trust prompts.
+          </p>
+          <div class="lead-list">
+            <div class="mini-card">
+              <h3>Windows</h3>
+              <p>If the installer is flagged, keep the download and use <strong>More info</strong> then <strong>Run anyway</strong> if SmartScreen appears.</p>
+            </div>
+            <div class="mini-card">
+              <h3>macOS</h3>
+              <p>If macOS blocks the installer or app, open <strong>System Settings &gt; Privacy &amp; Security</strong> and choose <strong>Open Anyway</strong>.</p>
+            </div>
+            <div class="mini-card">
+              <h3>What It Means</h3>
+              <p>These prompts are expected platform trust checks for unsigned software, not CNC Sync reporting that it found malware.</p>
+            </div>
+          </div>
         </section>
 
         <section id="notes">

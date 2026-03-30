@@ -224,6 +224,38 @@
       </article>
     </section>
 
+    <h2 class="section-title">First Run Security Notes</h2>
+    <section class="grid">
+      <article class="card">
+        <h3>Windows</h3>
+        <p>
+          CNC Sync is currently distributed without Windows code signing, so browsers or SmartScreen
+          may warn that the installer is suspicious.
+        </p>
+        <ul>
+          <li>Keep the download if your browser flags it.</li>
+          <li>If Windows shows a SmartScreen prompt, use <strong>More info</strong> and then <strong>Run anyway</strong>.</li>
+        </ul>
+      </article>
+      <article class="card">
+        <h3>macOS</h3>
+        <p>
+          CNC Sync is not yet notarized, so macOS may block the installer or first launch by default.
+        </p>
+        <ul>
+          <li>Open <strong>System Settings &gt; Privacy &amp; Security</strong>.</li>
+          <li>Find the blocked CNC Sync item and choose <strong>Open Anyway</strong> or allow it there.</li>
+        </ul>
+      </article>
+      <article class="card">
+        <h3>Why This Happens</h3>
+        <p>
+          These prompts are platform trust checks, not CNC Sync detecting a problem with itself.
+          They should become smoother once the project is code signed and notarized.
+        </p>
+      </article>
+    </section>
+
   </main>
 </body>
 </html>
