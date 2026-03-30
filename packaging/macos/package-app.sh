@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="${ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
-VERSION="${VERSION:-0.1.8}"
+VERSION="${VERSION:-0.1.9}"
 RUNTIME="${RUNTIME:-osx-arm64}"
 BUILD_DIR="${BUILD_DIR:-$ROOT/src/CNCSync.App/bin/Release/net10.0/$RUNTIME/publish}"
 DIST_DIR="${DIST_DIR:-$ROOT/dist/macos}"
