@@ -6,13 +6,13 @@ Cross-platform CNC file monitoring, processing, and FTP upload utility built wit
 
 - `docs/`
   - active rebuild notes and specs
-- `src/CBWSSSync.App`
+- `src/CNCSync.App`
   - Avalonia desktop application
-- `src/CBWSSSync.Core`
+- `src/CNCSync.Core`
   - platform-agnostic domain and application logic
-- `src/CBWSSSync.Infrastructure`
+- `src/CNCSync.Infrastructure`
   - file system, FTP, config persistence, startup integration
-- `tests/CBWSSSync.Tests`
+- `tests/CNCSync.Tests`
   - unit tests
 - `Original/`
   - archived WinForms/service-based app kept for reference
@@ -30,7 +30,7 @@ See [`docs/avalonia-rebuild-spec.md`](/Users/benharper/Coding/CBWSS-Sync/docs/av
 
 ## Release
 
-- Current target version: `0.1.6`
+- Current target version: `0.1.7`
 - GitHub Actions release workflow: [`.github/workflows/release.yml`](/Users/benharper/Coding/CBWSS-Sync/.github/workflows/release.yml)
 - Packaging scripts:
   - macOS: [`packaging/macos/package-app.sh`](/Users/benharper/Coding/CBWSS-Sync/packaging/macos/package-app.sh)
@@ -45,4 +45,4 @@ See [`docs/avalonia-rebuild-spec.md`](/Users/benharper/Coding/CBWSS-Sync/docs/av
 ## Notes
 
 - Local builds are still useful for testing.
-- Tagged releases like `v0.1.6` are intended to produce the official GitHub release artifacts.
+- Tagged releases like `v0.1.7` are intended to produce the official GitHub release artifacts.

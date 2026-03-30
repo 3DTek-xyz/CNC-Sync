@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\CBWSSSync.Core\CBWSSSync.Core.csproj" />
-    <ProjectReference Include="..\..\src\CBWSSSync.Infrastructure\CBWSSSync.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\CNCSync.Core\CNCSync.Core.csproj" />
+    <ProjectReference Include="..\..\src\CNCSync.Infrastructure\CNCSync.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

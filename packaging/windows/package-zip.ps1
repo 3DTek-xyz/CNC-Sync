@@ -1,6 +1,6 @@
 param(
     [string]$Root = (Resolve-Path (Join-Path $PSScriptRoot "..\\..")).Path,
-    [string]$Version = "0.1.6",
+    [string]$Version = "0.1.7",
     [string]$BuildDir = "",
     [string]$DistDir = ""
 )
@@ -8,7 +8,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 if ([string]::IsNullOrWhiteSpace($BuildDir)) {
-    $BuildDir = Join-Path $Root "src\\CBWSSSync.App\\bin\\Release\\net10.0\\win-x64\\publish"
+    $BuildDir = Join-Path $Root "src\\CNCSync.App\\bin\\Release\\net10.0\\win-x64\\publish"
 }
 
 if ([string]::IsNullOrWhiteSpace($DistDir)) {

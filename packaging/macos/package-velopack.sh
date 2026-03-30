@@ -3,17 +3,17 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="${ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
-VERSION="${VERSION:-0.1.6}"
+VERSION="${VERSION:-0.1.7}"
 RUNTIME="${RUNTIME:-osx-arm64}"
-BUILD_DIR="${BUILD_DIR:-$ROOT/src/CBWSSSync.App/bin/Release/net10.0/$RUNTIME/publish}"
+BUILD_DIR="${BUILD_DIR:-$ROOT/src/CNCSync.App/bin/Release/net10.0/$RUNTIME/publish}"
 DIST_DIR="${DIST_DIR:-$ROOT/dist/macos/velopack-$RUNTIME}"
 PACK_ID="${PACK_ID:-3DTek.CNCSync}"
-MAIN_EXE="${MAIN_EXE:-CBWSSSync}"
+MAIN_EXE="${MAIN_EXE:-CNCSync}"
 PACK_TITLE="${PACK_TITLE:-CNC Sync}"
 PACK_AUTHORS="${PACK_AUTHORS:-3DTek}"
 PLIST_PATH="${PLIST_PATH:-$ROOT/packaging/macos/Info.plist}"
 VPK_BIN="${VPK_BIN:-vpk}"
-BRIDGE_SOURCE="$ROOT/src/CBWSSSync.App/MacBridge/bridge.swift"
+BRIDGE_SOURCE="$ROOT/src/CNCSync.App/MacBridge/bridge.swift"
 BRIDGE_NAME="libcncsync-login-item-bridge.dylib"
 
 case "$RUNTIME" in

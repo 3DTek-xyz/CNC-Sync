@@ -23,20 +23,20 @@ dotnet tool install --global wix
 dotnet build --configuration Release
 
 # Build the installer
-dotnet build src/CBWSSSync.Installer/CBWSSSync.Installer.wixproj --configuration Release
+dotnet build src/CNCSync.Installer/CNCSync.Installer.wixproj --configuration Release
 ```
 
 ### Visual Studio Build
 1. Open `GCodeSync.sln` in Visual Studio
 2. Set build configuration to **Release**
-3. Right-click on `CBWSSSync.Installer` project
+3. Right-click on `CNCSync.Installer` project
 4. Select "Build"
 
 ## Installer Output
 
 The MSI installer will be created at:
 ```
-bin/Release/CBWSSSync.Installer.msi
+bin/Release/CNCSync.Installer.msi
 ```
 
 ## Installer Features
@@ -90,7 +90,7 @@ Customize company and product details in `Package.wxs`:
 
 The installer supports silent installation for AutoUpdater.NET:
 ```cmd
-msiexec /i CBWSSSync.Installer.msi /quiet /norestart
+msiexec /i CNCSync.Installer.msi /quiet /norestart
 ```
 
 Properties available:
@@ -107,7 +107,7 @@ Properties available:
 
 ### Command Line
 ```cmd
-msiexec /x CBWSSSync.Installer.msi /quiet
+msiexec /x CNCSync.Installer.msi /quiet
 ```
 
 ### What Gets Removed

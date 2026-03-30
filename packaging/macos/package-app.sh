@@ -3,15 +3,15 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="${ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
-VERSION="${VERSION:-0.1.6}"
+VERSION="${VERSION:-0.1.7}"
 RUNTIME="${RUNTIME:-osx-arm64}"
-BUILD_DIR="${BUILD_DIR:-$ROOT/src/CBWSSSync.App/bin/Release/net10.0/$RUNTIME/publish}"
+BUILD_DIR="${BUILD_DIR:-$ROOT/src/CNCSync.App/bin/Release/net10.0/$RUNTIME/publish}"
 DIST_DIR="${DIST_DIR:-$ROOT/dist/macos}"
 APP_DIR="$DIST_DIR/CNC Sync.app"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
-BRIDGE_SOURCE="$ROOT/src/CBWSSSync.App/MacBridge/bridge.swift"
+BRIDGE_SOURCE="$ROOT/src/CNCSync.App/MacBridge/bridge.swift"
 BRIDGE_NAME="libcncsync-login-item-bridge.dylib"
 
 case "$RUNTIME" in
@@ -38,7 +38,7 @@ xcrun swiftc -emit-library -framework Foundation -framework ServiceManagement "$
 
 cp "$ROOT/packaging/macos/Info.plist" "$CONTENTS_DIR/Info.plist"
 cp -R "$BUILD_DIR"/. "$MACOS_DIR"/
-chmod +x "$MACOS_DIR/CBWSSSync"
+chmod +x "$MACOS_DIR/CNCSync"
 
 rm -f "$ZIP_PATH"
 ditto -c -k --sequesterRsrc --keepParent "$APP_DIR" "$ZIP_PATH"

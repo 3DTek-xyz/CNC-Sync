@@ -1,8 +1,8 @@
-# CBWSS Sync Rebuild Spec
+# CNC Sync Rebuild Spec
 
 ## Goal
 
-Rebuild CBWSS Sync as a clean, cross-platform desktop application using Avalonia UI and .NET.
+Rebuild CNC Sync as a clean, cross-platform desktop application using Avalonia UI and .NET.
 
 The new app should:
 
@@ -58,10 +58,10 @@ It should not:
 
 Recommended project layout:
 
-- `src/CBWSSSync.App`
-- `src/CBWSSSync.Core`
-- `src/CBWSSSync.Infrastructure`
-- `src/CBWSSSync.Tests`
+- `src/CNCSync.App`
+- `src/CNCSync.Core`
+- `src/CNCSync.Infrastructure`
+- `src/CNCSync.Tests`
 
 ## Primary Use Cases
 

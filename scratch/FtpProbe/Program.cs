@@ -1,6 +1,6 @@
 using System.Text.Json;
-using CBWSSSync.Core.Configuration;
-using CBWSSSync.Infrastructure.Networking;
+using CNCSync.Core.Configuration;
+using CNCSync.Infrastructure.Networking;
 
 var settingsPath = Path.Combine(
     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
