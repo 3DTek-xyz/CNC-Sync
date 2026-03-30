@@ -20,9 +20,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Prepare Pages site
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p site
           cp -R docs/. site/
+          mkdir -p site/downloads/win site/downloads/macos site/downloads/linux site/updates/win
+          if gh release view --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release download --repo "$GITHUB_REPOSITORY" --clobber --dir site/downloads/win \
+              --pattern "3DTek.CNCSync-win-Setup.exe" \
+              --pattern "3DTek.CNCSync-win-Portable.zip"
+            gh release download --repo "$GITHUB_REPOSITORY" --clobber --dir site/downloads/macos \
+              --pattern "cnc-sync-macos-arm64-latest.zip" \
+              --pattern "cnc-sync-macos-x64-latest.zip"
+            gh release download --repo "$GITHUB_REPOSITORY" --clobber --dir site/downloads/linux \
+              --pattern "cnc-sync-linux-x64-latest.tar.gz"
+            gh release download --repo "$GITHUB_REPOSITORY" --clobber --dir site/updates/win \
+              --pattern "RELEASES" \
+              --pattern "*.nupkg" \
+              --pattern "3DTek.CNCSync-win-Setup.exe" \
+              --pattern "3DTek.CNCSync-win-Portable.zip"
+          fi
           touch site/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
