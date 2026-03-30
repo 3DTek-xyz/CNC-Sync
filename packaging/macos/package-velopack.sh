@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="${ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
-VERSION="${VERSION:-0.1.9}"
+VERSION="${VERSION:-0.1.10}"
 RUNTIME="${RUNTIME:-osx-arm64}"
 BUILD_DIR="${BUILD_DIR:-$ROOT/src/CNCSync.App/bin/Release/net10.0/$RUNTIME/publish}"
 DIST_DIR="${DIST_DIR:-$ROOT/dist/macos/velopack-$RUNTIME}"
@@ -15,6 +15,8 @@ PLIST_PATH="${PLIST_PATH:-$ROOT/packaging/macos/Info.plist}"
 VPK_BIN="${VPK_BIN:-vpk}"
 BRIDGE_SOURCE="$ROOT/src/CNCSync.App/MacBridge/bridge.swift"
 BRIDGE_NAME="libcncsync-login-item-bridge.dylib"
+ICON_SCRIPT="$ROOT/packaging/macos/build-icon.sh"
+ICON_FILE="$ROOT/packaging/macos/cnc-sync.icns"
 
 case "$RUNTIME" in
   osx-arm64)
@@ -33,6 +35,7 @@ rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR"
 
 xcrun swiftc -emit-library -framework Foundation -framework ServiceManagement "$BRIDGE_SOURCE" -o "$BUILD_DIR/$BRIDGE_NAME"
+"$ICON_SCRIPT" >/dev/null
 
 "$VPK_BIN" '[osx]' pack \
   --packId "$PACK_ID" \
@@ -44,6 +47,7 @@ xcrun swiftc -emit-library -framework Foundation -framework ServiceManagement "$
   --outputDir "$DIST_DIR" \
   --runtime "$RUNTIME" \
   --channel "$RUNTIME" \
+  --icon "$ICON_FILE" \
   --plist "$PLIST_PATH"
 
 portable_file="$(find "$DIST_DIR" -maxdepth 1 -name '*Portable.zip' | head -n 1)"
