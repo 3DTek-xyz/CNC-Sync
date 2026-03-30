@@ -8,7 +8,7 @@ public sealed class SyncCoordinator : ISyncCoordinator
 {
     private readonly IFolderMonitor _folderMonitor;
     private readonly IProjectProcessor _projectProcessor;
-    private readonly IFtpService _ftpService;
+    private readonly IDestinationService _destinationService;
     private readonly AppSettingsValidator _validator;
     private readonly ConcurrentDictionary<string, byte> _inFlightPaths = new(StringComparer.OrdinalIgnoreCase);
     private AppSettings? _currentSettings;
@@ -16,12 +16,12 @@ public sealed class SyncCoordinator : ISyncCoordinator
     public SyncCoordinator(
         IFolderMonitor folderMonitor,
         IProjectProcessor projectProcessor,
-        IFtpService ftpService,
+        IDestinationService destinationService,
         AppSettingsValidator validator)
     {
         _folderMonitor = folderMonitor;
         _projectProcessor = projectProcessor;
-        _ftpService = ftpService;
+        _destinationService = destinationService;
         _validator = validator;
         _folderMonitor.WorkItemReady += OnWorkItemReady;
     }
@@ -56,7 +56,7 @@ public sealed class SyncCoordinator : ISyncCoordinator
     public async Task<ProcessingResult> ProcessPathAsync(
         string path,
         WatchProfileSettings profile,
-        FtpDestinationSettings? destination,
+        DestinationSettings? destination,
         ProcessingSetupSettings processingSetup,
         CancellationToken cancellationToken = default)
     {
@@ -65,13 +65,13 @@ public sealed class SyncCoordinator : ISyncCoordinator
             profile,
             destination,
             processingSetup,
-            destination?.AutoUpload == true,
+            destination is not null,
             cancellationToken);
     }
 
     public async Task<(bool Success, string Message)> CatchUpMissingItemsAsync(
         WatchProfileSettings profile,
-        FtpDestinationSettings destination,
+        DestinationSettings destination,
         ProcessingSetupSettings processingSetup,
         CancellationToken cancellationToken = default)
     {
@@ -85,13 +85,13 @@ public sealed class SyncCoordinator : ISyncCoordinator
             return (false, $"Catch-up skipped for {profile.Name} because the watch folder does not exist: {profile.WatchFolder}");
         }
 
-        SetStatus($"Checking FTP for {profile.Name}");
+        SetStatus($"Checking destination for {profile.Name}");
         LogActivity("Manual catch-up started.", profile.Name);
 
         try
         {
             var remoteDirectoryPath = BuildRemoteDirectoryPath(destination, profile);
-            var remoteEntriesResult = await _ftpService.ListRootEntriesAsync(destination, remoteDirectoryPath, cancellationToken);
+            var remoteEntriesResult = await _destinationService.ListRootEntriesAsync(destination, remoteDirectoryPath, cancellationToken);
             if (!remoteEntriesResult.Success)
             {
                 LogActivity(remoteEntriesResult.Message, profile.Name);
@@ -102,7 +102,7 @@ public sealed class SyncCoordinator : ISyncCoordinator
             var remoteEntries = remoteEntriesResult.Entries;
             var localItems = Directory
                 .EnumerateFileSystemEntries(profile.WatchFolder, "*", SearchOption.TopDirectoryOnly)
-                .Where(path => !ShouldIgnoreFileSystemItem(Path.GetFileName(path)))
+                .Where(path => !FileSystemItemFilter.ShouldIgnoreFileSystemItem(Path.GetFileName(path)))
                 .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
@@ -117,7 +117,7 @@ public sealed class SyncCoordinator : ISyncCoordinator
 
             if (missingItems.Count == 0)
             {
-                var upToDateMessage = $"Manual catch-up found nothing missing on the FTP server for {profile.Name}.";
+                var upToDateMessage = $"Manual catch-up found nothing missing on the destination for {profile.Name}.";
                 LogActivity(upToDateMessage, profile.Name);
                 SetStatus(IsRunning ? "Running" : "Stopped");
                 return (true, upToDateMessage);
@@ -164,7 +164,7 @@ public sealed class SyncCoordinator : ISyncCoordinator
     private async Task<ProcessingResult> UploadMissingItemAsync(
         string sourcePath,
         WatchProfileSettings profile,
-        FtpDestinationSettings destination,
+        DestinationSettings destination,
         ProcessingSetupSettings processingSetup,
         CancellationToken cancellationToken)
     {
@@ -187,7 +187,7 @@ public sealed class SyncCoordinator : ISyncCoordinator
                     RemoteFolderName = remoteFolderName,
                     StartedAtUtc = DateTime.UtcNow,
                     FinishedAtUtc = DateTime.UtcNow,
-                    ProcessedFiles = Directory.GetFiles(stagedOutputPath, "*", SearchOption.AllDirectories)
+                    ProcessedFiles = FileSystemItemFilter.EnumerateIncludedFiles(stagedOutputPath)
                         .Select(path => Path.GetRelativePath(stagedOutputPath, path))
                         .ToList()
                 },
@@ -200,15 +200,15 @@ public sealed class SyncCoordinator : ISyncCoordinator
         return await ExecuteProcessAsync(sourcePath, profile, destination, processingSetup, shouldUpload: true, cancellationToken);
     }
 
-    public Task<(bool Success, string Message)> TestFtpAsync(FtpDestinationSettings destination, CancellationToken cancellationToken = default)
+    public Task<(bool Success, string Message)> TestDestinationAsync(DestinationSettings destination, CancellationToken cancellationToken = default)
     {
-        return _ftpService.TestConnectionAsync(destination, cancellationToken);
+        return _destinationService.TestConnectionAsync(destination, cancellationToken);
     }
 
     private async Task<ProcessingResult> ExecuteProcessAsync(
         string path,
         WatchProfileSettings profile,
-        FtpDestinationSettings? destination,
+        DestinationSettings? destination,
         ProcessingSetupSettings? processingSetup,
         bool shouldUpload,
         CancellationToken cancellationToken)
@@ -265,25 +265,38 @@ public sealed class SyncCoordinator : ISyncCoordinator
     private async Task<ProcessingResult> UploadPreparedOutputAsync(
         ProcessingResult result,
         WatchProfileSettings profile,
-        FtpDestinationSettings destination,
+        DestinationSettings destination,
         ProcessingSetupSettings processingSetup,
         CancellationToken cancellationToken)
     {
         var remoteDirectoryPath = BuildRemoteDirectoryPath(destination, profile);
-        var effectiveRemotePath = CombineRemoteDirectoryPath(remoteDirectoryPath, result.RemoteFolderName);
+        var effectiveRemotePath = ShouldAppendProcessedFolderName(result, profile)
+            ? CombineRemoteDirectoryPath(remoteDirectoryPath, result.RemoteFolderName)
+            : remoteDirectoryPath;
 
         if (processingSetup.ReplaceRemoteFolderOnUpload &&
-            !string.IsNullOrWhiteSpace(result.RemoteFolderName))
+            !string.IsNullOrWhiteSpace(effectiveRemotePath))
         {
-            var deleteResult = await _ftpService.DeleteRemoteItemAsync(destination, effectiveRemotePath, isDirectory: true, cancellationToken);
+            var deleteResult = await _destinationService.DeleteRemoteItemAsync(destination, effectiveRemotePath, isDirectory: true, cancellationToken);
             if (deleteResult.Success)
             {
                 LogActivity($"Replaced previous remote folder contents at {effectiveRemotePath}.", profile.Name);
             }
+            else
+            {
+                LogActivity($"Remote folder cleanup skipped at {effectiveRemotePath}: {deleteResult.Message}", profile.Name);
+            }
         }
 
-        LogActivity($"FTP upload starting to {(string.IsNullOrWhiteSpace(effectiveRemotePath) ? "/" : effectiveRemotePath)} from {result.OutputPath}", profile.Name);
-        var uploadResult = await _ftpService.UploadDirectoryAsync(result.OutputPath, destination, effectiveRemotePath, cancellationToken);
+        var destinationLabel = destination.Type switch
+        {
+            DestinationType.LocalFolder => "Local upload",
+            DestinationType.Sftp => "SFTP upload",
+            DestinationType.Scp => "SCP upload",
+            _ => "FTP upload"
+        };
+        LogActivity($"{destinationLabel} starting to {(string.IsNullOrWhiteSpace(effectiveRemotePath) ? "/" : effectiveRemotePath)} from {result.OutputPath}", profile.Name);
+        var uploadResult = await _destinationService.UploadDirectoryAsync(result.OutputPath, destination, effectiveRemotePath, cancellationToken);
         LogActivity(uploadResult.Message, profile.Name);
 
         if (!uploadResult.Success)
@@ -313,7 +326,7 @@ public sealed class SyncCoordinator : ISyncCoordinator
     private async Task<bool> RemoteContainsItemAsync(
         IReadOnlyList<RemoteEntryInfo> remoteEntries,
         string localPath,
-        FtpDestinationSettings destination,
+        DestinationSettings destination,
         string remoteDirectoryPath,
         CancellationToken cancellationToken)
     {
@@ -321,14 +334,14 @@ public sealed class SyncCoordinator : ISyncCoordinator
         if (File.Exists(localPath))
         {
             var remoteFilePath = CombineRemoteDirectoryPath(remoteDirectoryPath, itemName);
-            var remoteSizeResult = await _ftpService.TryGetFileSizeAsync(destination, remoteFilePath, cancellationToken);
+            var remoteSizeResult = await _destinationService.TryGetFileSizeAsync(destination, remoteFilePath, cancellationToken);
             var localSizeBytes = new FileInfo(localPath).Length;
             return remoteSizeResult.Exists && remoteSizeResult.SizeBytes == localSizeBytes;
         }
 
         foreach (var remoteEntry in remoteEntries)
         {
-            if (ShouldIgnoreFileSystemItem(remoteEntry.Name))
+            if (FileSystemItemFilter.ShouldIgnoreFileSystemItem(remoteEntry.Name))
             {
                 continue;
             }
@@ -344,20 +357,7 @@ public sealed class SyncCoordinator : ISyncCoordinator
         return false;
     }
 
-    private static bool ShouldIgnoreFileSystemItem(string? itemName)
-    {
-        if (string.IsNullOrWhiteSpace(itemName))
-        {
-            return true;
-        }
-
-        return itemName.StartsWith(".", StringComparison.Ordinal) ||
-               itemName.StartsWith("._", StringComparison.Ordinal) ||
-               string.Equals(itemName, "Thumbs.db", StringComparison.OrdinalIgnoreCase) ||
-               string.Equals(itemName, "desktop.ini", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string BuildRemoteDirectoryPath(FtpDestinationSettings destination, WatchProfileSettings profile)
+    private static string BuildRemoteDirectoryPath(DestinationSettings destination, WatchProfileSettings profile)
     {
         var segments = new[] { destination.RemoteBasePath, profile.RemoteSubfolder }
             .Where(value => !string.IsNullOrWhiteSpace(value))
@@ -379,6 +379,21 @@ public sealed class SyncCoordinator : ISyncCoordinator
 
         var combined = string.Join("/", segments);
         return string.IsNullOrWhiteSpace(combined) ? string.Empty : $"/{combined}";
+    }
+
+    private static bool ShouldAppendProcessedFolderName(ProcessingResult result, WatchProfileSettings profile)
+    {
+        if (string.IsNullOrWhiteSpace(result.RemoteFolderName) || !Directory.Exists(result.SourcePath))
+        {
+            return false;
+        }
+
+        var sourcePath = Path.GetFullPath(result.SourcePath)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var watchFolder = Path.GetFullPath(profile.WatchFolder)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+        return !string.Equals(sourcePath, watchFolder, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string GetStableStagedOutputPath(WatchProfileSettings profile, string sourcePath)
@@ -448,8 +463,8 @@ public sealed class SyncCoordinator : ISyncCoordinator
             return;
         }
 
-        var destination = settings.FtpDestinations.FirstOrDefault(
-            item => string.Equals(item.Id, workItem.Profile.FtpDestinationId, StringComparison.OrdinalIgnoreCase));
+        var destination = settings.Destinations.FirstOrDefault(
+            item => string.Equals(item.Id, workItem.Profile.DestinationId, StringComparison.OrdinalIgnoreCase));
         var processingSetup = settings.ProcessingSetups.FirstOrDefault(
             item => string.Equals(item.Id, workItem.Profile.ProcessingSetupId, StringComparison.OrdinalIgnoreCase));
 

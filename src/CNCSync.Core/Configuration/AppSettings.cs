@@ -4,13 +4,13 @@ public sealed class AppSettings
 {
     public bool LaunchAtLogin { get; set; }
     public bool StartMinimized { get; set; } = true;
-    public List<FtpDestinationSettings> FtpDestinations { get; set; } = [];
+    public List<DestinationSettings> Destinations { get; set; } = [];
     public List<ProcessingSetupSettings> ProcessingSetups { get; set; } = [];
     public List<WatchProfileSettings> WatchProfiles { get; set; } = [];
 
     public static AppSettings CreateDefault()
     {
-        var ftpDestination = FtpDestinationSettings.CreateDefault("Primary FTP");
+        var ftpDestination = DestinationSettings.CreateDefault("Primary FTP");
         var processingSetup = ProcessingSetupSettings.CreateDefault("Default Processing");
         var watchProfile = WatchProfileSettings.CreateDefault("Primary Watch Folder", ftpDestination.Id, processingSetup.Id);
 
@@ -18,7 +18,7 @@ public sealed class AppSettings
         {
             LaunchAtLogin = false,
             StartMinimized = true,
-            FtpDestinations = [ftpDestination],
+            Destinations = [ftpDestination],
             ProcessingSetups = [processingSetup],
             WatchProfiles = [watchProfile]
         };
@@ -26,28 +26,31 @@ public sealed class AppSettings
 
     public AppSettings Normalize()
     {
-        FtpDestinations ??= [];
+        Destinations ??= [];
         ProcessingSetups ??= [];
         WatchProfiles ??= [];
 
-        if (FtpDestinations.Count == 0)
+        if (Destinations.Count == 0)
         {
-            FtpDestinations.Add(FtpDestinationSettings.CreateDefault("Primary FTP"));
+            Destinations.Add(DestinationSettings.CreateDefault("Primary FTP"));
         }
 
-        foreach (var destination in FtpDestinations)
+        foreach (var destination in Destinations)
         {
             if (string.IsNullOrWhiteSpace(destination.Id))
             {
                 destination.Id = Guid.NewGuid().ToString("N");
             }
 
-            if (destination.Port <= 0)
+            if ((destination.Type == DestinationType.Ftp || destination.Type == DestinationType.Sftp || destination.Type == DestinationType.Scp) && destination.Port <= 0)
             {
-                destination.Port = 21;
+                destination.Port = destination.Type is DestinationType.Sftp or DestinationType.Scp ? 22 : 21;
             }
 
             destination.RemoteBasePath = NormalizeRemotePath(destination.RemoteBasePath);
+            destination.NetworkHost = destination.NetworkHost.Trim();
+            destination.NetworkShareName = destination.NetworkShareName.Trim().Trim('/').Trim('\\');
+            destination.NetworkDomain = destination.NetworkDomain.Trim();
         }
 
         if (ProcessingSetups.Count == 0)
@@ -71,7 +74,7 @@ public sealed class AppSettings
 
         if (WatchProfiles.Count == 0)
         {
-            WatchProfiles.Add(WatchProfileSettings.CreateDefault("Primary Watch Folder", FtpDestinations[0].Id, ProcessingSetups[0].Id));
+            WatchProfiles.Add(WatchProfileSettings.CreateDefault("Primary Watch Folder", Destinations[0].Id, ProcessingSetups[0].Id));
         }
 
         foreach (var profile in WatchProfiles)
@@ -83,7 +86,7 @@ public sealed class AppSettings
 
             if (profile.StabilityDelaySeconds <= 0)
             {
-                profile.StabilityDelaySeconds = 30;
+                profile.StabilityDelaySeconds = 10;
             }
 
             if (profile.StabilityPollingSeconds <= 0)
@@ -91,9 +94,9 @@ public sealed class AppSettings
                 profile.StabilityPollingSeconds = 5;
             }
 
-            if (string.IsNullOrWhiteSpace(profile.FtpDestinationId))
+            if (string.IsNullOrWhiteSpace(profile.DestinationId))
             {
-                profile.FtpDestinationId = FtpDestinations[0].Id;
+                profile.DestinationId = Destinations[0].Id;
             }
 
             if (string.IsNullOrWhiteSpace(profile.ProcessingSetupId))

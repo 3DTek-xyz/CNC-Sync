@@ -50,6 +50,22 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void BrowseDestinationFolder_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel ||
+            viewModel.SelectedDestination is null)
+        {
+            return;
+        }
+
+        var initialDirectory = ResolveInitialDestinationDirectory(viewModel);
+        var selectedPath = await PickFolderAsync(initialDirectory);
+        if (selectedPath is not null)
+        {
+            viewModel.SelectedDestination.LocalRootPath = selectedPath;
+        }
+    }
+
     private async void BrowseProcessingScript_OnClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel viewModel ||
@@ -93,13 +109,20 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task<string?> PickFolderAsync()
+    private async Task<string?> PickFolderAsync(string? initialDirectory = null)
     {
+        IStorageFolder? suggestedStartLocation = null;
+        if (!string.IsNullOrWhiteSpace(initialDirectory) && Directory.Exists(initialDirectory))
+        {
+            suggestedStartLocation = await StorageProvider.TryGetFolderFromPathAsync(ToFileUri(initialDirectory));
+        }
+
         var folders = await StorageProvider.OpenFolderPickerAsync(
             new FolderPickerOpenOptions
             {
                 AllowMultiple = false,
-                Title = "Choose folder"
+                Title = "Choose folder",
+                SuggestedStartLocation = suggestedStartLocation
             });
 
         return folders.FirstOrDefault()?.Path.LocalPath;
@@ -133,6 +156,17 @@ public partial class MainWindow : Window
         }
 
         return viewModel.ScriptsPath;
+    }
+
+    private static string? ResolveInitialDestinationDirectory(MainWindowViewModel viewModel)
+    {
+        var currentDestinationPath = viewModel.SelectedDestination?.LocalRootPath;
+        if (!string.IsNullOrWhiteSpace(currentDestinationPath) && Directory.Exists(currentDestinationPath))
+        {
+            return currentDestinationPath;
+        }
+
+        return Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
     }
 
     private static Uri ToFileUri(string path)

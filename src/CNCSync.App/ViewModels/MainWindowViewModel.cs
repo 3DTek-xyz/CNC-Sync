@@ -19,10 +19,13 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IAppSettingsStore _settingsStore;
     private readonly AppSettingsValidator _validator;
     private readonly ISyncCoordinator _syncCoordinator;
-    private readonly IFtpService _ftpService;
+    private readonly IDestinationService _destinationService;
     private readonly IAppUpdateService _updateService;
     private readonly ILoginStartupService _loginStartupService;
     private readonly SemaphoreSlim _saveLock = new(1, 1);
+    private readonly Lock _activityLogFileLock = new();
+    private CancellationTokenSource? _autoSaveCts;
+    private bool _restartMonitoringAfterSave;
     private bool _isApplyingSettings;
 
     [ObservableProperty]
@@ -39,6 +42,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private string settingsPath = string.Empty;
+
+    [ObservableProperty]
+    private string activityLogPath = string.Empty;
+
+    [ObservableProperty]
+    private string activityLogText = string.Empty;
 
     [ObservableProperty]
     private string scriptsPath = string.Empty;
@@ -74,7 +83,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private WatchProfileItemViewModel? selectedWatchProfile;
 
     [ObservableProperty]
-    private FtpDestinationItemViewModel? selectedFtpDestination;
+    private DestinationItemViewModel? selectedDestination;
 
     [ObservableProperty]
     private WatchProfileItemViewModel? selectedManualWatchProfile;
@@ -86,7 +95,10 @@ public partial class MainWindowViewModel : ViewModelBase
     private string remoteBrowserPath = "/";
 
     [ObservableProperty]
-    private string remoteBrowserStatus = "Choose an FTP server and refresh to browse the remote path.";
+    private string remoteBrowserStatus = "Choose a destination and refresh to browse the target path.";
+
+    [ObservableProperty]
+    private string destinationTestStatus = "Test the selected destination to verify access.";
 
     [ObservableProperty]
     private RemoteBrowserItemViewModel? selectedRemoteBrowserItem;
@@ -95,7 +107,7 @@ public partial class MainWindowViewModel : ViewModelBase
         IAppSettingsStore settingsStore,
         AppSettingsValidator validator,
         ISyncCoordinator syncCoordinator,
-        IFtpService ftpService,
+        IDestinationService destinationService,
         IAppUpdateService updateService,
         ILoginStartupService loginStartupService,
         AppSettings initialSettings)
@@ -103,15 +115,16 @@ public partial class MainWindowViewModel : ViewModelBase
         _settingsStore = settingsStore;
         _validator = validator;
         _syncCoordinator = syncCoordinator;
-        _ftpService = ftpService;
+        _destinationService = destinationService;
         _updateService = updateService;
         _loginStartupService = loginStartupService;
         PropertyChanged += OnViewModelPropertyChanged;
         WatchProfiles.CollectionChanged += OnWatchProfilesCollectionChanged;
-        FtpDestinations.CollectionChanged += OnFtpDestinationsCollectionChanged;
+        Destinations.CollectionChanged += OnDestinationsCollectionChanged;
         ProcessingSetups.CollectionChanged += OnProcessingSetupsCollectionChanged;
 
         SettingsPath = _settingsStore.SettingsFilePath;
+        ActivityLogPath = Path.Combine(Path.GetDirectoryName(SettingsPath) ?? AppContext.BaseDirectory, "activity.log");
         ScriptsPath = _settingsStore.ScriptsDirectoryPath;
         UpdateStatus = _updateService.IsSupported
             ? "Update checks are available for installed packaged releases from the public CNC Sync update feed."
@@ -133,7 +146,7 @@ public partial class MainWindowViewModel : ViewModelBase
             new DesignSettingsStore(),
             new AppSettingsValidator(),
             new DesignSyncCoordinator(),
-            new DesignFtpService(),
+            new DesignDestinationService(),
             new DesignAppUpdateService(),
             new DesignLoginStartupService(),
             AppSettings.CreateDefault())
@@ -146,7 +159,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public ObservableCollection<WatchProfileItemViewModel> WatchProfiles { get; } = [];
 
-    public ObservableCollection<FtpDestinationItemViewModel> FtpDestinations { get; } = [];
+    public ObservableCollection<DestinationItemViewModel> Destinations { get; } = [];
 
     public ObservableCollection<ProcessingSetupItemViewModel> ProcessingSetups { get; } = [];
 
@@ -155,6 +168,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public IReadOnlyList<ProcessingMode> AvailableProcessingModes { get; } = Enum.GetValues<ProcessingMode>();
 
     public IReadOnlyList<ScriptRunnerMode> AvailableRunnerModes { get; } = Enum.GetValues<ScriptRunnerMode>();
+    public IReadOnlyList<DestinationType> AvailableDestinationTypes { get; } = Enum.GetValues<DestinationType>();
 
     public string AppVersion => ResolvedAppVersion;
 
@@ -173,10 +187,10 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     public string ManualActionSummary => SelectedManualWatchProfile is null
-        ? "Choose a watch profile to check its watch folder against the FTP server."
-        : $"Catch-up will scan '{SelectedManualWatchProfile.DisplayName}' and only upload items the FTP server does not already have.";
+        ? "Choose a watch profile to check its watch folder against the selected destination."
+        : $"Catch-up will scan '{SelectedManualWatchProfile.DisplayName}' and only upload items the selected destination does not already have.";
 
-    public FtpDestinationItemViewModel? SelectedProfileDestination
+    public DestinationItemViewModel? SelectedProfileDestination
     {
         get
         {
@@ -185,8 +199,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 return null;
             }
 
-            return FtpDestinations.FirstOrDefault(destination =>
-                string.Equals(destination.Id, SelectedWatchProfile.FtpDestinationId, StringComparison.OrdinalIgnoreCase));
+            return Destinations.FirstOrDefault(destination =>
+                string.Equals(destination.Id, SelectedWatchProfile.DestinationId, StringComparison.OrdinalIgnoreCase));
         }
         set
         {
@@ -195,7 +209,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 return;
             }
 
-            SelectedWatchProfile.FtpDestinationId = value?.Id ?? string.Empty;
+            SelectedWatchProfile.DestinationId = value?.Id ?? string.Empty;
             OnPropertyChanged();
         }
     }
@@ -226,7 +240,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public bool HasSelectedWatchProfile => SelectedWatchProfile is not null;
 
-    public bool HasSelectedFtpDestination => SelectedFtpDestination is not null;
+    public bool HasSelectedDestination => SelectedDestination is not null;
 
     public bool HasSelectedRemoteBrowserItem => SelectedRemoteBrowserItem is not null;
 
@@ -257,10 +271,13 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(SelectedProfileProcessingSetup));
     }
 
-    partial void OnSelectedFtpDestinationChanged(FtpDestinationItemViewModel? value)
+    partial void OnSelectedDestinationChanged(DestinationItemViewModel? value)
     {
-        OnPropertyChanged(nameof(HasSelectedFtpDestination));
+        OnPropertyChanged(nameof(HasSelectedDestination));
         ResetRemoteBrowserState(value);
+        DestinationTestStatus = value is null
+            ? "Test the selected destination to verify access."
+            : $"Ready to test {value.DisplayName}.";
 
         if (!_isApplyingSettings && value is not null)
         {
@@ -281,7 +298,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void AddWatchProfile()
     {
-        var firstDestination = FtpDestinations.FirstOrDefault();
+        var firstDestination = Destinations.FirstOrDefault();
         var firstProcessingSetup = ProcessingSetups.FirstOrDefault();
         var profile = WatchProfileItemViewModel.FromSettings(
             WatchProfileSettings.CreateDefault(
@@ -310,46 +327,46 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void AddFtpDestination()
+    private void AddDestination()
     {
-        var destination = FtpDestinationItemViewModel.FromSettings(
-            FtpDestinationSettings.CreateDefault($"FTP Destination {FtpDestinations.Count + 1}"));
-        FtpDestinations.Add(destination);
-        SelectedFtpDestination = destination;
+        var destination = DestinationItemViewModel.FromSettings(
+            DestinationSettings.CreateDefault($"Destination {Destinations.Count + 1}"));
+        Destinations.Add(destination);
+        SelectedDestination = destination;
 
-        if (SelectedWatchProfile is not null && string.IsNullOrWhiteSpace(SelectedWatchProfile.FtpDestinationId))
+        if (SelectedWatchProfile is not null && string.IsNullOrWhiteSpace(SelectedWatchProfile.DestinationId))
         {
-            SelectedWatchProfile.FtpDestinationId = destination.Id;
+            SelectedWatchProfile.DestinationId = destination.Id;
             OnPropertyChanged(nameof(SelectedProfileDestination));
         }
 
-        ValidationSummary = "FTP destination added. Run validation to check settings.";
+        ValidationSummary = "Destination added. Run validation to check settings.";
     }
 
     [RelayCommand]
-    private void RemoveFtpDestination()
+    private void RemoveDestination()
     {
-        if (SelectedFtpDestination is null)
+        if (SelectedDestination is null)
         {
             return;
         }
 
-        var removedId = SelectedFtpDestination.Id;
-        var index = FtpDestinations.IndexOf(SelectedFtpDestination);
-        FtpDestinations.Remove(SelectedFtpDestination);
+        var removedId = SelectedDestination.Id;
+        var index = Destinations.IndexOf(SelectedDestination);
+        Destinations.Remove(SelectedDestination);
 
         foreach (var profile in WatchProfiles.Where(profile =>
-                     string.Equals(profile.FtpDestinationId, removedId, StringComparison.OrdinalIgnoreCase)))
+                     string.Equals(profile.DestinationId, removedId, StringComparison.OrdinalIgnoreCase)))
         {
-            profile.FtpDestinationId = string.Empty;
+            profile.DestinationId = string.Empty;
         }
 
-        SelectedFtpDestination = FtpDestinations.Count == 0
+        SelectedDestination = Destinations.Count == 0
             ? null
-            : FtpDestinations[Math.Clamp(index, 0, FtpDestinations.Count - 1)];
+            : Destinations[Math.Clamp(index, 0, Destinations.Count - 1)];
 
         OnPropertyChanged(nameof(SelectedProfileDestination));
-        ValidationSummary = "FTP destination removed. Run validation to refresh issues.";
+        ValidationSummary = "Destination removed. Run validation to refresh issues.";
     }
 
     [RelayCommand]
@@ -465,32 +482,38 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private async Task TestFtpAsync()
+    private async Task TestDestinationAsync()
     {
-        if (SelectedFtpDestination is null)
+        if (SelectedDestination is null)
         {
-            AddActivity("FTP test skipped because no FTP destination is selected.");
+            AddActivity("Destination test skipped because no destination is selected.");
             return;
         }
 
-        CurrentTask = $"Testing FTP connectivity for {SelectedFtpDestination.DisplayName}";
-        var result = await _syncCoordinator.TestFtpAsync(SelectedFtpDestination.ToSettings());
+        CurrentTask = $"Testing destination connectivity for {SelectedDestination.DisplayName}";
+        var result = await _syncCoordinator.TestDestinationAsync(SelectedDestination.ToSettings());
         AddActivity(result.Message);
-        CurrentTask = result.Success ? "FTP test passed" : result.Message;
+        DestinationTestStatus = result.Message;
+        CurrentTask = result.Success ? "Destination test passed" : result.Message;
+
+        if (result.Success)
+        {
+            await RefreshRemoteBrowserAsync();
+        }
     }
 
     [RelayCommand]
     private async Task RefreshRemoteBrowserAsync()
     {
-        if (SelectedFtpDestination is null)
+        if (SelectedDestination is null)
         {
-            RemoteBrowserStatus = "Choose an FTP server first.";
+            RemoteBrowserStatus = "Choose a destination first.";
             return;
         }
 
-        var effectivePath = NormalizeRemoteBrowserPath(RemoteBrowserPath, SelectedFtpDestination.RemoteBasePath);
+        var effectivePath = NormalizeRemoteBrowserPath(RemoteBrowserPath, SelectedDestination.RemoteBasePath);
         RemoteBrowserPath = effectivePath;
-        var result = await _ftpService.ListRootEntriesAsync(SelectedFtpDestination.ToSettings(), effectivePath);
+        var result = await _destinationService.ListRootEntriesAsync(SelectedDestination.ToSettings(), effectivePath);
 
         RemoteBrowserItems.Clear();
         if (!result.Success)
@@ -526,12 +549,12 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private async Task BrowseRemoteParentAsync()
     {
-        if (SelectedFtpDestination is null)
+        if (SelectedDestination is null)
         {
             return;
         }
 
-        var basePath = NormalizeRemoteBrowserPath(SelectedFtpDestination.RemoteBasePath, string.Empty);
+        var basePath = NormalizeRemoteBrowserPath(SelectedDestination.RemoteBasePath, string.Empty);
         var currentPath = NormalizeRemoteBrowserPath(RemoteBrowserPath, basePath);
         if (string.Equals(currentPath, basePath, StringComparison.OrdinalIgnoreCase))
         {
@@ -546,15 +569,15 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private async Task DeleteSelectedRemoteItemAsync()
     {
-        if (SelectedFtpDestination is null || SelectedRemoteBrowserItem is null)
+        if (SelectedDestination is null || SelectedRemoteBrowserItem is null)
         {
             RemoteBrowserStatus = "Choose a remote item to delete.";
             return;
         }
 
         CurrentTask = $"Deleting remote {(SelectedRemoteBrowserItem.IsDirectory ? "folder" : "file")} {SelectedRemoteBrowserItem.Name}";
-        var result = await _ftpService.DeleteRemoteItemAsync(
-            SelectedFtpDestination.ToSettings(),
+        var result = await _destinationService.DeleteRemoteItemAsync(
+            SelectedDestination.ToSettings(),
             SelectedRemoteBrowserItem.FullPath,
             SelectedRemoteBrowserItem.IsDirectory);
         AddActivity(result.Message);
@@ -581,12 +604,12 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        var destination = FtpDestinations.FirstOrDefault(item =>
-            string.Equals(item.Id, SelectedManualWatchProfile.FtpDestinationId, StringComparison.OrdinalIgnoreCase));
+        var destination = Destinations.FirstOrDefault(item =>
+            string.Equals(item.Id, SelectedManualWatchProfile.DestinationId, StringComparison.OrdinalIgnoreCase));
 
         if (destination is null)
         {
-            AddActivity("Manual catch-up skipped because the selected watch profile has no FTP destination.");
+            AddActivity("Manual catch-up skipped because the selected watch profile has no destination.");
             return;
         }
 
@@ -611,7 +634,7 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        CurrentTask = $"Checking FTP for missing items in {SelectedManualWatchProfile.DisplayName}";
+        CurrentTask = $"Checking destination for missing items in {SelectedManualWatchProfile.DisplayName}";
         var result = await _syncCoordinator.CatchUpMissingItemsAsync(
             SelectedManualWatchProfile.ToSettings(),
             destination.ToSettings(),
@@ -620,8 +643,8 @@ public partial class MainWindowViewModel : ViewModelBase
         CurrentTask = result.Message;
 
         if (result.Success &&
-            SelectedFtpDestination is not null &&
-            string.Equals(SelectedFtpDestination.Id, destination.Id, StringComparison.OrdinalIgnoreCase))
+            SelectedDestination is not null &&
+            string.Equals(SelectedDestination.Id, destination.Id, StringComparison.OrdinalIgnoreCase))
         {
             await RefreshRemoteBrowserAsync();
         }
@@ -649,9 +672,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private void Apply(AppSettings settings)
     {
         _isApplyingSettings = true;
-        foreach (var destination in FtpDestinations)
+        foreach (var destination in Destinations)
         {
-            destination.PropertyChanged -= OnFtpDestinationPropertyChanged;
+            destination.PropertyChanged -= OnDestinationPropertyChanged;
         }
 
         foreach (var profile in WatchProfiles)
@@ -667,10 +690,10 @@ public partial class MainWindowViewModel : ViewModelBase
         LaunchAtLogin = settings.LaunchAtLogin;
         StartMinimized = settings.StartMinimized;
 
-        FtpDestinations.Clear();
-        foreach (var destination in settings.FtpDestinations)
+        Destinations.Clear();
+        foreach (var destination in settings.Destinations)
         {
-            FtpDestinations.Add(FtpDestinationItemViewModel.FromSettings(destination));
+            Destinations.Add(DestinationItemViewModel.FromSettings(destination));
         }
 
         ProcessingSetups.Clear();
@@ -685,13 +708,13 @@ public partial class MainWindowViewModel : ViewModelBase
             WatchProfiles.Add(WatchProfileItemViewModel.FromSettings(profile));
         }
 
-        SelectedFtpDestination = FtpDestinations.FirstOrDefault();
+        SelectedDestination = Destinations.FirstOrDefault();
         SelectedProcessingSetup = ProcessingSetups.FirstOrDefault();
         SelectedWatchProfile = WatchProfiles.FirstOrDefault();
         SelectedManualWatchProfile = SelectedManualWatchProfile is not null
             ? WatchProfiles.FirstOrDefault(profile => profile.Id == SelectedManualWatchProfile.Id) ?? WatchProfiles.FirstOrDefault()
             : WatchProfiles.FirstOrDefault();
-        ResetRemoteBrowserState(SelectedFtpDestination);
+        ResetRemoteBrowserState(SelectedDestination);
         _isApplyingSettings = false;
     }
 
@@ -700,14 +723,17 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             LaunchAtLogin = LaunchAtLogin,
             StartMinimized = StartMinimized,
-            FtpDestinations = FtpDestinations.Select(destination => destination.ToSettings()).ToList(),
+            Destinations = Destinations.Select(destination => destination.ToSettings()).ToList(),
             ProcessingSetups = ProcessingSetups.Select(setup => setup.ToSettings()).ToList(),
             WatchProfiles = WatchProfiles.Select(profile => profile.ToSettings()).ToList()
         };
 
     private void OnActivityLogged(ActivityLogEntry entry)
     {
-        Dispatcher.UIThread.Post(() => ActivityItems.Insert(0, entry));
+        Dispatcher.UIThread.Post(() =>
+        {
+            AddActivityEntry(entry, appendToFile: true);
+        });
     }
 
     private void OnStatusChanged(string status)
@@ -738,11 +764,56 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void AddActivity(string message)
     {
-        ActivityItems.Insert(0, new ActivityLogEntry
+        var entry = new ActivityLogEntry
         {
             TimestampLocal = DateTime.Now,
             Message = message
-        });
+        };
+
+        AddActivityEntry(entry, appendToFile: true);
+    }
+
+    private void AddActivityEntry(ActivityLogEntry entry, bool appendToFile)
+    {
+        ActivityItems.Insert(0, entry);
+        ActivityLogText = string.Join(
+            Environment.NewLine,
+            ActivityItems
+                .OrderByDescending(item => item.TimestampLocal)
+                .Select(item =>
+                {
+                    var sourcePrefix = string.IsNullOrWhiteSpace(item.Source) ? string.Empty : $" [{item.Source}]";
+                    return $"{item.TimestampLocal:yyyy-MM-dd HH:mm:ss.fff}{sourcePrefix} {item.Message}";
+                }));
+
+        if (appendToFile)
+        {
+            AppendActivityToFile(entry);
+        }
+    }
+
+    private void AppendActivityToFile(ActivityLogEntry entry)
+    {
+        try
+        {
+            var directory = Path.GetDirectoryName(ActivityLogPath);
+            if (!string.IsNullOrWhiteSpace(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            var sourcePrefix = string.IsNullOrWhiteSpace(entry.Source) ? string.Empty : $" [{entry.Source}]";
+            var line = $"{entry.TimestampLocal:yyyy-MM-dd HH:mm:ss.fff}{sourcePrefix} {entry.Message}{Environment.NewLine}";
+
+            lock (_activityLogFileLock)
+            {
+                File.AppendAllText(ActivityLogPath, line);
+            }
+        }
+        catch
+        {
+            // Keep activity logging non-fatal during monitoring and UI updates.
+        }
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -754,17 +825,17 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (e.PropertyName is nameof(LaunchAtLogin) or nameof(StartMinimized))
         {
-            RequestAutoSave();
+            RequestAutoSave(restartMonitoringAfterSave: false);
         }
     }
 
-    private void ResetRemoteBrowserState(FtpDestinationItemViewModel? destination)
+    private void ResetRemoteBrowserState(DestinationItemViewModel? destination)
     {
         RemoteBrowserItems.Clear();
         SelectedRemoteBrowserItem = null;
         RemoteBrowserPath = NormalizeRemoteBrowserPath(destination?.RemoteBasePath, "/");
         RemoteBrowserStatus = destination is null
-            ? "Choose an FTP server and refresh to browse the remote path."
+            ? "Choose a destination and refresh to browse the target path."
             : $"Remote browser is ready for {destination.DisplayName}.";
     }
 
@@ -836,7 +907,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (!_isApplyingSettings)
         {
-            RequestAutoSave();
+            RequestAutoSave(restartMonitoringAfterSave: true);
         }
 
         OnPropertyChanged(nameof(ActiveMonitoringProfilesSummary));
@@ -853,27 +924,27 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(ManualActionSummary));
     }
 
-    private void OnFtpDestinationsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    private void OnDestinationsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         if (e.OldItems is not null)
         {
-            foreach (var item in e.OldItems.OfType<FtpDestinationItemViewModel>())
+            foreach (var item in e.OldItems.OfType<DestinationItemViewModel>())
             {
-                item.PropertyChanged -= OnFtpDestinationPropertyChanged;
+                item.PropertyChanged -= OnDestinationPropertyChanged;
             }
         }
 
         if (e.NewItems is not null)
         {
-            foreach (var item in e.NewItems.OfType<FtpDestinationItemViewModel>())
+            foreach (var item in e.NewItems.OfType<DestinationItemViewModel>())
             {
-                item.PropertyChanged += OnFtpDestinationPropertyChanged;
+                item.PropertyChanged += OnDestinationPropertyChanged;
             }
         }
 
         if (!_isApplyingSettings)
         {
-            RequestAutoSave();
+            RequestAutoSave(restartMonitoringAfterSave: true);
         }
     }
 
@@ -897,7 +968,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (!_isApplyingSettings)
         {
-            RequestAutoSave();
+            RequestAutoSave(restartMonitoringAfterSave: true);
         }
 
         if (SelectedProcessingSetup is null)
@@ -919,17 +990,17 @@ public partial class MainWindowViewModel : ViewModelBase
             OnPropertyChanged(nameof(ManualActionSummary));
         }
 
-        RequestAutoSave();
+        RequestAutoSave(restartMonitoringAfterSave: true);
     }
 
-    private void OnFtpDestinationPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void OnDestinationPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (_isApplyingSettings || e.PropertyName == nameof(FtpDestinationItemViewModel.DisplayName))
+        if (_isApplyingSettings || e.PropertyName == nameof(DestinationItemViewModel.DisplayName))
         {
             return;
         }
 
-        RequestAutoSave();
+        RequestAutoSave(restartMonitoringAfterSave: true);
     }
 
     private void OnProcessingSetupPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -939,27 +1010,59 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        RequestAutoSave();
+        RequestAutoSave(restartMonitoringAfterSave: true);
     }
 
-    private void RequestAutoSave()
+    private void RequestAutoSave(bool restartMonitoringAfterSave)
     {
-        _ = SaveCurrentSettingsAsync();
+        if (restartMonitoringAfterSave)
+        {
+            _restartMonitoringAfterSave = true;
+        }
+
+        _autoSaveCts?.Cancel();
+        _autoSaveCts?.Dispose();
+        _autoSaveCts = new CancellationTokenSource();
+        var cancellationToken = _autoSaveCts.Token;
+        _ = SaveCurrentSettingsAsync(cancellationToken);
     }
 
-    private async Task SaveCurrentSettingsAsync()
+    private async Task SaveCurrentSettingsAsync(CancellationToken cancellationToken)
     {
+        var lockAcquired = false;
         try
         {
+            await Task.Delay(500, cancellationToken);
             await _saveLock.WaitAsync();
+            lockAcquired = true;
             var settings = ToSettings();
             await _settingsStore.SaveAsync(settings);
             await _loginStartupService.ApplyAsync(settings.LaunchAtLogin);
+
+            if (_restartMonitoringAfterSave &&
+                string.Equals(MonitoringStatus, "Running", StringComparison.OrdinalIgnoreCase))
+            {
+                await _syncCoordinator.StopAsync(cancellationToken);
+                await _syncCoordinator.StartAsync(settings, cancellationToken);
+                _restartMonitoringAfterSave = false;
+
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    AddActivity("Monitoring reloaded to apply configuration changes.");
+                });
+            }
+            else if (!string.Equals(MonitoringStatus, "Running", StringComparison.OrdinalIgnoreCase))
+            {
+                _restartMonitoringAfterSave = false;
+            }
 
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 SaveMessage = $"Changes saved automatically at {DateTime.Now:t}";
             });
+        }
+        catch (OperationCanceledException)
+        {
         }
         catch (Exception ex)
         {
@@ -970,7 +1073,10 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         finally
         {
-            _saveLock.Release();
+            if (lockAcquired)
+            {
+                _saveLock.Release();
+            }
         }
     }
 
@@ -1019,7 +1125,7 @@ public partial class MainWindowViewModel : ViewModelBase
                     : "Launch At Login was not registered on this machine, so the saved setting was corrected.";
             });
 
-            await SaveCurrentSettingsAsync();
+            await SaveCurrentSettingsAsync(CancellationToken.None);
         }
         catch (Exception ex)
         {
@@ -1081,7 +1187,7 @@ public partial class MainWindowViewModel : ViewModelBase
         public Task<ProcessingResult> ProcessPathAsync(
             string path,
             WatchProfileSettings profile,
-            FtpDestinationSettings? destination,
+            DestinationSettings? destination,
             ProcessingSetupSettings processingSetup,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(new ProcessingResult
@@ -1094,12 +1200,12 @@ public partial class MainWindowViewModel : ViewModelBase
                 FinishedAtUtc = DateTime.UtcNow
             });
 
-        public Task<(bool Success, string Message)> TestFtpAsync(FtpDestinationSettings destination, CancellationToken cancellationToken = default) =>
-            Task.FromResult<(bool Success, string Message)>((true, "Design-time FTP test complete."));
+        public Task<(bool Success, string Message)> TestDestinationAsync(DestinationSettings destination, CancellationToken cancellationToken = default) =>
+            Task.FromResult<(bool Success, string Message)>((true, "Design-time destination test complete."));
 
         public Task<(bool Success, string Message)> CatchUpMissingItemsAsync(
             WatchProfileSettings profile,
-            FtpDestinationSettings destination,
+            DestinationSettings destination,
             ProcessingSetupSettings processingSetup,
             CancellationToken cancellationToken = default) =>
             Task.FromResult<(bool Success, string Message)>((true, $"Design-time catch-up complete for {profile.Name}."));
@@ -1107,27 +1213,27 @@ public partial class MainWindowViewModel : ViewModelBase
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
-    private sealed class DesignFtpService : IFtpService
+    private sealed class DesignDestinationService : IDestinationService
     {
-        public Task<(bool Success, string Message)> TestConnectionAsync(FtpDestinationSettings destination, CancellationToken cancellationToken = default) =>
-            Task.FromResult<(bool Success, string Message)>((true, "Design-time FTP test complete."));
+        public Task<(bool Success, string Message)> TestConnectionAsync(DestinationSettings destination, CancellationToken cancellationToken = default) =>
+            Task.FromResult<(bool Success, string Message)>((true, "Design-time destination test complete."));
 
-        public Task<(bool Success, string Message)> UploadDirectoryAsync(string localPath, FtpDestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
-            Task.FromResult<(bool Success, string Message)>((true, "Design-time FTP upload complete."));
+        public Task<(bool Success, string Message)> UploadDirectoryAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
+            Task.FromResult<(bool Success, string Message)>((true, "Design-time destination upload complete."));
 
-        public Task<(bool Success, IReadOnlyList<RemoteEntryInfo> Entries, string Message)> ListRootEntriesAsync(FtpDestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
+        public Task<(bool Success, IReadOnlyList<RemoteEntryInfo> Entries, string Message)> ListRootEntriesAsync(DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
             Task.FromResult<(bool Success, IReadOnlyList<RemoteEntryInfo> Entries, string Message)>(
                 (true,
                     [
                         new RemoteEntryInfo { Name = "NC", FullPath = "/NC", IsDirectory = true },
                         new RemoteEntryInfo { Name = "demo.nc", FullPath = "/demo.nc", IsDirectory = false, SizeBytes = 4096 }
                     ],
-                    "Design-time FTP browser listing complete."));
+                    "Design-time destination browser listing complete."));
 
-        public Task<(bool Exists, long? SizeBytes, string Message)> TryGetFileSizeAsync(FtpDestinationSettings destination, string remoteFilePath, CancellationToken cancellationToken = default) =>
+        public Task<(bool Exists, long? SizeBytes, string Message)> TryGetFileSizeAsync(DestinationSettings destination, string remoteFilePath, CancellationToken cancellationToken = default) =>
             Task.FromResult((true, 4096L as long?, "Design-time remote file size complete."));
 
-        public Task<(bool Success, string Message)> DeleteRemoteItemAsync(FtpDestinationSettings destination, string remotePath, bool isDirectory, CancellationToken cancellationToken = default) =>
+        public Task<(bool Success, string Message)> DeleteRemoteItemAsync(DestinationSettings destination, string remotePath, bool isDirectory, CancellationToken cancellationToken = default) =>
             Task.FromResult<(bool Success, string Message)>((true, $"Design-time delete complete: {remotePath}"));
     }
 }

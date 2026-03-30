@@ -5,7 +5,7 @@ public sealed class AppSettingsValidator
     public AppSettingsValidationResult Validate(AppSettings settings)
     {
         var result = new AppSettingsValidationResult();
-        var destinationsById = settings.FtpDestinations
+        var destinationsById = settings.Destinations
             .Where(destination => !string.IsNullOrWhiteSpace(destination.Id))
             .GroupBy(destination => destination.Id, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
@@ -24,19 +24,28 @@ public sealed class AppSettingsValidator
             result.Errors.Add("At least one processing setup is required.");
         }
 
-        for (var index = 0; index < settings.FtpDestinations.Count; index++)
+        for (var index = 0; index < settings.Destinations.Count; index++)
         {
-            var destination = settings.FtpDestinations[index];
+            var destination = settings.Destinations[index];
+            var destinationKind = destination.Type switch
+            {
+                DestinationType.LocalFolder => "local destination",
+                DestinationType.NetworkShare => "network destination",
+                DestinationType.Sftp => "SFTP destination",
+                DestinationType.Scp => "SCP destination",
+                _ => "FTP destination"
+            };
             var label = string.IsNullOrWhiteSpace(destination.Name)
-                ? $"FTP destination #{index + 1}"
-                : $"FTP destination '{destination.Name}'";
+                ? $"{destinationKind} #{index + 1}"
+                : $"{destinationKind} '{destination.Name}'";
 
             if (string.IsNullOrWhiteSpace(destination.Name))
             {
                 result.Errors.Add($"{label} needs a name.");
             }
 
-            if (destination.Port is < 1 or > 65535)
+            if ((destination.Type == DestinationType.Ftp || destination.Type == DestinationType.Sftp || destination.Type == DestinationType.Scp) &&
+                destination.Port is < 1 or > 65535)
             {
                 result.Errors.Add($"{label} port must be between 1 and 65535.");
             }
@@ -46,9 +55,75 @@ public sealed class AppSettingsValidator
                 result.Errors.Add($"{label} remote base path must use a slash-style server path.");
             }
 
-            if (!destination.UseAnonymousFtp && string.IsNullOrWhiteSpace(destination.Username))
+            if (destination.Type == DestinationType.Ftp &&
+                !destination.UseAnonymousFtp &&
+                string.IsNullOrWhiteSpace(destination.Username))
             {
                 result.Errors.Add($"{label} username is required when anonymous FTP is disabled.");
+            }
+
+            if (destination.Type == DestinationType.Ftp && string.IsNullOrWhiteSpace(destination.Host))
+            {
+                result.Errors.Add($"{label} host is required.");
+            }
+
+            if (destination.Type == DestinationType.Sftp && string.IsNullOrWhiteSpace(destination.Host))
+            {
+                result.Errors.Add($"{label} host is required.");
+            }
+
+            if (destination.Type == DestinationType.Sftp && string.IsNullOrWhiteSpace(destination.Username))
+            {
+                result.Errors.Add($"{label} username is required.");
+            }
+
+            if (destination.Type == DestinationType.Sftp && string.IsNullOrWhiteSpace(destination.Password))
+            {
+                result.Errors.Add($"{label} password is required.");
+            }
+
+            if (destination.Type == DestinationType.Scp && string.IsNullOrWhiteSpace(destination.Host))
+            {
+                result.Errors.Add($"{label} host is required.");
+            }
+
+            if (destination.Type == DestinationType.Scp && string.IsNullOrWhiteSpace(destination.Username))
+            {
+                result.Errors.Add($"{label} username is required.");
+            }
+
+            if (destination.Type == DestinationType.Scp && string.IsNullOrWhiteSpace(destination.Password))
+            {
+                result.Errors.Add($"{label} password is required.");
+            }
+
+            if (destination.Type == DestinationType.LocalFolder && string.IsNullOrWhiteSpace(destination.LocalRootPath))
+            {
+                result.Errors.Add($"{label} local root path is required.");
+            }
+
+            if (destination.Type == DestinationType.NetworkShare && string.IsNullOrWhiteSpace(destination.NetworkHost))
+            {
+                result.Errors.Add($"{label} server host is required.");
+            }
+
+            if (destination.Type == DestinationType.NetworkShare && string.IsNullOrWhiteSpace(destination.NetworkShareName))
+            {
+                result.Errors.Add($"{label} share name is required.");
+            }
+
+            if (destination.Type == DestinationType.NetworkShare &&
+                !destination.UseCurrentUserCredentials &&
+                string.IsNullOrWhiteSpace(destination.Username))
+            {
+                result.Errors.Add($"{label} username is required when not using current user credentials.");
+            }
+
+            if (destination.Type == DestinationType.NetworkShare &&
+                !destination.UseCurrentUserCredentials &&
+                string.IsNullOrWhiteSpace(destination.Password))
+            {
+                result.Errors.Add($"{label} password is required when not using current user credentials.");
             }
         }
 
@@ -105,7 +180,7 @@ public sealed class AppSettingsValidator
 
             if (!IsValidRemotePath(profile.RemoteSubfolder))
             {
-                result.Errors.Add($"{label} remote subfolder must use a slash-style server path.");
+                result.Errors.Add($"{label} additional remote path must use a slash-style server path.");
             }
 
             if (profile.StabilityDelaySeconds < 1)
@@ -118,10 +193,10 @@ public sealed class AppSettingsValidator
                 result.Errors.Add($"{label} polling interval must be at least 1 second.");
             }
 
-            if (!string.IsNullOrWhiteSpace(profile.FtpDestinationId) &&
-                !destinationsById.ContainsKey(profile.FtpDestinationId))
+            if (!string.IsNullOrWhiteSpace(profile.DestinationId) &&
+                !destinationsById.ContainsKey(profile.DestinationId))
             {
-                result.Errors.Add($"{label} references an FTP destination that does not exist.");
+                result.Errors.Add($"{label} references a destination that does not exist.");
             }
 
             if (!string.IsNullOrWhiteSpace(profile.ProcessingSetupId) &&

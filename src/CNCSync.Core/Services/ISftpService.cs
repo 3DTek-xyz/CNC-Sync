@@ -2,7 +2,7 @@ using CNCSync.Core.Configuration;
 
 namespace CNCSync.Core.Services;
 
-public interface IFtpService
+public interface ISftpService
 {
     Task<(bool Success, string Message)> TestConnectionAsync(DestinationSettings destination, CancellationToken cancellationToken = default);
     Task<(bool Success, string Message)> UploadDirectoryAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default);

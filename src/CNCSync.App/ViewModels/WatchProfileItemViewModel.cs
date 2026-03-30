@@ -27,10 +27,10 @@ public partial class WatchProfileItemViewModel : ObservableObject
     private string processingSetupId = string.Empty;
 
     [ObservableProperty]
-    private string ftpDestinationId = string.Empty;
+    private string destinationId = string.Empty;
 
     [ObservableProperty]
-    private int stabilityDelaySeconds = 30;
+    private int stabilityDelaySeconds = 10;
 
     [ObservableProperty]
     private int stabilityPollingSeconds = 5;
@@ -49,7 +49,7 @@ public partial class WatchProfileItemViewModel : ObservableObject
             StagingFolder = settings.StagingFolder,
             RemoteSubfolder = settings.RemoteSubfolder,
             ProcessingSetupId = settings.ProcessingSetupId,
-            FtpDestinationId = settings.FtpDestinationId,
+            DestinationId = settings.DestinationId,
             StabilityDelaySeconds = settings.StabilityDelaySeconds,
             StabilityPollingSeconds = settings.StabilityPollingSeconds
         };
@@ -64,7 +64,7 @@ public partial class WatchProfileItemViewModel : ObservableObject
             StagingFolder = StagingFolder,
             RemoteSubfolder = RemoteSubfolder,
             ProcessingSetupId = ProcessingSetupId,
-            FtpDestinationId = FtpDestinationId,
+            DestinationId = DestinationId,
             StabilityDelaySeconds = StabilityDelaySeconds,
             StabilityPollingSeconds = StabilityPollingSeconds
         };

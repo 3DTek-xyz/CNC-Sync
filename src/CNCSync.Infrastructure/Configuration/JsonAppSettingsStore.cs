@@ -24,6 +24,15 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
         _bundledScriptsDirectory = Path.Combine(AppContext.BaseDirectory, "BundledScripts");
     }
 
+    public JsonAppSettingsStore(string settingsDirectory, string legacySettingsDirectory, string bundledScriptsDirectory)
+    {
+        _settingsDirectory = settingsDirectory;
+        _legacySettingsDirectory = legacySettingsDirectory;
+        SettingsFilePath = Path.Combine(_settingsDirectory, "settings.json");
+        ScriptsDirectoryPath = Path.Combine(_settingsDirectory, "Scripts");
+        _bundledScriptsDirectory = bundledScriptsDirectory;
+    }
+
     public string SettingsFilePath { get; }
     public string ScriptsDirectoryPath { get; }
 
@@ -56,8 +65,20 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
         Directory.CreateDirectory(ScriptsDirectoryPath);
         SeedBundledScripts();
 
-        await using var stream = File.Create(SettingsFilePath);
-        await JsonSerializer.SerializeAsync(stream, settings, JsonOptions, cancellationToken);
+        var tempPath = SettingsFilePath + ".tmp";
+        await using (var stream = File.Create(tempPath))
+        {
+            await JsonSerializer.SerializeAsync(stream, settings, JsonOptions, cancellationToken);
+        }
+
+        if (File.Exists(SettingsFilePath))
+        {
+            File.Move(tempPath, SettingsFilePath, overwrite: true);
+        }
+        else
+        {
+            File.Move(tempPath, SettingsFilePath);
+        }
     }
 
     private void SeedBundledScripts()

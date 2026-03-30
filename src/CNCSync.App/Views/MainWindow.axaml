@@ -34,7 +34,7 @@
                                     <TextBlock Classes="muted"
                                                Text="{Binding AppVersion, StringFormat=Version {0}}" />
                                     <TextBlock Classes="muted"
-                                               Text="Monitor local CNC export folders, optionally process them, and upload the result to FTP."
+                                               Text="Monitor local export folders, optionally process them, and deliver the result to reusable destinations."
                                                TextWrapping="Wrap" />
                                 </StackPanel>
 
@@ -162,7 +162,7 @@
                             <StackPanel Spacing="8">
                                 <TextBlock Classes="sectionEyebrow" Text="Live Rules" />
                                 <TextBlock Text="Watch Folders" FontSize="20" FontWeight="SemiBold" />
-                                <TextBlock Classes="muted" Text="A folder watch is the live rule that watches one local folder, stages output, chooses a processing setup, and uploads to a selected FTP destination." TextWrapping="Wrap" />
+                                <TextBlock Classes="muted" Text="A folder watch is the live rule that watches one local folder, stages output, chooses a processing setup, and uploads to a selected destination." TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 
@@ -219,10 +219,10 @@
                                     </Grid>
 
                                     <Grid ColumnDefinitions="220,*">
-                                        <TextBlock VerticalAlignment="Center" Text="Remote Subfolder" />
+                                        <TextBlock VerticalAlignment="Center" Text="Additional Remote Path" />
                                         <TextBox Grid.Column="1"
                                                  Text="{Binding SelectedWatchProfile.RemoteSubfolder, UpdateSourceTrigger=LostFocus}"
-                                                 Watermark="/ABC or blank for the FTP setup base path" />
+                                                 Watermark="/ABC or blank to use only the destination base path" />
                                     </Grid>
 
                                     <Grid ColumnDefinitions="220,*">
@@ -239,12 +239,12 @@
                                     </Grid>
 
                                     <Grid ColumnDefinitions="220,*">
-                                        <TextBlock VerticalAlignment="Center" Text="FTP Destination" />
+                                        <TextBlock VerticalAlignment="Center" Text="Destination" />
                                         <ComboBox Grid.Column="1"
-                                                  ItemsSource="{Binding FtpDestinations}"
+                                                  ItemsSource="{Binding Destinations}"
                                                   SelectedItem="{Binding SelectedProfileDestination}">
                                             <ComboBox.ItemTemplate>
-                                                <DataTemplate x:DataType="vm:FtpDestinationItemViewModel">
+                                                <DataTemplate x:DataType="vm:DestinationItemViewModel">
                                                     <TextBlock Text="{Binding DisplayName}" />
                                                 </DataTemplate>
                                             </ComboBox.ItemTemplate>
@@ -393,7 +393,7 @@
                 </ScrollViewer>
             </TabItem>
 
-            <TabItem Header="FTP Servers">
+            <TabItem Header="Destinations">
                 <ScrollViewer Margin="0,12,0,0"
                               HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto">
@@ -401,8 +401,8 @@
                         <Border Classes="card" Padding="18" CornerRadius="16">
                             <StackPanel Spacing="8">
                                 <TextBlock Classes="sectionEyebrow" Text="Destinations" />
-                                <TextBlock Text="FTP Servers" FontSize="20" FontWeight="SemiBold" />
-                                <TextBlock Classes="muted" Text="Create reusable FTP destinations here, then assign them to any number of folder watches. This avoids re-entering the same server details repeatedly." TextWrapping="Wrap" />
+                                <TextBlock Text="Destinations" FontSize="20" FontWeight="SemiBold" />
+                                <TextBlock Classes="muted" Text="Create reusable destinations here, then assign them to any number of folder watches. Start with FTP, SFTP, SCP, a local folder, or a network share." TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 
@@ -412,26 +412,26 @@
                                     <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
                                         <TextBlock Grid.Column="0"
                                                    VerticalAlignment="Center"
-                                                   Text="FTP Destinations"
+                                                   Text="Destinations"
                                                    FontSize="18"
                                                    FontWeight="SemiBold"
                                                    TextTrimming="CharacterEllipsis" />
                                         <Button Grid.Column="1"
                                                 Classes="subtle"
                                                 Content="Add"
-                                                Command="{Binding AddFtpDestinationCommand}" />
+                                                Command="{Binding AddDestinationCommand}" />
                                         <Button Grid.Column="2"
                                                 Classes="subtle"
                                                 Content="Remove"
-                                                Command="{Binding RemoveFtpDestinationCommand}" />
+                                                Command="{Binding RemoveDestinationCommand}" />
                                     </Grid>
 
-                                    <ListBox ItemsSource="{Binding FtpDestinations}" SelectedItem="{Binding SelectedFtpDestination}">
+                                    <ListBox ItemsSource="{Binding Destinations}" SelectedItem="{Binding SelectedDestination}">
                                         <ListBox.ItemTemplate>
-                                            <DataTemplate x:DataType="vm:FtpDestinationItemViewModel">
+                                            <DataTemplate x:DataType="vm:DestinationItemViewModel">
                                                 <StackPanel Margin="0,4,0,4" Spacing="2">
                                                     <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
-                                                    <TextBlock Text="{Binding Host}" FontSize="12" Opacity="0.7" />
+                                                    <TextBlock Text="{Binding EndpointSummary}" FontSize="12" Opacity="0.7" />
                                                 </StackPanel>
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>
@@ -441,76 +441,148 @@
 
                             <Border Classes="card" Grid.Column="1" Margin="8,0,0,0" Padding="18" CornerRadius="16">
                                 <StackPanel Spacing="12">
-                                    <TextBlock Text="Selected FTP Destination" FontSize="18" FontWeight="SemiBold" />
+                                    <TextBlock Text="Selected Destination" FontSize="18" FontWeight="SemiBold" />
 
                                     <Grid ColumnDefinitions="220,*">
                                         <TextBlock VerticalAlignment="Center" Text="Destination Name" />
-                                        <TextBox Grid.Column="1" Text="{Binding SelectedFtpDestination.Name, UpdateSourceTrigger=LostFocus}" Watermark="Factory Router" />
+                                        <TextBox Grid.Column="1" Text="{Binding SelectedDestination.Name, UpdateSourceTrigger=LostFocus}" Watermark="Factory Router" />
                                     </Grid>
 
                                     <Grid ColumnDefinitions="220,*">
-                                        <TextBlock VerticalAlignment="Center" Text="FTP Host" />
-                                        <TextBox Grid.Column="1" Text="{Binding SelectedFtpDestination.Host, UpdateSourceTrigger=LostFocus}" Watermark="Hostname or IP address" />
+                                        <TextBlock VerticalAlignment="Center" Text="Destination Type" />
+                                        <ComboBox Grid.Column="1"
+                                                  ItemsSource="{Binding AvailableDestinationTypes}"
+                                                  SelectedItem="{Binding SelectedDestination.Type}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding ., Converter={StaticResource DestinationTypeDisplayConverter}}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </Grid>
+
+                                    <Grid ColumnDefinitions="220,*,Auto"
+                                          IsVisible="{Binding SelectedDestination.UsesLocalFolder}">
+                                        <TextBlock VerticalAlignment="Center" Text="Local Folder" />
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding SelectedDestination.LocalRootPath, UpdateSourceTrigger=LostFocus}"
+                                                 Watermark="/Users/Shared/CNC Output" />
+                                        <Button Grid.Column="2"
+                                                Margin="8,0,0,0"
+                                                Content="Browse..."
+                                                Click="BrowseDestinationFolder_OnClick" />
+                                    </Grid>
+
+                                    <Grid ColumnDefinitions="220,*"
+                                          IsVisible="{Binding SelectedDestination.UsesNetworkShare}">
+                                        <TextBlock VerticalAlignment="Center" Text="Network Protocol" />
+                                        <ComboBox Grid.Column="1"
+                                                  ItemsSource="{Binding SelectedDestination.AvailableNetworkProtocols}"
+                                                  SelectedItem="{Binding SelectedDestination.NetworkProtocol}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding ., Converter={StaticResource NetworkShareProtocolDisplayConverter}}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </Grid>
+
+                                    <Grid ColumnDefinitions="220,*"
+                                          IsVisible="{Binding SelectedDestination.UsesNetworkShare}">
+                                        <TextBlock VerticalAlignment="Center" Text="Server Host" />
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding SelectedDestination.NetworkHost, UpdateSourceTrigger=LostFocus}"
+                                                 Watermark="192.168.1.10 or fileserver.local" />
+                                    </Grid>
+
+                                    <Grid ColumnDefinitions="220,*"
+                                          IsVisible="{Binding SelectedDestination.UsesNetworkShare}">
+                                        <TextBlock VerticalAlignment="Center" Text="Share Name" />
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding SelectedDestination.NetworkShareName, UpdateSourceTrigger=LostFocus}"
+                                                 Watermark="SharedJobs" />
+                                    </Grid>
+
+                                    <Grid ColumnDefinitions="220,*"
+                                          IsVisible="{Binding SelectedDestination.UsesNetworkShare}">
+                                        <TextBlock VerticalAlignment="Center" Text="Domain or Workgroup" />
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding SelectedDestination.NetworkDomain, UpdateSourceTrigger=LostFocus}"
+                                                 Watermark="Optional" />
+                                    </Grid>
+
+                                    <Grid ColumnDefinitions="220,*"
+                                          IsVisible="{Binding SelectedDestination.UsesNetworkShare}">
+                                        <TextBlock VerticalAlignment="Center" Text="Use Current User Credentials" />
+                                        <CheckBox Grid.Column="1" IsChecked="{Binding SelectedDestination.UseCurrentUserCredentials}" />
+                                    </Grid>
+
+                                    <Grid ColumnDefinitions="220,*"
+                                          IsVisible="{Binding SelectedDestination.UsesRemoteHost}">
+                                        <TextBlock VerticalAlignment="Center" Text="Host" />
+                                        <TextBox Grid.Column="1" Text="{Binding SelectedDestination.Host, UpdateSourceTrigger=LostFocus}" Watermark="Hostname or IP address" />
                                     </Grid>
 
                                     <Grid ColumnDefinitions="220,*">
                                         <TextBlock VerticalAlignment="Center" Text="Remote Base Path" />
                                         <TextBox Grid.Column="1"
-                                                 Text="{Binding SelectedFtpDestination.RemoteBasePath, UpdateSourceTrigger=LostFocus}"
-                                                 Watermark="/uploads or blank for FTP root" />
+                                                 Text="{Binding SelectedDestination.RemoteBasePath, UpdateSourceTrigger=LostFocus}"
+                                                 Watermark="/uploads or blank for the destination root" />
                                     </Grid>
 
-                                    <Grid ColumnDefinitions="220,180,*">
-                                        <TextBlock VerticalAlignment="Center" Text="FTP Port" />
+                                    <Grid ColumnDefinitions="220,180,*"
+                                          IsVisible="{Binding SelectedDestination.UsesRemoteHost}">
+                                        <TextBlock VerticalAlignment="Center" Text="Port" />
                                         <NumericUpDown Grid.Column="1"
                                                        Width="140"
                                                        HorizontalAlignment="Left"
                                                        FormatString="0"
                                                        Minimum="1"
                                                        Maximum="65535"
-                                                       Value="{Binding SelectedFtpDestination.Port}" />
+                                                       Value="{Binding SelectedDestination.Port}" />
                                     </Grid>
 
-                                    <Grid ColumnDefinitions="220,*">
+                                    <Grid ColumnDefinitions="220,*"
+                                          IsVisible="{Binding SelectedDestination.SupportsAnonymousFtp}">
                                         <TextBlock VerticalAlignment="Center" Text="Use Anonymous FTP" />
-                                        <CheckBox Grid.Column="1" IsChecked="{Binding SelectedFtpDestination.UseAnonymousFtp}" />
+                                        <CheckBox Grid.Column="1" IsChecked="{Binding SelectedDestination.UseAnonymousFtp}" />
                                     </Grid>
 
-                                    <Grid ColumnDefinitions="220,*">
-                                        <TextBlock VerticalAlignment="Center" Text="FTP Username" />
+                                    <Grid ColumnDefinitions="220,*"
+                                          IsVisible="{Binding SelectedDestination.UsesCredentials}">
+                                        <TextBlock VerticalAlignment="Center" Text="Username" />
                                         <TextBox Grid.Column="1"
-                                                 IsEnabled="{Binding SelectedFtpDestination.UseAnonymousFtp, Converter={StaticResource BooleanNegationConverter}}"
-                                                 Opacity="{Binding SelectedFtpDestination.UseAnonymousFtp, Converter={StaticResource BooleanOpacityConverter}}"
-                                                 Text="{Binding SelectedFtpDestination.Username, UpdateSourceTrigger=LostFocus}"
-                                                 Watermark="Required if anonymous access is off" />
+                                                 IsEnabled="{Binding SelectedDestination.CredentialsAreEditable}"
+                                                 Opacity="{Binding SelectedDestination.CredentialsOpacity}"
+                                                 Text="{Binding SelectedDestination.Username, UpdateSourceTrigger=LostFocus}"
+                                                 Watermark="Required for SFTP, SCP, network shares, and non-anonymous FTP" />
                                     </Grid>
 
-                                    <Grid ColumnDefinitions="220,*">
-                                        <TextBlock VerticalAlignment="Center" Text="FTP Password" />
+                                    <Grid ColumnDefinitions="220,*"
+                                          IsVisible="{Binding SelectedDestination.UsesCredentials}">
+                                        <TextBlock VerticalAlignment="Center" Text="Password" />
                                         <TextBox Grid.Column="1"
-                                                 IsEnabled="{Binding SelectedFtpDestination.UseAnonymousFtp, Converter={StaticResource BooleanNegationConverter}}"
-                                                 Opacity="{Binding SelectedFtpDestination.UseAnonymousFtp, Converter={StaticResource BooleanOpacityConverter}}"
+                                                 IsEnabled="{Binding SelectedDestination.CredentialsAreEditable}"
+                                                 Opacity="{Binding SelectedDestination.CredentialsOpacity}"
                                                  PasswordChar="*"
-                                                 Text="{Binding SelectedFtpDestination.Password, UpdateSourceTrigger=LostFocus}"
-                                                 Watermark="FTP password" />
-                                    </Grid>
-
-                                    <Grid ColumnDefinitions="220,*">
-                                        <TextBlock VerticalAlignment="Center" Text="Auto Upload" />
-                                        <CheckBox Grid.Column="1" IsChecked="{Binding SelectedFtpDestination.AutoUpload}" />
+                                                 Text="{Binding SelectedDestination.Password, UpdateSourceTrigger=LostFocus}"
+                                                 Watermark="SFTP, SCP, network share, or FTP password" />
                                     </Grid>
 
                                     <Button HorizontalAlignment="Left"
                                             Classes="primary"
-                                            Content="Test This FTP Setup"
-                                            Command="{Binding TestFtpCommand}" />
+                                            Content="Test This Destination"
+                                            Command="{Binding TestDestinationCommand}" />
+                                    <TextBlock Classes="muted"
+                                               Text="{Binding DestinationTestStatus}"
+                                               TextWrapping="Wrap" />
 
                                     <Border Classes="card" Padding="16" CornerRadius="14" Margin="0,8,0,0">
                                         <StackPanel Spacing="10">
                                             <StackPanel Spacing="4">
                                                 <TextBlock Text="Remote Browser" FontSize="18" FontWeight="SemiBold" />
                                                 <TextBlock Classes="muted"
-                                                           Text="Open the selected FTP server and quickly verify what is on the remote path. This is intentionally lightweight: browse, refresh, and delete if needed."
+                                                           Text="Open the selected destination and quickly verify what is already there. This works for FTP, SFTP, SCP, local folders, and network shares."
                                                            TextWrapping="Wrap" />
                                             </StackPanel>
 
@@ -571,18 +643,14 @@
 
             <TabItem Header="Activity">
                 <Grid RowDefinitions="Auto,*" Margin="0,12,0,0">
-                    <TextBlock Classes="muted" Text="Recent events from monitoring, processing, catch-up, and FTP activity. Use this tab to trace what happened and when." />
-                    <ListBox Grid.Row="1" Margin="0,12,0,0" ItemsSource="{Binding ActivityItems}">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate x:DataType="core:ActivityLogEntry">
-                                <Grid Margin="0,2,0,2" ColumnDefinitions="90,220,*">
-                                    <TextBlock Grid.Column="0" Text="{Binding TimeDisplay}" FontFamily="Menlo, Monaco, Consolas, monospace" Opacity="0.75" />
-                                    <TextBlock Grid.Column="1" Margin="12,0,12,0" Text="{Binding SourceDisplay}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Grid.Column="2" Text="{Binding Message}" TextWrapping="Wrap" />
-                                </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
+                    <TextBlock Classes="muted" Text="Recent events from monitoring, processing, catch-up, and destination activity. Use this tab to trace what happened and when." />
+                    <TextBox Grid.Row="1"
+                             Margin="0,12,0,0"
+                             IsReadOnly="True"
+                             AcceptsReturn="True"
+                             TextWrapping="NoWrap"
+                             FontFamily="Menlo, Monaco, Consolas, monospace"
+                             Text="{Binding ActivityLogText}" />
                 </Grid>
             </TabItem>
 

@@ -9,11 +9,11 @@ public sealed class WatchProfileSettings
     public string StagingFolder { get; set; } = string.Empty;
     public string RemoteSubfolder { get; set; } = string.Empty;
     public string ProcessingSetupId { get; set; } = string.Empty;
-    public string FtpDestinationId { get; set; } = string.Empty;
-    public int StabilityDelaySeconds { get; set; } = 30;
+    public string DestinationId { get; set; } = string.Empty;
+    public int StabilityDelaySeconds { get; set; } = 10;
     public int StabilityPollingSeconds { get; set; } = 5;
 
-    public static WatchProfileSettings CreateDefault(string name, string ftpDestinationId, string processingSetupId = "") =>
+    public static WatchProfileSettings CreateDefault(string name, string destinationId, string processingSetupId = "") =>
         new()
         {
             Name = name,
@@ -22,8 +22,8 @@ public sealed class WatchProfileSettings
             StagingFolder = string.Empty,
             RemoteSubfolder = string.Empty,
             ProcessingSetupId = processingSetupId,
-            FtpDestinationId = ftpDestinationId,
-            StabilityDelaySeconds = 30,
+            DestinationId = destinationId,
+            StabilityDelaySeconds = 10,
             StabilityPollingSeconds = 5
         };
 }

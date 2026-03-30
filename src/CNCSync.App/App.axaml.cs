@@ -56,11 +56,15 @@ public partial class App : Application
             var folderMonitor = new FileSystemFolderMonitor();
             var projectProcessor = new StagingProjectProcessor();
             var ftpService = new FtpService();
+            var sftpService = new SftpService();
+            var scpService = new ScpService();
+            var networkShareService = new NetworkShareService();
+            var destinationService = new DestinationService(ftpService, sftpService, scpService, networkShareService);
             var updateService = new VelopackUpdateService();
             var loginStartupService = new LoginStartupService();
-            var coordinator = new SyncCoordinator(folderMonitor, projectProcessor, ftpService, validator);
+            var coordinator = new SyncCoordinator(folderMonitor, projectProcessor, destinationService, validator);
             var initialSettings = settingsStore.Load();
-            _mainWindowViewModel = new MainWindowViewModel(settingsStore, validator, coordinator, ftpService, updateService, loginStartupService, initialSettings);
+            _mainWindowViewModel = new MainWindowViewModel(settingsStore, validator, coordinator, destinationService, updateService, loginStartupService, initialSettings);
             coordinator.StatusChanged += OnCoordinatorStatusChanged;
             coordinator.ActivityLogged += OnCoordinatorActivityLogged;
             _initialTrayHidePending = Program.LaunchedAtLogin &&

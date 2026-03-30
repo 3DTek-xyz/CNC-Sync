@@ -53,6 +53,19 @@ public sealed class StagingProjectProcessor : IProjectProcessor
             else if (sourceIsFile)
             {
                 var fileName = Path.GetFileName(sourcePath);
+                if (FileSystemItemFilter.ShouldIgnoreFileSystemItem(fileName))
+                {
+                    return new ProcessingResult
+                    {
+                        Success = true,
+                        Message = $"Skipped ignored file: {fileName}",
+                        SourcePath = sourcePath,
+                        OutputPath = preparedOutputPath,
+                        StartedAtUtc = startedAt,
+                        FinishedAtUtc = DateTime.UtcNow
+                    };
+                }
+
                 File.Copy(sourcePath, Path.Combine(preparedOutputPath, fileName), overwrite: true);
                 processedFiles = [fileName];
             }
@@ -189,7 +202,7 @@ public sealed class StagingProjectProcessor : IProjectProcessor
             };
         }
 
-        var processedFiles = Directory.GetFiles(scriptOutputPath, "*", SearchOption.AllDirectories)
+        var processedFiles = FileSystemItemFilter.EnumerateIncludedFiles(scriptOutputPath)
             .Select(path => Path.GetRelativePath(scriptOutputPath, path))
             .ToList();
 
@@ -298,14 +311,14 @@ public sealed class StagingProjectProcessor : IProjectProcessor
     {
         var files = new List<string>();
 
-        foreach (var directory in Directory.GetDirectories(sourceDirectory, "*", SearchOption.AllDirectories))
+        foreach (var directory in FileSystemItemFilter.EnumerateIncludedDirectories(sourceDirectory))
         {
             cancellationToken.ThrowIfCancellationRequested();
             var relativeDirectory = Path.GetRelativePath(sourceDirectory, directory);
             Directory.CreateDirectory(Path.Combine(destinationDirectory, relativeDirectory));
         }
 
-        foreach (var file in Directory.GetFiles(sourceDirectory, "*", SearchOption.AllDirectories))
+        foreach (var file in FileSystemItemFilter.EnumerateIncludedFiles(sourceDirectory))
         {
             cancellationToken.ThrowIfCancellationRequested();
             var relativePath = Path.GetRelativePath(sourceDirectory, file);

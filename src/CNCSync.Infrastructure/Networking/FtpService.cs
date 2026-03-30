@@ -9,7 +9,7 @@ public sealed class FtpService : IFtpService
 {
     private const int RequestTimeoutMilliseconds = 8000;
 
-    public async Task<(bool Success, string Message)> TestConnectionAsync(FtpDestinationSettings destination, CancellationToken cancellationToken = default)
+    public async Task<(bool Success, string Message)> TestConnectionAsync(DestinationSettings destination, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(destination.Host))
         {
@@ -38,7 +38,7 @@ public sealed class FtpService : IFtpService
 
     public async Task<(bool Success, string Message)> UploadDirectoryAsync(
         string localPath,
-        FtpDestinationSettings destination,
+        DestinationSettings destination,
         string remoteDirectoryPath,
         CancellationToken cancellationToken = default)
     {
@@ -56,7 +56,7 @@ public sealed class FtpService : IFtpService
         {
             await CreateDirectoryChainIfNeededAsync(destination, remoteDirectoryPath, cancellationToken);
 
-            foreach (var file in Directory.GetFiles(localPath, "*", SearchOption.AllDirectories))
+            foreach (var file in FileSystemItemFilter.EnumerateIncludedFiles(localPath))
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -93,7 +93,7 @@ public sealed class FtpService : IFtpService
     }
 
     public async Task<(bool Success, IReadOnlyList<RemoteEntryInfo> Entries, string Message)> ListRootEntriesAsync(
-        FtpDestinationSettings destination,
+        DestinationSettings destination,
         string remoteDirectoryPath,
         CancellationToken cancellationToken = default)
     {
@@ -163,7 +163,7 @@ public sealed class FtpService : IFtpService
     }
 
     public async Task<(bool Exists, long? SizeBytes, string Message)> TryGetFileSizeAsync(
-        FtpDestinationSettings destination,
+        DestinationSettings destination,
         string remoteFilePath,
         CancellationToken cancellationToken)
     {
@@ -186,7 +186,7 @@ public sealed class FtpService : IFtpService
     }
 
     public async Task<(bool Success, string Message)> DeleteRemoteItemAsync(
-        FtpDestinationSettings destination,
+        DestinationSettings destination,
         string remotePath,
         bool isDirectory,
         CancellationToken cancellationToken = default)
@@ -224,7 +224,7 @@ public sealed class FtpService : IFtpService
     }
 
     private static async Task CreateDirectoryChainIfNeededAsync(
-        FtpDestinationSettings destination,
+        DestinationSettings destination,
         string? remotePath,
         CancellationToken cancellationToken = default)
     {
@@ -246,7 +246,7 @@ public sealed class FtpService : IFtpService
     }
 
     private static async Task CreateDirectoryIfNeededAsync(
-        FtpDestinationSettings destination,
+        DestinationSettings destination,
         string remotePath,
         CancellationToken cancellationToken = default)
     {
@@ -274,7 +274,7 @@ public sealed class FtpService : IFtpService
         return string.IsNullOrWhiteSpace(combined) ? string.Empty : $"/{combined}";
     }
 
-    private static FtpWebRequest CreateRequest(FtpDestinationSettings destination, string remotePath, string method)
+    private static FtpWebRequest CreateRequest(DestinationSettings destination, string remotePath, string method)
     {
 #pragma warning disable SYSLIB0014
         var request = (FtpWebRequest)WebRequest.Create(new Uri($"ftp://{destination.Host}:{destination.Port}/{remotePath.TrimStart('/')}"));
@@ -291,7 +291,7 @@ public sealed class FtpService : IFtpService
         return request;
     }
 
-    private static AsyncFtpClient CreateFluentClient(FtpDestinationSettings destination)
+    private static AsyncFtpClient CreateFluentClient(DestinationSettings destination)
     {
         var userName = destination.UseAnonymousFtp ? "anonymous" : destination.Username;
         var password = destination.UseAnonymousFtp ? "anonymous@example.com" : destination.Password;

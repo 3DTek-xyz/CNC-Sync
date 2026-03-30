@@ -79,7 +79,17 @@ public sealed class FileSystemFolderMonitor : IFolderMonitor
 
     private void OnChanged(WatchProfileSettings profile, string path)
     {
+        if (FileSystemItemFilter.ShouldIgnoreFileSystemItem(Path.GetFileName(path)))
+        {
+            return;
+        }
+
         var workItemPath = ResolveWorkItemPath(profile, path);
+        if (FileSystemItemFilter.ShouldIgnoreFileSystemItem(Path.GetFileName(workItemPath)))
+        {
+            return;
+        }
+
         var key = BuildPendingKey(profile, workItemPath);
         var now = DateTime.UtcNow;
         _pendingPaths[key] = new PendingWorkItem(

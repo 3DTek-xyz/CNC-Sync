@@ -48,7 +48,7 @@
   <Target Name="BuildMacLoginItemBridgeForBuild"
           AfterTargets="Build"
           Condition="$([MSBuild]::IsOSPlatform('OSX')) and ('$(RuntimeIdentifier)' == '' or $([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('osx-')))">
-    <Exec Command="xcrun swiftc -emit-library -framework Foundation -framework ServiceManagement &quot;$(MSBuildProjectDirectory)/MacBridge/bridge.swift&quot; -o &quot;$(TargetDir)$(MacLoginItemBridgeName)&quot;" />
+    <Exec Command="env CLANG_MODULE_CACHE_PATH=&quot;$(IntermediateOutputPath)clang-module-cache&quot; xcrun swiftc -emit-library -framework Foundation -framework ServiceManagement &quot;$(MSBuildProjectDirectory)/MacBridge/bridge.swift&quot; -o &quot;$(TargetDir)$(MacLoginItemBridgeName)&quot;" />
   </Target>
 
 </Project>
