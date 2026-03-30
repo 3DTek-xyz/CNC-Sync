@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CNC Sync User Guide</title>
+  <style>
+    :root {
+      --bg: #eff5fb;
+      --panel: #ffffff;
+      --ink: #14314d;
+      --muted: #56718c;
+      --line: #d6e2ef;
+      --accent: #0f6ad9;
+      --accent-soft: #dcebff;
+      --shadow: 0 24px 48px rgba(20, 49, 77, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Inter, system-ui, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(15,106,217,.14), transparent 28rem),
+        linear-gradient(180deg, #f5f9fd 0%, var(--bg) 100%);
+      color: var(--ink);
+    }
+
+    .shell {
+      max-width: 68rem;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem 4rem;
+    }
+
+    .hero {
+      background: linear-gradient(145deg, #153a63 0%, #0c5dbd 100%);
+      color: #fff;
+      border-radius: 1.5rem;
+      padding: 2.25rem;
+      box-shadow: var(--shadow);
+    }
+
+    .eyebrow {
+      display: inline-block;
+      padding: .38rem .75rem;
+      border-radius: 999px;
+      background: rgba(255,255,255,.16);
+      font-size: .9rem;
+      letter-spacing: .02em;
+    }
+
+    h1 {
+      margin: 1rem 0 .65rem;
+      font-size: clamp(2rem, 4vw, 3.1rem);
+      line-height: 1.05;
+    }
+
+    .hero p {
+      max-width: 44rem;
+      margin: 0;
+      color: rgba(255,255,255,.9);
+      line-height: 1.65;
+      font-size: 1.03rem;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .8rem;
+      margin-top: 1.35rem;
+    }
+
+    .button {
+      display: inline-block;
+      padding: .9rem 1.15rem;
+      border-radius: .95rem;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .button.primary {
+      background: #fff;
+      color: #0e4d99;
+    }
+
+    .button.secondary {
+      background: rgba(255,255,255,.12);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,.22);
+    }
+
+    .layout {
+      display: grid;
+      gap: 1.25rem;
+      margin-top: 1.5rem;
+      grid-template-columns: minmax(0, 17rem) minmax(0, 1fr);
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 1.25rem;
+      padding: 1.25rem;
+      box-shadow: var(--shadow);
+    }
+
+    .toc {
+      position: sticky;
+      top: 1.25rem;
+      align-self: start;
+    }
+
+    .toc h2,
+    .content h2,
+    .content h3 {
+      margin-top: 0;
+    }
+
+    .toc ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .toc li + li {
+      margin-top: .5rem;
+    }
+
+    .toc a {
+      color: var(--muted);
+      text-decoration: none;
+    }
+
+    .toc a:hover,
+    .content a:hover {
+      color: var(--accent);
+    }
+
+    .content section + section {
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--line);
+    }
+
+    .content p,
+    .content li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .content ul,
+    .content ol {
+      padding-left: 1.2rem;
+      margin: .75rem 0 0;
+    }
+
+    .content li + li {
+      margin-top: .4rem;
+    }
+
+    code {
+      background: var(--accent-soft);
+      color: #14457c;
+      padding: .15rem .38rem;
+      border-radius: .4rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: .92rem;
+    }
+
+    pre {
+      background: #edf5ff;
+      color: #184775;
+      padding: 1rem;
+      border-radius: 1rem;
+      overflow: auto;
+      border: 1px solid #d4e4f7;
+    }
+
+    .lead-list {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+      margin-top: 1rem;
+    }
+
+    .mini-card {
+      background: #f9fbfe;
+      border: 1px solid var(--line);
+      border-radius: 1rem;
+      padding: 1rem;
+    }
+
+    .mini-card h3 {
+      margin: 0 0 .45rem;
+      font-size: 1rem;
+    }
+
+    @media (max-width: 860px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .toc {
+        position: static;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <span class="eyebrow">CNC Sync Guide</span>
+      <h1>Set up watch folders, processing, and FTP delivery with confidence.</h1>
+      <p>
+        This guide walks through how CNC Sync is organised, how to set up reusable FTP servers and
+        processing setups, and how monitoring, staging, and manual catch-up behave in practice.
+      </p>
+      <div class="actions">
+        <a class="button primary" href="./index.html">Back to Downloads</a>
+        <a class="button secondary" href="https://github.com/3DTek-xyz/CNC-FTPSync/releases/latest">Latest Release</a>
+      </div>
+    </section>
+
+    <div class="layout">
+      <aside class="card toc">
+        <h2>On This Page</h2>
+        <ul>
+          <li><a href="#what-it-does">What CNC Sync Does</a></li>
+          <li><a href="#setup-flow">Typical Setup Flow</a></li>
+          <li><a href="#app-settings">App Settings</a></li>
+          <li><a href="#ftp-servers">FTP Servers</a></li>
+          <li><a href="#processing-setups">Processing Setups</a></li>
+          <li><a href="#watch-folders">Watch Folders</a></li>
+          <li><a href="#monitoring">Monitoring</a></li>
+          <li><a href="#manual-catch-up">Manual Catch-Up</a></li>
+          <li><a href="#activity-log">Activity Log</a></li>
+          <li><a href="#notes">Notes</a></li>
+        </ul>
+      </aside>
+
+      <article class="card content">
+        <section id="what-it-does">
+          <h2>What CNC Sync Does</h2>
+          <p>
+            CNC Sync watches one or more local folders, optionally runs a local processing step,
+            and uploads the prepared result to an FTP destination.
+          </p>
+          <div class="lead-list">
+            <div class="mini-card">
+              <h3>App Settings</h3>
+              <p>Global behaviour for the app itself.</p>
+            </div>
+            <div class="mini-card">
+              <h3>FTP Servers</h3>
+              <p>Reusable named FTP destinations.</p>
+            </div>
+            <div class="mini-card">
+              <h3>Processing Setups</h3>
+              <p>Reusable processing rules including external scripts.</p>
+            </div>
+            <div class="mini-card">
+              <h3>Watch Folders</h3>
+              <p>The monitored folders that combine watch, processing, and FTP settings.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="setup-flow">
+          <h2>Typical Setup Flow</h2>
+          <ol>
+            <li>Create an <code>FTP Server</code>.</li>
+            <li>Create a <code>Processing Setup</code>.</li>
+            <li>Create a <code>Watch Folder</code> that points to a local watch folder and staging folder, then select the FTP server and processing setup it should use.</li>
+            <li>Validate settings.</li>
+            <li>Start monitoring.</li>
+          </ol>
+        </section>
+
+        <section id="app-settings">
+          <h2>App Settings</h2>
+          <p>Use <code>App Settings</code> for behaviour that applies to the whole app:</p>
+          <ul>
+            <li><code>Launch At Login</code>: start CNC Sync when the user logs in.</li>
+            <li><code>Start Minimized</code>: start hidden/minimized when supported on the current platform.</li>
+            <li><code>Load Settings</code>: reload the saved configuration from disk.</li>
+            <li><code>Validate Settings</code>: check the current configuration for missing or invalid items.</li>
+          </ul>
+          <p>Settings are saved automatically as you change them.</p>
+        </section>
+
+        <section id="ftp-servers">
+          <h2>FTP Servers</h2>
+          <p>An FTP server defines one reusable destination:</p>
+          <ul>
+            <li><code>Destination Name</code>: friendly label shown in selectors.</li>
+            <li><code>FTP Host</code>: server hostname or IP address.</li>
+            <li><code>Remote Base Path</code>: optional base path on the server such as <code>/uploads</code>.</li>
+            <li><code>FTP Port</code>: usually <code>21</code> unless the server uses another port.</li>
+            <li><code>Use Anonymous FTP</code>: if enabled, username/password are not used.</li>
+            <li><code>FTP Username</code> / <code>FTP Password</code>: credentials for non-anonymous access.</li>
+            <li><code>Auto Upload</code>: whether successful processing should upload automatically.</li>
+          </ul>
+          <p>The effective remote path is built from the FTP server base path plus the watch profile remote subfolder.</p>
+          <p>Example: FTP base path <code>/uploads</code> and watch remote subfolder <code>/watch1</code> becomes <code>/uploads/watch1</code>.</p>
+        </section>
+
+        <section id="processing-setups">
+          <h2>Processing Setups</h2>
+          <p>A processing setup defines what happens to a detected file or folder before upload.</p>
+
+          <h3>Default Upload</h3>
+          <p>This is the default passthrough option. The source item is copied into staging/output and the copied result is uploaded.</p>
+
+          <h3>External Script</h3>
+          <p>This runs a local script or executable before upload.</p>
+          <ul>
+            <li><code>Mode</code>: choose <code>ExternalScript</code>.</li>
+            <li><code>Runner</code>: choose how to launch the script: <code>Auto</code>, <code>PowerShell</code>, <code>Bash</code>, <code>Python</code>, <code>Command</code>, or <code>Direct</code>.</li>
+            <li><code>Script Path</code>: the local file to execute.</li>
+            <li><code>Arguments Template</code>: arguments passed to the script at runtime.</li>
+          </ul>
+
+          <p>Supported placeholders:</p>
+          <ul>
+            <li><code>{sourcePath}</code>: the detected source file or folder.</li>
+            <li><code>{outputPath}</code>: the prepared output folder where processed files should be written.</li>
+            <li><code>{scriptPath}</code>: the selected script path.</li>
+          </ul>
+
+          <p>Any other text is passed through literally.</p>
+          <pre><code>"{sourcePath}" "{outputPath}"</code></pre>
+
+          <p>Script contract:</p>
+          <ul>
+            <li>Exit code <code>0</code> means success.</li>
+            <li>Non-zero means failure.</li>
+            <li>Optional stdout line: <code>OUTPUT_PATH=/path/to/final/output</code></li>
+          </ul>
+          <p>If <code>OUTPUT_PATH=</code> is printed, CNC Sync uploads that folder. If not, it uploads the prepared output folder it already passed in.</p>
+        </section>
+
+        <section id="watch-folders">
+          <h2>Watch Folders</h2>
+          <p>A watch folder ties everything together.</p>
+          <ul>
+            <li><code>Profile Name</code>: friendly label for this watch profile.</li>
+            <li><code>Enabled</code>: whether this profile participates in monitoring.</li>
+            <li><code>Watch Folder</code>: local folder being watched.</li>
+            <li><code>Staging Folder</code>: local folder used for prepared output.</li>
+            <li><code>Remote Subfolder</code>: optional subfolder appended to the FTP server base path.</li>
+            <li><code>Processing Setup</code>: which processing rule to run.</li>
+            <li><code>FTP Destination</code>: which FTP server to upload to.</li>
+            <li><code>Required Quiet Time</code>: how long files or folders must stay unchanged before processing starts.</li>
+            <li><code>Stability Check Interval</code>: how often CNC Sync checks pending items to see if they are ready.</li>
+          </ul>
+        </section>
+
+        <section id="monitoring">
+          <h2>Monitoring</h2>
+          <p>The monitoring area shows:</p>
+          <ul>
+            <li>whether monitoring is running</li>
+            <li>which watch profiles are active</li>
+            <li>the current task</li>
+            <li>the last processing summary</li>
+          </ul>
+          <p><code>Start</code> begins folder monitoring. <code>Stop</code> stops folder monitoring.</p>
+          <p>If enabled watch profiles exist and settings validate successfully, the app can auto-start monitoring on launch.</p>
+        </section>
+
+        <section id="manual-catch-up">
+          <h2>Manual Catch-Up</h2>
+          <p><code>Manual Catch-Up</code> is for reconciling missed uploads.</p>
+          <p>It does not blindly upload everything. It:</p>
+          <ul>
+            <li>reads the selected watch profile</li>
+            <li>checks the target FTP directory</li>
+            <li>compares local items against remote items</li>
+            <li>processes/uploads only missing or changed items</li>
+          </ul>
+          <p>Current comparison approach:</p>
+          <ul>
+            <li>files: <code>name + size</code></li>
+            <li>directories: name-based presence</li>
+            <li>ignores metadata junk like <code>.DS_Store</code>, <code>Thumbs.db</code>, and <code>desktop.ini</code></li>
+          </ul>
+          <p>Use this when the app was not running, the FTP server was unavailable, or monitoring was stopped.</p>
+        </section>
+
+        <section id="activity-log">
+          <h2>Activity Log</h2>
+          <p>The <code>Activity</code> tab shows recent events with:</p>
+          <ul>
+            <li>time</li>
+            <li>source/profile</li>
+            <li>message</li>
+          </ul>
+          <p>Timestamps include milliseconds so quick processing sequences are easier to follow.</p>
+        </section>
+
+        <section id="notes">
+          <h2>Notes</h2>
+          <ul>
+            <li>FTP timestamps are not relied on for catch-up decisions.</li>
+            <li>Finder can be misleading for FTP browsing and refresh; use a dedicated FTP client when verifying server contents.</li>
+            <li>Old test folders left from earlier versions of the app may need to be cleaned up manually on the server.</li>
+          </ul>
+        </section>
+      </article>
+    </div>
+  </main>
+</body>
+</html>
