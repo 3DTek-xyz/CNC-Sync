@@ -46,6 +46,14 @@ jobs:
 
   build-macos:
     runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runtime: osx-arm64
+            artifact_name: macos-release-arm64
+          - runtime: osx-x64
+            artifact_name: macos-release-x64
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -63,12 +71,12 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Publish macOS build
-        run: dotnet publish src/CBWSSSync.App/CBWSSSync.App.csproj -c Release -r osx-arm64 --self-contained true -p:UseAppHost=true -p:Version=${{ steps.version.outputs.version }} -p:InformationalVersion=${{ steps.version.outputs.version }}
+        run: dotnet publish src/CBWSSSync.App/CBWSSSync.App.csproj -c Release -r ${{ matrix.runtime }} --self-contained true -p:UseAppHost=true -p:Version=${{ steps.version.outputs.version }} -p:InformationalVersion=${{ steps.version.outputs.version }}
       - name: Package macOS app
-        run: VERSION=${{ steps.version.outputs.version }} ./packaging/macos/package-app.sh
+        run: VERSION=${{ steps.version.outputs.version }} RUNTIME=${{ matrix.runtime }} zsh ./packaging/macos/package-app.sh
       - uses: actions/upload-artifact@v4
         with:
-          name: macos-release
+          name: ${{ matrix.artifact_name }}
           path: dist/macos/*.zip
 
   build-linux:
@@ -92,7 +100,7 @@ jobs:
       - name: Publish Linux build
         run: dotnet publish src/CBWSSSync.App/CBWSSSync.App.csproj -c Release -r linux-x64 --self-contained true -p:Version=${{ steps.version.outputs.version }} -p:InformationalVersion=${{ steps.version.outputs.version }}
       - name: Package Linux tarball
-        run: VERSION=${{ steps.version.outputs.version }} ./packaging/linux/package-tarball.sh
+        run: VERSION=${{ steps.version.outputs.version }} bash ./packaging/linux/package-tarball.sh
       - uses: actions/upload-artifact@v4
         with:
           name: linux-release
@@ -114,7 +122,8 @@ jobs:
         with:
           files: |
             artifacts/windows-release/*
-            artifacts/macos-release/*.zip
+            artifacts/macos-release-arm64/*.zip
+            artifacts/macos-release-x64/*.zip
             artifacts/linux-release/*.tar.gz
 
   deploy-pages:

@@ -3,15 +3,30 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="${ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
-VERSION="${VERSION:-0.1.1}"
-BUILD_DIR="${BUILD_DIR:-$ROOT/src/CBWSSSync.App/bin/Release/net10.0/osx-arm64/publish}"
+VERSION="${VERSION:-0.1.2}"
+RUNTIME="${RUNTIME:-osx-arm64}"
+BUILD_DIR="${BUILD_DIR:-$ROOT/src/CBWSSSync.App/bin/Release/net10.0/$RUNTIME/publish}"
 DIST_DIR="${DIST_DIR:-$ROOT/dist/macos}"
 APP_DIR="$DIST_DIR/CNC Sync.app"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
-ZIP_PATH="$DIST_DIR/cnc-sync-macos-arm64-v$VERSION.zip"
-LATEST_ZIP_PATH="$DIST_DIR/cnc-sync-macos-arm64-latest.zip"
+
+case "$RUNTIME" in
+  osx-arm64)
+    PACKAGE_SUFFIX="macos-arm64"
+    ;;
+  osx-x64)
+    PACKAGE_SUFFIX="macos-x64"
+    ;;
+  *)
+    echo "Unsupported macOS runtime: $RUNTIME" >&2
+    exit 1
+    ;;
+esac
+
+ZIP_PATH="$DIST_DIR/cnc-sync-$PACKAGE_SUFFIX-v$VERSION.zip"
+LATEST_ZIP_PATH="$DIST_DIR/cnc-sync-$PACKAGE_SUFFIX-latest.zip"
 
 rm -rf "$APP_DIR"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
