@@ -5,15 +5,15 @@
   <key>CFBundleDevelopmentRegion</key>
   <string>en</string>
   <key>CFBundleDisplayName</key>
-  <string>CBWSS Sync</string>
+  <string>CNC Sync</string>
   <key>CFBundleExecutable</key>
   <string>CBWSSSync</string>
   <key>CFBundleIdentifier</key>
-  <string>com.cbwss.sync</string>
+  <string>com.3dtek.cncsync</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundleName</key>
-  <string>CBWSS Sync</string>
+  <string>CNC Sync</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
