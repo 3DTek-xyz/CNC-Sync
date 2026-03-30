@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>CBWSSSync</AssemblyName>
     <ApplicationTitle>CNC Sync</ApplicationTitle>
+    <ApplicationIcon>Assets\cnc-sync.ico</ApplicationIcon>
     <RootNamespace>CBWSSSync.App</RootNamespace>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>

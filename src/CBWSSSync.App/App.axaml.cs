@@ -138,7 +138,10 @@ public partial class App : Application
 
         _desktop.MainWindow.ShowInTaskbar = true;
         _desktop.MainWindow.Show();
-        _desktop.MainWindow.WindowState = WindowState.Normal;
+        if (_desktop.MainWindow.WindowState == WindowState.Minimized)
+        {
+            _desktop.MainWindow.WindowState = WindowState.Maximized;
+        }
         _desktop.MainWindow.BringIntoView();
         _desktop.MainWindow.Activate();
     }

@@ -10,6 +10,7 @@
         Icon="/Assets/cnc-sync.ico"
         Width="1180"
         Height="820"
+        WindowState="Maximized"
         MinWidth="980"
         MinHeight="720"
         Title="CNC Sync">
@@ -29,6 +30,8 @@
                             <StackPanel Spacing="6">
                                 <TextBlock Classes="sectionEyebrow" Text="Control Panel" />
                                 <TextBlock Text="{Binding AppTitle}" FontSize="28" FontWeight="Bold" />
+                                <TextBlock Classes="muted"
+                                           Text="{Binding AppVersion, StringFormat=Version {0}}" />
                                 <TextBlock Classes="muted"
                                            Text="Monitor local CNC export folders, optionally process them, and upload the result to FTP."
                                            TextWrapping="Wrap" />
@@ -98,6 +101,7 @@
 
                                 <TextBlock Classes="muted" Text="{Binding SaveMessage}" TextWrapping="Wrap" />
                                 <TextBlock Classes="muted" Text="{Binding UpdateStatus}" TextWrapping="Wrap" />
+                                <TextBlock Classes="muted" Text="{Binding AppVersion, StringFormat=Installed version: {0}}" TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 

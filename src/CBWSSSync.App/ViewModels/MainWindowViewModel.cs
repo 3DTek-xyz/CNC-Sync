@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Reflection;
 using System.Threading;
 using Avalonia.Threading;
 using CBWSSSync.Core.Configuration;
@@ -14,6 +15,7 @@ namespace CBWSSSync.App.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
+    private static readonly string ResolvedAppVersion = ResolveAppVersion();
     private readonly IAppSettingsStore _settingsStore;
     private readonly AppSettingsValidator _validator;
     private readonly ISyncCoordinator _syncCoordinator;
@@ -143,6 +145,8 @@ public partial class MainWindowViewModel : ViewModelBase
     public IReadOnlyList<ProcessingMode> AvailableProcessingModes { get; } = Enum.GetValues<ProcessingMode>();
 
     public IReadOnlyList<ScriptRunnerMode> AvailableRunnerModes { get; } = Enum.GetValues<ScriptRunnerMode>();
+
+    public string AppVersion => ResolvedAppVersion;
 
     public string ActiveMonitoringProfilesSummary
     {
@@ -987,6 +991,14 @@ public partial class MainWindowViewModel : ViewModelBase
     private sealed class DesignLoginStartupService : ILoginStartupService
     {
         public Task ApplyAsync(bool enabled, CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+
+    private static string ResolveAppVersion()
+    {
+        var assembly = typeof(MainWindowViewModel).Assembly;
+        return assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+               ?? assembly.GetName().Version?.ToString()
+               ?? "dev";
     }
 
     private sealed class DesignSyncCoordinator : ISyncCoordinator
