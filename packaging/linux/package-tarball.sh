@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="${ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
-VERSION="${VERSION:-0.1.5}"
+VERSION="${VERSION:-0.1.6}"
 BUILD_DIR="${BUILD_DIR:-$ROOT/src/CBWSSSync.App/bin/Release/net10.0/linux-x64/publish}"
 DIST_DIR="${DIST_DIR:-$ROOT/dist/linux}"
 PACKAGE_DIR="$DIST_DIR/cnc-sync-linux-x64-v$VERSION"

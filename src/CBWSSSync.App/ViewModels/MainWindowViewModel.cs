@@ -117,6 +117,7 @@ public partial class MainWindowViewModel : ViewModelBase
             ? "Update checks are available for installed packaged releases from the public CNC Sync update feed."
             : "Automatic updates are only available on supported packaged desktop builds.";
         Apply(initialSettings);
+        _ = SyncLaunchAtLoginStateAsync();
         ValidationSummary = "Run validation to check saved settings.";
 
         _syncCoordinator.ActivityLogged += OnActivityLogged;
@@ -986,6 +987,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private sealed class DesignLoginStartupService : ILoginStartupService
     {
+        public Task<bool> IsEnabledAsync(CancellationToken cancellationToken = default) => Task.FromResult(false);
         public Task ApplyAsync(bool enabled, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
@@ -995,6 +997,37 @@ public partial class MainWindowViewModel : ViewModelBase
         return assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
                ?? assembly.GetName().Version?.ToString()
                ?? "dev";
+    }
+
+    private async Task SyncLaunchAtLoginStateAsync()
+    {
+        try
+        {
+            var actualState = await _loginStartupService.IsEnabledAsync();
+            if (actualState == LaunchAtLogin)
+            {
+                return;
+            }
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                _isApplyingSettings = true;
+                LaunchAtLogin = actualState;
+                _isApplyingSettings = false;
+                SaveMessage = actualState
+                    ? "Launch At Login was enabled by the operating system."
+                    : "Launch At Login was not registered on this machine, so the saved setting was corrected.";
+            });
+
+            await SaveCurrentSettingsAsync();
+        }
+        catch (Exception ex)
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                SaveMessage = $"Unable to verify Launch At Login state: {ex.Message}";
+            });
+        }
     }
 
     private async Task<AppUpdateResult> RunUpdateCheckAsync(bool silentIfCurrent, CancellationToken cancellationToken = default)

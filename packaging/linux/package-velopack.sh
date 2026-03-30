@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="${ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
-VERSION="${VERSION:-0.1.5}"
+VERSION="${VERSION:-0.1.6}"
 RUNTIME="${RUNTIME:-linux-x64}"
 BUILD_DIR="${BUILD_DIR:-$ROOT/src/CBWSSSync.App/bin/Release/net10.0/$RUNTIME/publish}"
 DIST_DIR="${DIST_DIR:-$ROOT/dist/linux/velopack-$RUNTIME}"

@@ -11,6 +11,26 @@ public sealed class LoginStartupService : ILoginStartupService
     private const string WindowsRunValueName = "CNC Sync";
     private const string LinuxDesktopFileName = "cnc-sync.desktop";
 
+    public Task<bool> IsEnabledAsync(CancellationToken cancellationToken = default)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return Task.FromResult(IsWindowsEnabled());
+        }
+
+        if (OperatingSystem.IsMacOS())
+        {
+            return Task.FromResult(IsMacEnabled());
+        }
+
+        if (OperatingSystem.IsLinux())
+        {
+            return Task.FromResult(IsLinuxEnabled());
+        }
+
+        return Task.FromResult(false);
+    }
+
     public Task ApplyAsync(bool enabled, CancellationToken cancellationToken = default)
     {
         if (OperatingSystem.IsWindows())
@@ -51,6 +71,19 @@ public sealed class LoginStartupService : ILoginStartupService
         runKey.SetValue(WindowsRunValueName, startupCommand, RegistryValueKind.String);
     }
 
+    [SupportedOSPlatform("windows")]
+    private static bool IsWindowsEnabled()
+    {
+        using var runKey = Registry.CurrentUser.OpenSubKey(WindowsRunKeyPath, writable: false);
+        var configuredValue = runKey?.GetValue(WindowsRunValueName) as string;
+        if (string.IsNullOrWhiteSpace(configuredValue))
+        {
+            return false;
+        }
+
+        return configuredValue.Contains(RequireProcessPath(), StringComparison.OrdinalIgnoreCase);
+    }
+
     private static void ApplyMac(bool enabled)
     {
         var appPath = ResolveMacLoginItemPath();
@@ -69,6 +102,18 @@ public sealed class LoginStartupService : ILoginStartupService
             "tell application \"System Events\"",
             $"make login item at end with properties {{name:\"{escapedName}\", path:\"{escapedPath}\", hidden:false}}",
             "end tell");
+    }
+
+    private static bool IsMacEnabled()
+    {
+        var appPath = ResolveMacLoginItemPath();
+        var escapedPath = EscapeAppleScriptString(appPath);
+        var result = RunAppleScriptWithOutput(
+            "tell application \"System Events\"",
+            $"get the count of (every login item whose path is \"{escapedPath}\")",
+            "end tell");
+
+        return string.Equals(result.Trim(), "1", StringComparison.Ordinal);
     }
 
     private static void ApplyLinux(bool enabled)
@@ -105,6 +150,22 @@ X-GNOME-Autostart-enabled=true
         File.WriteAllText(desktopFilePath, desktopEntry, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
     }
 
+    private static bool IsLinuxEnabled()
+    {
+        var autostartDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.Personal),
+            ".config",
+            "autostart");
+        var desktopFilePath = Path.Combine(autostartDir, LinuxDesktopFileName);
+        if (!File.Exists(desktopFilePath))
+        {
+            return false;
+        }
+
+        var fileContents = File.ReadAllText(desktopFilePath);
+        return fileContents.Contains(RequireProcessPath(), StringComparison.Ordinal);
+    }
+
     private static string RequireProcessPath()
     {
         var processPath = Environment.ProcessPath;
@@ -135,6 +196,16 @@ X-GNOME-Autostart-enabled=true
 
     private static void RunAppleScript(params string[] scriptLines)
     {
+        RunAppleScriptInternal(scriptLines, captureOutput: false);
+    }
+
+    private static string RunAppleScriptWithOutput(params string[] scriptLines)
+    {
+        return RunAppleScriptInternal(scriptLines, captureOutput: true);
+    }
+
+    private static string RunAppleScriptInternal(string[] scriptLines, bool captureOutput)
+    {
         var startInfo = new ProcessStartInfo("/usr/bin/osascript")
         {
             UseShellExecute = false,
@@ -151,6 +222,7 @@ X-GNOME-Autostart-enabled=true
         using var process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("Unable to start osascript for macOS login item registration.");
 
+        var standardOutput = captureOutput ? process.StandardOutput.ReadToEnd() : string.Empty;
         var standardError = process.StandardError.ReadToEnd();
         process.WaitForExit();
         if (process.ExitCode != 0)
@@ -160,6 +232,8 @@ X-GNOME-Autostart-enabled=true
                     ? "macOS login item registration failed."
                     : $"macOS login item registration failed: {standardError.Trim()}");
         }
+
+        return standardOutput;
     }
 
     private static string EscapeAppleScriptString(string value) =>
