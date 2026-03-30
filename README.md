@@ -30,7 +30,7 @@ See [`docs/avalonia-rebuild-spec.md`](/Users/benharper/Coding/CBWSS-Sync/docs/av
 
 ## Release
 
-- Current target version: `0.1.10`
+- Current target version: `0.1.11`
 - GitHub Actions release workflow: [`.github/workflows/release.yml`](/Users/benharper/Coding/CBWSS-Sync/.github/workflows/release.yml)
 - Packaging scripts:
   - macOS: [`packaging/macos/package-app.sh`](/Users/benharper/Coding/CBWSS-Sync/packaging/macos/package-app.sh)
@@ -45,4 +45,4 @@ See [`docs/avalonia-rebuild-spec.md`](/Users/benharper/Coding/CBWSS-Sync/docs/av
 ## Notes
 
 - Local builds are still useful for testing.
-- Tagged releases like `v0.1.10` are intended to produce the official GitHub release artifacts.
+- Tagged releases like `v0.1.11` are intended to produce the official GitHub release artifacts.

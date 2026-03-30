@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="${ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
-VERSION="${VERSION:-0.1.10}"
+VERSION="${VERSION:-0.1.11}"
 RUNTIME="${RUNTIME:-osx-arm64}"
 BUILD_DIR="${BUILD_DIR:-$ROOT/src/CNCSync.App/bin/Release/net10.0/$RUNTIME/publish}"
 DIST_DIR="${DIST_DIR:-$ROOT/dist/macos}"
@@ -37,7 +37,7 @@ mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 mkdir -p "$DIST_DIR"
 
 xcrun swiftc -emit-library -framework Foundation -framework ServiceManagement "$BRIDGE_SOURCE" -o "$BUILD_DIR/$BRIDGE_NAME"
-"$ICON_SCRIPT" >/dev/null
+zsh "$ICON_SCRIPT" >/dev/null
 
 cp "$ROOT/packaging/macos/Info.plist" "$CONTENTS_DIR/Info.plist"
 cp -R "$BUILD_DIR"/. "$MACOS_DIR"/
