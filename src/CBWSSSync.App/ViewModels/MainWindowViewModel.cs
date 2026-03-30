@@ -56,6 +56,15 @@ public partial class MainWindowViewModel : ViewModelBase
     private string updateStatus = "Installed CNC Sync builds use the public update feed with Velopack.";
 
     [ObservableProperty]
+    private bool hasUpdatePrompt;
+
+    [ObservableProperty]
+    private string updatePromptTitle = "Software Updates";
+
+    [ObservableProperty]
+    private string updatePromptMessage = "CNC Sync can check for newer releases from the public update feed.";
+
+    [ObservableProperty]
     private string validationSummary = "Validation has not been run.";
 
     [ObservableProperty]
@@ -401,25 +410,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private async Task CheckForUpdatesAsync()
     {
-        try
-        {
-            CurrentTask = "Checking for updates";
-            var result = await _updateService.CheckForUpdatesAsync();
-            UpdateStatus = result.Message;
-            AddActivity(result.Message);
-            CurrentTask = result.Message;
-            OnPropertyChanged(nameof(CanApplyUpdate));
-            DownloadAndRestartUpdateCommand.NotifyCanExecuteChanged();
-        }
-        catch (Exception ex)
-        {
-            var message = $"Update check failed: {ex.Message}";
-            UpdateStatus = message;
-            AddActivity(message);
-            CurrentTask = message;
-            OnPropertyChanged(nameof(CanApplyUpdate));
-            DownloadAndRestartUpdateCommand.NotifyCanExecuteChanged();
-        }
+        await RunUpdateCheckAsync(silentIfCurrent: false);
     }
 
     [RelayCommand(CanExecute = nameof(CanApplyUpdate))]
@@ -444,6 +435,11 @@ public partial class MainWindowViewModel : ViewModelBase
             OnPropertyChanged(nameof(CanApplyUpdate));
             DownloadAndRestartUpdateCommand.NotifyCanExecuteChanged();
         }
+    }
+
+    public async Task<AppUpdateResult> CheckForUpdatesOnStartupAsync(CancellationToken cancellationToken = default)
+    {
+        return await RunUpdateCheckAsync(silentIfCurrent: true, cancellationToken);
     }
 
     [RelayCommand(CanExecute = nameof(CanStartMonitoring))]
@@ -999,6 +995,42 @@ public partial class MainWindowViewModel : ViewModelBase
         return assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
                ?? assembly.GetName().Version?.ToString()
                ?? "dev";
+    }
+
+    private async Task<AppUpdateResult> RunUpdateCheckAsync(bool silentIfCurrent, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            CurrentTask = "Checking for updates";
+            var result = await _updateService.CheckForUpdatesAsync(cancellationToken);
+            UpdateStatus = result.Message;
+            CurrentTask = result.Message;
+            UpdatePromptTitle = result.UpdateAvailable ? "Update Available" : "Software Updates";
+            UpdatePromptMessage = result.Message;
+            HasUpdatePrompt = result.UpdateAvailable || _updateService.CanApplyUpdate;
+
+            if (!silentIfCurrent || result.UpdateAvailable || !result.Success)
+            {
+                AddActivity(result.Message);
+            }
+
+            OnPropertyChanged(nameof(CanApplyUpdate));
+            DownloadAndRestartUpdateCommand.NotifyCanExecuteChanged();
+            return result;
+        }
+        catch (Exception ex)
+        {
+            var message = $"Update check failed: {ex.Message}";
+            UpdateStatus = message;
+            UpdatePromptTitle = "Software Updates";
+            UpdatePromptMessage = message;
+            HasUpdatePrompt = false;
+            AddActivity(message);
+            CurrentTask = message;
+            OnPropertyChanged(nameof(CanApplyUpdate));
+            DownloadAndRestartUpdateCommand.NotifyCanExecuteChanged();
+            return new AppUpdateResult(false, message);
+        }
     }
 
     private sealed class DesignSyncCoordinator : ISyncCoordinator

@@ -1,5 +1,6 @@
-using System.Text;
 using System.Runtime.Versioning;
+using System.Diagnostics;
+using System.Text;
 using Microsoft.Win32;
 
 namespace CBWSSSync.App.Services;
@@ -8,7 +9,6 @@ public sealed class LoginStartupService : ILoginStartupService
 {
     private const string WindowsRunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string WindowsRunValueName = "CNC Sync";
-    private const string MacLaunchAgentId = "com.3dtek.cncsync";
     private const string LinuxDesktopFileName = "cnc-sync.desktop";
 
     public Task ApplyAsync(bool enabled, CancellationToken cancellationToken = default)
@@ -53,44 +53,22 @@ public sealed class LoginStartupService : ILoginStartupService
 
     private static void ApplyMac(bool enabled)
     {
-        var launchAgentsDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.Personal),
-            "Library",
-            "LaunchAgents");
-        Directory.CreateDirectory(launchAgentsDir);
+        var appPath = ResolveMacLoginItemPath();
+        var escapedName = EscapeAppleScriptString("CNC Sync");
+        var escapedPath = EscapeAppleScriptString(appPath);
 
-        var plistPath = Path.Combine(launchAgentsDir, $"{MacLaunchAgentId}.plist");
+        RunAppleScript(
+            $"tell application \"System Events\" to delete every login item whose name is \"{escapedName}\"");
+
         if (!enabled)
         {
-            if (File.Exists(plistPath))
-            {
-                File.Delete(plistPath);
-            }
-
             return;
         }
 
-        var processPath = RequireProcessPath();
-        var escapedProcessPath = EscapeXml(processPath);
-        var escapedArgument = EscapeXml(AppLaunchArguments.LaunchAtLoginArgument);
-        var plist = $$"""
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-  <dict>
-    <key>Label</key>
-    <string>{{MacLaunchAgentId}}</string>
-    <key>ProgramArguments</key>
-    <array>
-      <string>{{escapedProcessPath}}</string>
-      <string>{{escapedArgument}}</string>
-    </array>
-    <key>RunAtLoad</key>
-    <true/>
-  </dict>
-</plist>
-""";
-        File.WriteAllText(plistPath, plist, Encoding.UTF8);
+        RunAppleScript(
+            "tell application \"System Events\"",
+            $"make login item at end with properties {{name:\"{escapedName}\", path:\"{escapedPath}\", hidden:false}}",
+            "end tell");
     }
 
     private static void ApplyLinux(bool enabled)
@@ -138,13 +116,56 @@ X-GNOME-Autostart-enabled=true
         return processPath;
     }
 
-    private static string EscapeXml(string value) =>
+    private static string ResolveMacLoginItemPath()
+    {
+        var processPath = RequireProcessPath();
+        var directory = new DirectoryInfo(Path.GetDirectoryName(processPath) ?? processPath);
+        while (directory is not null)
+        {
+            if (directory.Extension.Equals(".app", StringComparison.OrdinalIgnoreCase))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        return processPath;
+    }
+
+    private static void RunAppleScript(params string[] scriptLines)
+    {
+        var startInfo = new ProcessStartInfo("/usr/bin/osascript")
+        {
+            UseShellExecute = false,
+            RedirectStandardError = true,
+            RedirectStandardOutput = true
+        };
+
+        foreach (var line in scriptLines)
+        {
+            startInfo.ArgumentList.Add("-e");
+            startInfo.ArgumentList.Add(line);
+        }
+
+        using var process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException("Unable to start osascript for macOS login item registration.");
+
+        var standardError = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        if (process.ExitCode != 0)
+        {
+            throw new InvalidOperationException(
+                string.IsNullOrWhiteSpace(standardError)
+                    ? "macOS login item registration failed."
+                    : $"macOS login item registration failed: {standardError.Trim()}");
+        }
+    }
+
+    private static string EscapeAppleScriptString(string value) =>
         value
-            .Replace("&", "&amp;", StringComparison.Ordinal)
-            .Replace("<", "&lt;", StringComparison.Ordinal)
-            .Replace(">", "&gt;", StringComparison.Ordinal)
-            .Replace("\"", "&quot;", StringComparison.Ordinal)
-            .Replace("'", "&apos;", StringComparison.Ordinal);
+            .Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("\"", "\\\"", StringComparison.Ordinal);
 
     private static string EscapeDesktopExecArgument(string value)
     {

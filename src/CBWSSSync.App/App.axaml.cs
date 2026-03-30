@@ -6,6 +6,7 @@ using Avalonia.Data.Core.Plugins;
 using System.Linq;
 using Avalonia.Threading;
 using Avalonia.Markup.Xaml;
+using Avalonia.Controls.Notifications;
 using CBWSSSync.App.ViewModels;
 using CBWSSSync.App.Views;
 using CBWSSSync.Infrastructure.Configuration;
@@ -34,6 +35,7 @@ public partial class App : Application
     private NativeMenuItem? _trayStartMonitoringMenuItem;
     private NativeMenuItem? _trayStopMonitoringMenuItem;
     private CancellationTokenSource? _singleInstanceCts;
+    private WindowNotificationManager? _notificationManager;
 
     public override void Initialize()
     {
@@ -69,6 +71,11 @@ public partial class App : Application
             {
                 DataContext = _mainWindowViewModel,
             };
+            _notificationManager = new WindowNotificationManager(desktop.MainWindow)
+            {
+                Position = NotificationPosition.TopRight,
+                MaxItems = 3
+            };
 
             _singleInstanceCts = new CancellationTokenSource();
             _ = SingleInstanceSignal.RunServerAsync(
@@ -99,6 +106,8 @@ public partial class App : Application
                         HideMainWindow,
                         DispatcherPriority.Background);
                 }
+
+                _ = CheckForUpdatesOnStartupAsync();
             };
 
             if (initialSettings.WatchProfiles.Any(profile => profile.Enabled) &&
@@ -234,6 +243,24 @@ public partial class App : Application
         var tooltipLines = new List<string> { "CNC Sync", $"Status: {status}" };
         tooltipLines.AddRange(messages);
         _appTrayIcon.ToolTipText = string.Join(Environment.NewLine, tooltipLines);
+    }
+
+    private async Task CheckForUpdatesOnStartupAsync()
+    {
+        if (_mainWindowViewModel is null)
+        {
+            return;
+        }
+
+        var result = await _mainWindowViewModel.CheckForUpdatesOnStartupAsync();
+        if (result.UpdateAvailable)
+        {
+            _notificationManager?.Show(new Notification(
+                "Update Available",
+                result.Message,
+                NotificationType.Information,
+                TimeSpan.FromSeconds(10)));
+        }
     }
 
     private void InitializeTrayReferences()
