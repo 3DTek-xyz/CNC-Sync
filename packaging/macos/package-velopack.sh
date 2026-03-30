@@ -13,6 +13,8 @@ PACK_TITLE="${PACK_TITLE:-CNC Sync}"
 PACK_AUTHORS="${PACK_AUTHORS:-3DTek}"
 PLIST_PATH="${PLIST_PATH:-$ROOT/packaging/macos/Info.plist}"
 VPK_BIN="${VPK_BIN:-vpk}"
+BRIDGE_SOURCE="$ROOT/src/CBWSSSync.App/MacBridge/bridge.swift"
+BRIDGE_NAME="libcncsync-login-item-bridge.dylib"
 
 case "$RUNTIME" in
   osx-arm64)
@@ -29,6 +31,8 @@ esac
 
 rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR"
+
+xcrun swiftc -emit-library -framework Foundation -framework ServiceManagement "$BRIDGE_SOURCE" -o "$BUILD_DIR/$BRIDGE_NAME"
 
 "$VPK_BIN" '[osx]' pack \
   --packId "$PACK_ID" \

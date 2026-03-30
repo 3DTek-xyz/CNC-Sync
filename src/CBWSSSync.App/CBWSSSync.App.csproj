@@ -11,6 +11,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <RuntimeIdentifiers>win-x64;osx-arm64;osx-x64;linux-x64</RuntimeIdentifiers>
+    <MacLoginItemBridgeName>libcncsync-login-item-bridge.dylib</MacLoginItemBridgeName>
   </PropertyGroup>
 
   <ItemGroup>
@@ -43,4 +44,11 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
+
+  <Target Name="BuildMacLoginItemBridgeForBuild"
+          AfterTargets="Build"
+          Condition="$([MSBuild]::IsOSPlatform('OSX')) and ('$(RuntimeIdentifier)' == '' or $([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('osx-')))">
+    <Exec Command="xcrun swiftc -emit-library -framework Foundation -framework ServiceManagement &quot;$(MSBuildProjectDirectory)/MacBridge/bridge.swift&quot; -o &quot;$(TargetDir)$(MacLoginItemBridgeName)&quot;" />
+  </Target>
+
 </Project>

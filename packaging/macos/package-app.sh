@@ -11,6 +11,8 @@ APP_DIR="$DIST_DIR/CNC Sync.app"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
+BRIDGE_SOURCE="$ROOT/src/CBWSSSync.App/MacBridge/bridge.swift"
+BRIDGE_NAME="libcncsync-login-item-bridge.dylib"
 
 case "$RUNTIME" in
   osx-arm64)
@@ -31,6 +33,8 @@ LATEST_ZIP_PATH="$DIST_DIR/cnc-sync-$PACKAGE_SUFFIX-latest.zip"
 rm -rf "$APP_DIR"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 mkdir -p "$DIST_DIR"
+
+xcrun swiftc -emit-library -framework Foundation -framework ServiceManagement "$BRIDGE_SOURCE" -o "$BUILD_DIR/$BRIDGE_NAME"
 
 cp "$ROOT/packaging/macos/Info.plist" "$CONTENTS_DIR/Info.plist"
 cp -R "$BUILD_DIR"/. "$MACOS_DIR"/

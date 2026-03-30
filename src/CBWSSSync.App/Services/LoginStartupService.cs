@@ -1,6 +1,7 @@
 using System.Runtime.Versioning;
 using System.Diagnostics;
 using System.Text;
+using System.Runtime.InteropServices;
 using Microsoft.Win32;
 
 namespace CBWSSSync.App.Services;
@@ -10,6 +11,7 @@ public sealed class LoginStartupService : ILoginStartupService
     private const string WindowsRunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string WindowsRunValueName = "CNC Sync";
     private const string LinuxDesktopFileName = "cnc-sync.desktop";
+    private const string MacLoginItemBridgeName = "libcncsync-login-item-bridge.dylib";
 
     public Task<bool> IsEnabledAsync(CancellationToken cancellationToken = default)
     {
@@ -86,34 +88,16 @@ public sealed class LoginStartupService : ILoginStartupService
 
     private static void ApplyMac(bool enabled)
     {
-        var appPath = ResolveMacLoginItemPath();
-        var escapedName = EscapeAppleScriptString("CNC Sync");
-        var escapedPath = EscapeAppleScriptString(appPath);
-
-        RunAppleScript(
-            $"tell application \"System Events\" to delete every login item whose name is \"{escapedName}\"");
-
-        if (!enabled)
+        var code = enabled ? MacLoginItemBridge.Enable() : MacLoginItemBridge.Disable();
+        if (code is not 1 and not 0)
         {
-            return;
+            throw new InvalidOperationException(GetMacBridgeErrorMessage(code));
         }
-
-        RunAppleScript(
-            "tell application \"System Events\"",
-            $"make login item at end with properties {{name:\"{escapedName}\", path:\"{escapedPath}\", hidden:false}}",
-            "end tell");
     }
 
     private static bool IsMacEnabled()
     {
-        var appPath = ResolveMacLoginItemPath();
-        var escapedPath = EscapeAppleScriptString(appPath);
-        var result = RunAppleScriptWithOutput(
-            "tell application \"System Events\"",
-            $"get the count of (every login item whose path is \"{escapedPath}\")",
-            "end tell");
-
-        return string.Equals(result.Trim(), "1", StringComparison.Ordinal);
+        return MacLoginItemBridge.Status() == 1;
     }
 
     private static void ApplyLinux(bool enabled)
@@ -177,70 +161,6 @@ X-GNOME-Autostart-enabled=true
         return processPath;
     }
 
-    private static string ResolveMacLoginItemPath()
-    {
-        var processPath = RequireProcessPath();
-        var directory = new DirectoryInfo(Path.GetDirectoryName(processPath) ?? processPath);
-        while (directory is not null)
-        {
-            if (directory.Extension.Equals(".app", StringComparison.OrdinalIgnoreCase))
-            {
-                return directory.FullName;
-            }
-
-            directory = directory.Parent;
-        }
-
-        return processPath;
-    }
-
-    private static void RunAppleScript(params string[] scriptLines)
-    {
-        RunAppleScriptInternal(scriptLines, captureOutput: false);
-    }
-
-    private static string RunAppleScriptWithOutput(params string[] scriptLines)
-    {
-        return RunAppleScriptInternal(scriptLines, captureOutput: true);
-    }
-
-    private static string RunAppleScriptInternal(string[] scriptLines, bool captureOutput)
-    {
-        var startInfo = new ProcessStartInfo("/usr/bin/osascript")
-        {
-            UseShellExecute = false,
-            RedirectStandardError = true,
-            RedirectStandardOutput = true
-        };
-
-        foreach (var line in scriptLines)
-        {
-            startInfo.ArgumentList.Add("-e");
-            startInfo.ArgumentList.Add(line);
-        }
-
-        using var process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException("Unable to start osascript for macOS login item registration.");
-
-        var standardOutput = captureOutput ? process.StandardOutput.ReadToEnd() : string.Empty;
-        var standardError = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-        if (process.ExitCode != 0)
-        {
-            throw new InvalidOperationException(
-                string.IsNullOrWhiteSpace(standardError)
-                    ? "macOS login item registration failed."
-                    : $"macOS login item registration failed: {standardError.Trim()}");
-        }
-
-        return standardOutput;
-    }
-
-    private static string EscapeAppleScriptString(string value) =>
-        value
-            .Replace("\\", "\\\\", StringComparison.Ordinal)
-            .Replace("\"", "\\\"", StringComparison.Ordinal);
-
     private static string EscapeDesktopExecArgument(string value)
     {
         var escaped = value
@@ -250,5 +170,110 @@ X-GNOME-Autostart-enabled=true
             .Replace("$", "\\$", StringComparison.Ordinal);
 
         return $"\"{escaped}\"";
+    }
+
+    private static string GetMacBridgeErrorMessage(int code)
+    {
+        var detail = MacLoginItemBridge.CopyLastError();
+        return code switch
+        {
+            -2 => string.IsNullOrWhiteSpace(detail)
+                ? "macOS login items require macOS 13 or later."
+                : detail,
+            2 => "macOS requires approval before CNC Sync can be enabled as a login item.",
+            _ => string.IsNullOrWhiteSpace(detail)
+                ? "macOS login item registration failed."
+                : $"macOS login item registration failed: {detail}"
+        };
+    }
+
+    private static class MacLoginItemBridge
+    {
+        private delegate int StatusDelegate();
+        private delegate int ToggleDelegate();
+        private delegate IntPtr CopyLastErrorDelegate();
+        private delegate void FreeStringDelegate(IntPtr pointer);
+
+        private static readonly object Sync = new();
+        private static IntPtr _libraryHandle;
+        private static StatusDelegate? _status;
+        private static ToggleDelegate? _enable;
+        private static ToggleDelegate? _disable;
+        private static CopyLastErrorDelegate? _copyLastError;
+        private static FreeStringDelegate? _freeString;
+
+        public static int Status()
+        {
+            EnsureLoaded();
+            return _status!();
+        }
+
+        public static int Enable()
+        {
+            EnsureLoaded();
+            return _enable!();
+        }
+
+        public static int Disable()
+        {
+            EnsureLoaded();
+            return _disable!();
+        }
+
+        public static string? CopyLastError()
+        {
+            EnsureLoaded();
+            var pointer = _copyLastError!();
+            if (pointer == IntPtr.Zero)
+            {
+                return null;
+            }
+
+            try
+            {
+                return Marshal.PtrToStringAnsi(pointer);
+            }
+            finally
+            {
+                _freeString!(pointer);
+            }
+        }
+
+        private static void EnsureLoaded()
+        {
+            lock (Sync)
+            {
+                if (_libraryHandle != IntPtr.Zero)
+                {
+                    return;
+                }
+
+                var processPath = RequireProcessPath();
+                var processDirectory = Path.GetDirectoryName(processPath);
+                if (string.IsNullOrWhiteSpace(processDirectory))
+                {
+                    throw new InvalidOperationException("Unable to determine the app directory for macOS login item registration.");
+                }
+
+                var bridgePath = Path.Combine(processDirectory, MacLoginItemBridgeName);
+                if (!File.Exists(bridgePath))
+                {
+                    throw new InvalidOperationException($"macOS login item bridge was not found at {bridgePath}.");
+                }
+
+                _libraryHandle = NativeLibrary.Load(bridgePath);
+                _status = GetDelegate<StatusDelegate>("cnc_sync_login_item_status");
+                _enable = GetDelegate<ToggleDelegate>("cnc_sync_login_item_enable");
+                _disable = GetDelegate<ToggleDelegate>("cnc_sync_login_item_disable");
+                _copyLastError = GetDelegate<CopyLastErrorDelegate>("cnc_sync_login_item_copy_last_error");
+                _freeString = GetDelegate<FreeStringDelegate>("cnc_sync_login_item_free_string");
+            }
+        }
+
+        private static T GetDelegate<T>(string exportName) where T : Delegate
+        {
+            var symbol = NativeLibrary.GetExport(_libraryHandle, exportName);
+            return Marshal.GetDelegateForFunctionPointer<T>(symbol);
+        }
     }
 }
