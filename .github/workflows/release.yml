@@ -72,12 +72,14 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Publish macOS build
         run: dotnet publish src/CBWSSSync.App/CBWSSSync.App.csproj -c Release -r ${{ matrix.runtime }} --self-contained true -p:UseAppHost=true -p:Version=${{ steps.version.outputs.version }} -p:InformationalVersion=${{ steps.version.outputs.version }}
-      - name: Package macOS app
-        run: VERSION=${{ steps.version.outputs.version }} RUNTIME=${{ matrix.runtime }} zsh ./packaging/macos/package-app.sh
+      - name: Install Velopack CLI
+        run: dotnet tool install --global vpk --version 0.0.1298
+      - name: Package macOS Velopack release
+        run: VERSION=${{ steps.version.outputs.version }} RUNTIME=${{ matrix.runtime }} zsh ./packaging/macos/package-velopack.sh
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: dist/macos/*.zip
+          path: dist/macos/velopack-${{ matrix.runtime }}/*
 
   build-linux:
     runs-on: ubuntu-latest
@@ -99,12 +101,16 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Publish Linux build
         run: dotnet publish src/CBWSSSync.App/CBWSSSync.App.csproj -c Release -r linux-x64 --self-contained true -p:Version=${{ steps.version.outputs.version }} -p:InformationalVersion=${{ steps.version.outputs.version }}
-      - name: Package Linux tarball
-        run: VERSION=${{ steps.version.outputs.version }} bash ./packaging/linux/package-tarball.sh
+      - name: Install Linux packaging dependency
+        run: sudo apt-get update && sudo apt-get install -y squashfs-tools
+      - name: Install Velopack CLI
+        run: dotnet tool install --global vpk --version 0.0.1298
+      - name: Package Linux Velopack release
+        run: VERSION=${{ steps.version.outputs.version }} bash ./packaging/linux/package-velopack.sh
       - uses: actions/upload-artifact@v4
         with:
           name: linux-release
-          path: dist/linux/*.tar.gz
+          path: dist/linux/velopack-linux-x64/*
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -122,9 +128,9 @@ jobs:
         with:
           files: |
             artifacts/windows-release/*
-            artifacts/macos-release-arm64/*.zip
-            artifacts/macos-release-x64/*.zip
-            artifacts/linux-release/*.tar.gz
+            artifacts/macos-release-arm64/*
+            artifacts/macos-release-x64/*
+            artifacts/linux-release/*
 
   deploy-pages:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -149,13 +155,18 @@ jobs:
           mkdir -p site
           cp -R docs/. site/
           mkdir -p site/downloads/win site/downloads/macos site/downloads/linux
-          mkdir -p site/updates/win
+          mkdir -p site/updates
           cp artifacts/windows-release/3DTek.CNCSync-win-Setup.exe site/downloads/win/
           cp artifacts/windows-release/3DTek.CNCSync-win-Portable.zip site/downloads/win/
+          cp artifacts/macos-release-arm64/cnc-sync-macos-arm64-latest.pkg site/downloads/macos/
           cp artifacts/macos-release-arm64/cnc-sync-macos-arm64-latest.zip site/downloads/macos/
+          cp artifacts/macos-release-x64/cnc-sync-macos-x64-latest.pkg site/downloads/macos/
           cp artifacts/macos-release-x64/cnc-sync-macos-x64-latest.zip site/downloads/macos/
-          cp artifacts/linux-release/cnc-sync-linux-x64-latest.tar.gz site/downloads/linux/
-          cp artifacts/windows-release/* site/updates/win/
+          cp artifacts/linux-release/cnc-sync-linux-x64-latest.AppImage site/downloads/linux/
+          cp artifacts/windows-release/* site/updates/
+          cp artifacts/macos-release-arm64/* site/updates/
+          cp artifacts/macos-release-x64/* site/updates/
+          cp artifacts/linux-release/* site/updates/
           touch site/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

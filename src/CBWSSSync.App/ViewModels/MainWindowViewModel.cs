@@ -19,6 +19,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly ISyncCoordinator _syncCoordinator;
     private readonly IFtpService _ftpService;
     private readonly IAppUpdateService _updateService;
+    private readonly ILoginStartupService _loginStartupService;
     private readonly SemaphoreSlim _saveLock = new(1, 1);
     private bool _isApplyingSettings;
 
@@ -50,7 +51,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private string saveMessage = "Changes save automatically.";
 
     [ObservableProperty]
-    private string updateStatus = "Windows installer and updates use the public CNC Sync update feed with Velopack.";
+    private string updateStatus = "Installed CNC Sync builds use the public update feed with Velopack.";
 
     [ObservableProperty]
     private string validationSummary = "Validation has not been run.";
@@ -85,6 +86,7 @@ public partial class MainWindowViewModel : ViewModelBase
         ISyncCoordinator syncCoordinator,
         IFtpService ftpService,
         IAppUpdateService updateService,
+        ILoginStartupService loginStartupService,
         AppSettings initialSettings)
     {
         _settingsStore = settingsStore;
@@ -92,6 +94,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _syncCoordinator = syncCoordinator;
         _ftpService = ftpService;
         _updateService = updateService;
+        _loginStartupService = loginStartupService;
         PropertyChanged += OnViewModelPropertyChanged;
         WatchProfiles.CollectionChanged += OnWatchProfilesCollectionChanged;
         FtpDestinations.CollectionChanged += OnFtpDestinationsCollectionChanged;
@@ -100,8 +103,8 @@ public partial class MainWindowViewModel : ViewModelBase
         SettingsPath = _settingsStore.SettingsFilePath;
         ScriptsPath = _settingsStore.ScriptsDirectoryPath;
         UpdateStatus = _updateService.IsSupported
-            ? "Update checks are available for installed Windows releases from the public CNC Sync update feed."
-            : "Automatic updates are currently enabled for installed Windows builds only.";
+            ? "Update checks are available for installed packaged releases from the public CNC Sync update feed."
+            : "Automatic updates are only available on supported packaged desktop builds.";
         Apply(initialSettings);
         ValidationSummary = "Run validation to check saved settings.";
 
@@ -120,6 +123,7 @@ public partial class MainWindowViewModel : ViewModelBase
             new DesignSyncCoordinator(),
             new DesignFtpService(),
             new DesignAppUpdateService(),
+            new DesignLoginStartupService(),
             AppSettings.CreateDefault())
     {
     }
@@ -393,25 +397,49 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private async Task CheckForUpdatesAsync()
     {
-        CurrentTask = "Checking for updates";
-        var result = await _updateService.CheckForUpdatesAsync();
-        UpdateStatus = result.Message;
-        AddActivity(result.Message);
-        CurrentTask = result.Message;
-        OnPropertyChanged(nameof(CanApplyUpdate));
-        DownloadAndRestartUpdateCommand.NotifyCanExecuteChanged();
+        try
+        {
+            CurrentTask = "Checking for updates";
+            var result = await _updateService.CheckForUpdatesAsync();
+            UpdateStatus = result.Message;
+            AddActivity(result.Message);
+            CurrentTask = result.Message;
+            OnPropertyChanged(nameof(CanApplyUpdate));
+            DownloadAndRestartUpdateCommand.NotifyCanExecuteChanged();
+        }
+        catch (Exception ex)
+        {
+            var message = $"Update check failed: {ex.Message}";
+            UpdateStatus = message;
+            AddActivity(message);
+            CurrentTask = message;
+            OnPropertyChanged(nameof(CanApplyUpdate));
+            DownloadAndRestartUpdateCommand.NotifyCanExecuteChanged();
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanApplyUpdate))]
     private async Task DownloadAndRestartUpdateAsync()
     {
-        CurrentTask = "Downloading update";
-        var result = await _updateService.DownloadAndApplyUpdateAsync();
-        UpdateStatus = result.Message;
-        AddActivity(result.Message);
-        CurrentTask = result.Message;
-        OnPropertyChanged(nameof(CanApplyUpdate));
-        DownloadAndRestartUpdateCommand.NotifyCanExecuteChanged();
+        try
+        {
+            CurrentTask = "Downloading update";
+            var result = await _updateService.DownloadAndApplyUpdateAsync();
+            UpdateStatus = result.Message;
+            AddActivity(result.Message);
+            CurrentTask = result.Message;
+            OnPropertyChanged(nameof(CanApplyUpdate));
+            DownloadAndRestartUpdateCommand.NotifyCanExecuteChanged();
+        }
+        catch (Exception ex)
+        {
+            var message = $"Update download failed: {ex.Message}";
+            UpdateStatus = message;
+            AddActivity(message);
+            CurrentTask = message;
+            OnPropertyChanged(nameof(CanApplyUpdate));
+            DownloadAndRestartUpdateCommand.NotifyCanExecuteChanged();
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanStartMonitoring))]
@@ -925,6 +953,7 @@ public partial class MainWindowViewModel : ViewModelBase
             await _saveLock.WaitAsync();
             var settings = ToSettings();
             await _settingsStore.SaveAsync(settings);
+            await _loginStartupService.ApplyAsync(settings.LaunchAtLogin);
 
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
@@ -953,6 +982,11 @@ public partial class MainWindowViewModel : ViewModelBase
             Task.FromResult(AppSettings.CreateDefault());
 
         public Task SaveAsync(AppSettings settings, CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+
+    private sealed class DesignLoginStartupService : ILoginStartupService
+    {
+        public Task ApplyAsync(bool enabled, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
     private sealed class DesignSyncCoordinator : ISyncCoordinator

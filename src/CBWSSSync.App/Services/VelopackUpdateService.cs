@@ -5,10 +5,13 @@ namespace CBWSSSync.App.Services;
 
 public sealed class VelopackUpdateService : IAppUpdateService
 {
-    private const string UpdateFeedUrl = "https://3dtek-xyz.github.io/CNC-FTPSync/updates/win";
+    private const string UpdateFeedUrl = "https://3dtek-xyz.github.io/CNC-FTPSync/updates";
     private UpdateInfo? _pendingUpdate;
 
-    public bool IsSupported => OperatingSystem.IsWindows();
+    public bool IsSupported =>
+        OperatingSystem.IsWindows() ||
+        OperatingSystem.IsMacOS() ||
+        OperatingSystem.IsLinux();
 
     public bool CanApplyUpdate => _pendingUpdate is not null;
 
@@ -16,13 +19,13 @@ public sealed class VelopackUpdateService : IAppUpdateService
     {
         if (!IsSupported)
         {
-            return new AppUpdateResult(false, "Automatic updates are currently enabled for installed Windows builds only.");
+            return new AppUpdateResult(false, "Automatic updates are only available on supported packaged desktop builds.");
         }
 
         var manager = CreateManager();
         if (!manager.IsInstalled)
         {
-            return new AppUpdateResult(false, "Update checks are available in installed Windows builds, not dotnet-run or unpackaged publishes.");
+            return new AppUpdateResult(false, "Update checks are available in installed packaged builds, not dotnet-run or unpackaged publishes.");
         }
 
         if (manager.UpdatePendingRestart is not null)
@@ -47,13 +50,13 @@ public sealed class VelopackUpdateService : IAppUpdateService
     {
         if (!IsSupported)
         {
-            return new AppUpdateResult(false, "Automatic updates are currently enabled for installed Windows builds only.");
+            return new AppUpdateResult(false, "Automatic updates are only available on supported packaged desktop builds.");
         }
 
         var manager = CreateManager();
         if (!manager.IsInstalled)
         {
-            return new AppUpdateResult(false, "Update apply is available in installed Windows builds, not dotnet-run or unpackaged publishes.");
+            return new AppUpdateResult(false, "Update apply is available in installed packaged builds, not dotnet-run or unpackaged publishes.");
         }
 
         if (_pendingUpdate is null)

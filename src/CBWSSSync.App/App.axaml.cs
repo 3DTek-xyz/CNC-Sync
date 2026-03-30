@@ -55,14 +55,15 @@ public partial class App : Application
             var projectProcessor = new StagingProjectProcessor();
             var ftpService = new FtpService();
             var updateService = new VelopackUpdateService();
+            var loginStartupService = new LoginStartupService();
             var coordinator = new SyncCoordinator(folderMonitor, projectProcessor, ftpService, validator);
             var initialSettings = settingsStore.Load();
-            _mainWindowViewModel = new MainWindowViewModel(settingsStore, validator, coordinator, ftpService, updateService, initialSettings);
+            _mainWindowViewModel = new MainWindowViewModel(settingsStore, validator, coordinator, ftpService, updateService, loginStartupService, initialSettings);
             coordinator.StatusChanged += OnCoordinatorStatusChanged;
             coordinator.ActivityLogged += OnCoordinatorActivityLogged;
-            // On macOS we currently prefer a visible first launch over risking an inaccessible
-            // menu-bar-only startup if the tray icon fails to appear.
-            _initialTrayHidePending = initialSettings.StartMinimized && !OperatingSystem.IsMacOS();
+            _initialTrayHidePending = Program.LaunchedAtLogin &&
+                                      initialSettings.StartMinimized &&
+                                      !OperatingSystem.IsMacOS();
 
             desktop.MainWindow = new MainWindow
             {

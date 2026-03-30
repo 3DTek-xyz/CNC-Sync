@@ -1,6 +1,6 @@
 param(
     [string]$Root = (Resolve-Path (Join-Path $PSScriptRoot "..\\..")).Path,
-    [string]$Version = "0.1.2",
+    [string]$Version = "0.1.3",
     [string]$BuildDir = "",
     [string]$DistDir = "",
     [string]$PackId = "3DTek.CNCSync",
@@ -34,7 +34,9 @@ $args = @(
     "--mainExe", $MainExe,
     "--packTitle", $PackTitle,
     "--packAuthors", $PackAuthors,
-    "--outputDir", $DistDir
+    "--outputDir", $DistDir,
+    "--runtime", "win-x64",
+    "--channel", "win"
 )
 
 if (Test-Path $IconPath) {
