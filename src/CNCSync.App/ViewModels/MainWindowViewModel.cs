@@ -26,9 +26,11 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IVpnService _vpnService;
     private readonly SemaphoreSlim _saveLock = new(1, 1);
     private readonly Lock _activityLogFileLock = new();
+    private readonly DispatcherTimer _scheduledCatchUpTimer = new();
     private CancellationTokenSource? _autoSaveCts;
     private bool _restartMonitoringAfterSave;
     private bool _isApplyingSettings;
+    private bool _scheduledCatchUpInProgress;
 
     [ObservableProperty]
     private string appTitle = "CNC Sync";
@@ -59,6 +61,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool startMinimized = true;
+
+    [ObservableProperty]
+    private bool scheduledCatchUpEnabled;
+
+    [ObservableProperty]
+    private int scheduledCatchUpIntervalMinutes = 10;
 
     [ObservableProperty]
     private string saveMessage = "Changes save automatically.";
@@ -122,6 +130,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _updateService = updateService;
         _loginStartupService = loginStartupService;
         _vpnService = vpnService;
+        _scheduledCatchUpTimer.Tick += OnScheduledCatchUpTimerTick;
         PropertyChanged += OnViewModelPropertyChanged;
         WatchProfiles.CollectionChanged += OnWatchProfilesCollectionChanged;
         Destinations.CollectionChanged += OnDestinationsCollectionChanged;
@@ -143,6 +152,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         AddActivity("App shell created.");
         AddActivity("Initial settings loaded.");
+        UpdateScheduledCatchUpTimer();
         _ = RefreshVpnConnectionsCoreAsync(logResult: false);
     }
 
@@ -172,6 +182,14 @@ public partial class MainWindowViewModel : ViewModelBase
     public ObservableCollection<RemoteBrowserItemViewModel> RemoteBrowserItems { get; } = [];
     public ObservableCollection<VpnConnectionOptionViewModel> AvailableVpnConnectionOptions { get; } =
         [new(string.Empty, "(None)")];
+    public ObservableCollection<CatchUpIntervalOptionViewModel> AvailableCatchUpIntervals { get; } =
+    [
+        new(1, "1 minute"),
+        new(5, "5 minutes"),
+        new(10, "10 minutes"),
+        new(30, "30 minutes"),
+        new(60, "1 hour")
+    ];
 
     public IReadOnlyList<ProcessingMode> AvailableProcessingModes { get; } = Enum.GetValues<ProcessingMode>();
 
@@ -197,8 +215,28 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     public string ManualActionSummary => SelectedManualWatchProfile is null
-        ? "Choose a watch profile to check its watch folder against the selected destination."
-        : $"Catch-up will scan '{SelectedManualWatchProfile.DisplayName}' and only upload items the selected destination does not already have.";
+        ? "Choose a watch profile to retry any staged items still waiting for delivery."
+        : $"Catch-up will retry any pending staged items for '{SelectedManualWatchProfile.DisplayName}'. Successful uploads are removed from staging.";
+
+    public string ScheduledCatchUpSummary => ScheduledCatchUpEnabled
+        ? $"Scheduled catch-up is on and will retry staged items every {FormatMinutes(ScheduledCatchUpIntervalMinutes)}."
+        : "Scheduled catch-up is off. Only manual catch-up will retry staged items left in staging.";
+
+    public CatchUpIntervalOptionViewModel? SelectedCatchUpIntervalOption
+    {
+        get => AvailableCatchUpIntervals.FirstOrDefault(option => option.Minutes == ScheduledCatchUpIntervalMinutes)
+               ?? AvailableCatchUpIntervals.FirstOrDefault();
+        set
+        {
+            if (value is null)
+            {
+                return;
+            }
+
+            ScheduledCatchUpIntervalMinutes = value.Minutes;
+            OnPropertyChanged();
+        }
+    }
 
     public DestinationItemViewModel? SelectedProfileDestination
     {
@@ -325,6 +363,31 @@ public partial class MainWindowViewModel : ViewModelBase
     partial void OnSelectedManualWatchProfileChanged(WatchProfileItemViewModel? value)
     {
         OnPropertyChanged(nameof(ManualActionSummary));
+    }
+
+    partial void OnScheduledCatchUpEnabledChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ScheduledCatchUpSummary));
+        if (_isApplyingSettings)
+        {
+            return;
+        }
+
+        RequestAutoSave(restartMonitoringAfterSave: false);
+        UpdateScheduledCatchUpTimer();
+    }
+
+    partial void OnScheduledCatchUpIntervalMinutesChanged(int value)
+    {
+        OnPropertyChanged(nameof(SelectedCatchUpIntervalOption));
+        OnPropertyChanged(nameof(ScheduledCatchUpSummary));
+        if (_isApplyingSettings)
+        {
+            return;
+        }
+
+        RequestAutoSave(restartMonitoringAfterSave: false);
+        UpdateScheduledCatchUpTimer();
     }
 
     [RelayCommand]
@@ -684,7 +747,7 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        CurrentTask = $"Checking destination for missing items in {SelectedManualWatchProfile.DisplayName}";
+        CurrentTask = $"Retrying staged items for {SelectedManualWatchProfile.DisplayName}";
         var result = await _syncCoordinator.CatchUpMissingItemsAsync(
             SelectedManualWatchProfile.ToSettings(),
             destination.ToSettings(),
@@ -739,6 +802,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
         LaunchAtLogin = settings.LaunchAtLogin;
         StartMinimized = settings.StartMinimized;
+        ScheduledCatchUpEnabled = settings.ScheduledCatchUpEnabled;
+        ScheduledCatchUpIntervalMinutes = settings.ScheduledCatchUpIntervalMinutes;
 
         Destinations.Clear();
         foreach (var destination in settings.Destinations)
@@ -766,6 +831,7 @@ public partial class MainWindowViewModel : ViewModelBase
             : WatchProfiles.FirstOrDefault();
         ResetRemoteBrowserState(SelectedDestination);
         _isApplyingSettings = false;
+        UpdateScheduledCatchUpTimer();
     }
 
     private AppSettings ToSettings() =>
@@ -773,6 +839,8 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             LaunchAtLogin = LaunchAtLogin,
             StartMinimized = StartMinimized,
+            ScheduledCatchUpEnabled = ScheduledCatchUpEnabled,
+            ScheduledCatchUpIntervalMinutes = ScheduledCatchUpIntervalMinutes,
             Destinations = Destinations.Select(destination => destination.ToSettings()).ToList(),
             ProcessingSetups = ProcessingSetups.Select(setup => setup.ToSettings()).ToList(),
             WatchProfiles = WatchProfiles.Select(profile => profile.ToSettings()).ToList()
@@ -878,6 +946,87 @@ public partial class MainWindowViewModel : ViewModelBase
             RequestAutoSave(restartMonitoringAfterSave: false);
         }
     }
+
+    private async void OnScheduledCatchUpTimerTick(object? sender, EventArgs e)
+    {
+        if (_scheduledCatchUpInProgress)
+        {
+            return;
+        }
+
+        _scheduledCatchUpInProgress = true;
+        try
+        {
+            await RunScheduledCatchUpAsync();
+        }
+        catch (Exception ex)
+        {
+            var message = $"Scheduled catch-up failed: {ex.Message}";
+            AddActivity(message);
+            CurrentTask = message;
+        }
+        finally
+        {
+            _scheduledCatchUpInProgress = false;
+        }
+    }
+
+    private async Task RunScheduledCatchUpAsync()
+    {
+        var catchUpCandidates = WatchProfiles
+            .Select(profile => new
+            {
+                Profile = profile,
+                Destination = Destinations.FirstOrDefault(destination => string.Equals(destination.Id, profile.DestinationId, StringComparison.OrdinalIgnoreCase)),
+                ProcessingSetup = ProcessingSetups.FirstOrDefault(setup => string.Equals(setup.Id, profile.ProcessingSetupId, StringComparison.OrdinalIgnoreCase))
+            })
+            .Where(item => item.Destination is not null && item.ProcessingSetup is not null)
+            .ToList();
+
+        foreach (var candidate in catchUpCandidates)
+        {
+            var profileSettings = candidate.Profile.ToSettings();
+            if (!Directory.Exists(profileSettings.StagingFolder))
+            {
+                continue;
+            }
+
+            if (!Directory.EnumerateFileSystemEntries(profileSettings.StagingFolder, "*", SearchOption.TopDirectoryOnly)
+                    .Any(path => !FileSystemItemFilter.ShouldIgnoreFileSystemItem(Path.GetFileName(path))))
+            {
+                continue;
+            }
+
+            var result = await _syncCoordinator.CatchUpMissingItemsAsync(
+                profileSettings,
+                candidate.Destination!.ToSettings(),
+                candidate.ProcessingSetup!.ToSettings());
+
+            LastProcessingSummary = result.Message;
+            CurrentTask = result.Message;
+        }
+    }
+
+    private void UpdateScheduledCatchUpTimer()
+    {
+        _scheduledCatchUpTimer.Stop();
+
+        if (!ScheduledCatchUpEnabled)
+        {
+            return;
+        }
+
+        var minutes = ScheduledCatchUpIntervalMinutes <= 0 ? 10 : ScheduledCatchUpIntervalMinutes;
+        _scheduledCatchUpTimer.Interval = TimeSpan.FromMinutes(minutes);
+        _scheduledCatchUpTimer.Start();
+    }
+
+    private static string FormatMinutes(int minutes) => minutes switch
+    {
+        1 => "1 minute",
+        60 => "1 hour",
+        _ => $"{minutes} minutes"
+    };
 
     private void ResetRemoteBrowserState(DestinationItemViewModel? destination)
     {

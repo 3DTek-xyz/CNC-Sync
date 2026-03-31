@@ -90,49 +90,28 @@ public sealed class SyncCoordinator : ISyncCoordinator
 
         try
         {
-            var remoteDirectoryPath = BuildRemoteDirectoryPath(destination, profile);
-            var remoteEntriesResult = await _destinationService.ListRootEntriesAsync(destination, remoteDirectoryPath, cancellationToken);
-            if (!remoteEntriesResult.Success)
-            {
-                LogActivity(remoteEntriesResult.Message, profile.Name);
-                SetStatus(IsRunning ? "Running" : "Stopped");
-                return (false, remoteEntriesResult.Message);
-            }
-
-            var remoteEntries = remoteEntriesResult.Entries;
-            var localItems = Directory
-                .EnumerateFileSystemEntries(profile.WatchFolder, "*", SearchOption.TopDirectoryOnly)
-                .Where(path => !FileSystemItemFilter.ShouldIgnoreFileSystemItem(Path.GetFileName(path)))
+            var pendingItems = EnumeratePendingStagedItems(profile)
                 .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            var missingItems = new List<string>();
-            foreach (var localItem in localItems)
+            if (pendingItems.Count == 0)
             {
-                if (!await RemoteContainsItemAsync(remoteEntries, localItem, destination, remoteDirectoryPath, cancellationToken))
-                {
-                    missingItems.Add(localItem);
-                }
-            }
-
-            if (missingItems.Count == 0)
-            {
-                var upToDateMessage = $"Manual catch-up found nothing missing on the destination for {profile.Name}.";
+                var upToDateMessage = $"Manual catch-up found no pending staged items for {profile.Name}.";
                 LogActivity(upToDateMessage, profile.Name);
                 SetStatus(IsRunning ? "Running" : "Stopped");
                 return (true, upToDateMessage);
             }
 
             LogActivity(
-                BuildMissingItemsMessage(missingItems, localItems.Count),
+                BuildPendingItemsMessage(pendingItems),
                 profile.Name);
 
             var uploadedCount = 0;
             var failedCount = 0;
-            foreach (var missingItem in missingItems)
+            foreach (var pendingItem in pendingItems)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var result = await UploadMissingItemAsync(missingItem, profile, destination, processingSetup, cancellationToken);
+                var result = await UploadPendingItemAsync(pendingItem, profile, destination, processingSetup, cancellationToken);
                 
                 if (result.Success)
                 {
@@ -146,11 +125,11 @@ public sealed class SyncCoordinator : ISyncCoordinator
 
             var summaryMessage =
                 failedCount == 0
-                    ? $"Manual catch-up finished for {profile.Name}: uploaded {uploadedCount} missing item(s), skipped {localItems.Count - missingItems.Count} already present item(s)."
-                    : $"Manual catch-up finished for {profile.Name}: uploaded {uploadedCount} missing item(s), failed {failedCount} missing item(s), skipped {localItems.Count - missingItems.Count} already present item(s).";
+                    ? $"Manual catch-up finished for {profile.Name}: uploaded {uploadedCount} pending staged item(s)."
+                    : $"Manual catch-up finished for {profile.Name}: uploaded {uploadedCount} pending staged item(s), failed {failedCount} item(s).";
             LogActivity(summaryMessage, profile.Name);
             SetStatus(IsRunning ? "Running" : "Stopped");
-            return (failedCount == 0 && uploadedCount == missingItems.Count, summaryMessage);
+            return (failedCount == 0 && uploadedCount == pendingItems.Count, summaryMessage);
         }
         catch (Exception ex)
         {
@@ -161,43 +140,52 @@ public sealed class SyncCoordinator : ISyncCoordinator
         }
     }
 
-    private async Task<ProcessingResult> UploadMissingItemAsync(
-        string sourcePath,
+    private async Task<ProcessingResult> UploadPendingItemAsync(
+        string stagedPath,
         WatchProfileSettings profile,
         DestinationSettings destination,
         ProcessingSetupSettings processingSetup,
         CancellationToken cancellationToken)
     {
-        var stagedOutputPath = GetStableStagedOutputPath(profile, sourcePath);
-        var remoteFolderName = Directory.Exists(sourcePath)
-            ? Path.GetFileName(sourcePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
-            : null;
-
-        if (Directory.Exists(stagedOutputPath) &&
-            Directory.EnumerateFiles(stagedOutputPath, "*", SearchOption.AllDirectories).Any())
+        var sourceDisplayName = Path.GetFileName(stagedPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        if (!Directory.Exists(stagedPath) && !File.Exists(stagedPath))
         {
-            LogActivity($"Manual catch-up reusing staged output for {Path.GetFileName(sourcePath)}.", profile.Name);
-            return await UploadPreparedOutputAsync(
-                new ProcessingResult
-                {
-                    Success = true,
-                    Message = $"Reused staged output from {stagedOutputPath}",
-                    SourcePath = sourcePath,
-                    OutputPath = stagedOutputPath,
-                    RemoteFolderName = remoteFolderName,
-                    StartedAtUtc = DateTime.UtcNow,
-                    FinishedAtUtc = DateTime.UtcNow,
-                    ProcessedFiles = FileSystemItemFilter.EnumerateIncludedFiles(stagedOutputPath)
-                        .Select(path => Path.GetRelativePath(stagedOutputPath, path))
-                        .ToList()
-                },
-                profile,
-                destination,
-                processingSetup,
-                cancellationToken);
+            var missingOutputMessage =
+                $"Pending staged output for {sourceDisplayName} is no longer on local disk: {stagedPath}";
+            LogActivity(missingOutputMessage, profile.Name);
+            return new ProcessingResult
+            {
+                Success = false,
+                Message = missingOutputMessage,
+                SourcePath = stagedPath,
+                OutputPath = stagedPath,
+                StartedAtUtc = DateTime.UtcNow,
+                FinishedAtUtc = DateTime.UtcNow,
+                Errors = [missingOutputMessage]
+            };
         }
 
-        return await ExecuteProcessAsync(sourcePath, profile, destination, processingSetup, shouldUpload: true, cancellationToken);
+        var appendFolderName = ShouldAppendStagedFolderName(stagedPath, profile);
+        var sourcePath = ResolveCurrentSourcePath(profile, stagedPath);
+        LogActivity($"Manual catch-up retrying staged output for {sourceDisplayName}.", profile.Name);
+        return await UploadPreparedOutputAsync(
+            new ProcessingResult
+            {
+                Success = true,
+                Message = $"Reused staged output from {stagedPath}",
+                SourcePath = sourcePath,
+                OutputPath = stagedPath,
+                RemoteFolderName = appendFolderName ? sourceDisplayName : null,
+                StartedAtUtc = DateTime.UtcNow,
+                FinishedAtUtc = DateTime.UtcNow,
+                ProcessedFiles = FileSystemItemFilter.EnumerateIncludedFiles(stagedPath)
+                    .Select(path => Path.GetRelativePath(stagedPath, path))
+                    .ToList()
+            },
+            profile,
+            destination,
+            processingSetup,
+            cancellationToken);
     }
 
     public Task<(bool Success, string Message)> TestDestinationAsync(DestinationSettings destination, CancellationToken cancellationToken = default)
@@ -323,40 +311,6 @@ public sealed class SyncCoordinator : ISyncCoordinator
         return result;
     }
 
-    private async Task<bool> RemoteContainsItemAsync(
-        IReadOnlyList<RemoteEntryInfo> remoteEntries,
-        string localPath,
-        DestinationSettings destination,
-        string remoteDirectoryPath,
-        CancellationToken cancellationToken)
-    {
-        var itemName = Path.GetFileName(localPath);
-        if (File.Exists(localPath))
-        {
-            var remoteFilePath = CombineRemoteDirectoryPath(remoteDirectoryPath, itemName);
-            var remoteSizeResult = await _destinationService.TryGetFileSizeAsync(destination, remoteFilePath, cancellationToken);
-            var localSizeBytes = new FileInfo(localPath).Length;
-            return remoteSizeResult.Exists && remoteSizeResult.SizeBytes == localSizeBytes;
-        }
-
-        foreach (var remoteEntry in remoteEntries)
-        {
-            if (FileSystemItemFilter.ShouldIgnoreFileSystemItem(remoteEntry.Name))
-            {
-                continue;
-            }
-
-            if (!string.Equals(remoteEntry.Name, itemName, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            return true;
-        }
-
-        return false;
-    }
-
     private static string BuildRemoteDirectoryPath(DestinationSettings destination, WatchProfileSettings profile)
     {
         var segments = new[] { destination.RemoteBasePath, profile.RemoteSubfolder }
@@ -402,25 +356,24 @@ public sealed class SyncCoordinator : ISyncCoordinator
         return Path.Combine(profile.StagingFolder, string.IsNullOrWhiteSpace(sourceName) ? "work-item" : sourceName);
     }
 
-    private static string BuildMissingItemsMessage(IReadOnlyList<string> missingItems, int localItemCount)
+    private static string BuildPendingItemsMessage(IReadOnlyList<string> pendingItems)
     {
-        var missingNames = missingItems
-            .Select(Path.GetFileName)
+        var pendingNames = pendingItems
+            .Select(path => Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)))
             .Where(name => !string.IsNullOrWhiteSpace(name))
-            .Cast<string>()
             .ToList();
 
-        if (missingNames.Count == 1)
+        if (pendingNames.Count == 1)
         {
-            return $"Manual catch-up found 1 missing item out of {localItemCount} local item(s): {missingNames[0]}.";
+            return $"Manual catch-up found 1 pending staged item: {pendingNames[0]}.";
         }
 
-        if (missingNames.Count is > 1 and <= 3)
+        if (pendingNames.Count is > 1 and <= 3)
         {
-            return $"Manual catch-up found {missingNames.Count} missing item(s) out of {localItemCount} local item(s): {string.Join(", ", missingNames)}.";
+            return $"Manual catch-up found {pendingNames.Count} pending staged item(s): {string.Join(", ", pendingNames)}.";
         }
 
-        return $"Manual catch-up found {missingItems.Count} missing item(s) out of {localItemCount} local item(s).";
+        return $"Manual catch-up found {pendingItems.Count} pending staged item(s).";
     }
 
     private void TryCleanupStagedOutput(string outputPath, string stagingRoot, string profileName)
@@ -453,6 +406,44 @@ public sealed class SyncCoordinator : ISyncCoordinator
         {
             LogActivity($"Staged output cleanup skipped: {ex.Message}", profileName);
         }
+    }
+
+    private static IEnumerable<string> EnumeratePendingStagedItems(WatchProfileSettings profile)
+    {
+        if (string.IsNullOrWhiteSpace(profile.StagingFolder) || !Directory.Exists(profile.StagingFolder))
+        {
+            yield break;
+        }
+
+        foreach (var stagedPath in Directory.EnumerateFileSystemEntries(profile.StagingFolder, "*", SearchOption.TopDirectoryOnly)
+                     .Where(path => !FileSystemItemFilter.ShouldIgnoreFileSystemItem(Path.GetFileName(path)))
+                     .OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
+        {
+            yield return stagedPath;
+        }
+    }
+
+    private static bool ShouldAppendStagedFolderName(string stagedPath, WatchProfileSettings profile)
+    {
+        var sourceName = Path.GetFileName(stagedPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        if (string.IsNullOrWhiteSpace(sourceName))
+        {
+            return false;
+        }
+
+        var candidate = Path.Combine(profile.WatchFolder ?? string.Empty, sourceName);
+        return Directory.Exists(candidate);
+    }
+
+    private static string ResolveCurrentSourcePath(WatchProfileSettings profile, string stagedPath)
+    {
+        var sourceName = Path.GetFileName(stagedPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        if (string.IsNullOrWhiteSpace(sourceName) || string.IsNullOrWhiteSpace(profile.WatchFolder))
+        {
+            return stagedPath;
+        }
+
+        return Path.Combine(profile.WatchFolder, sourceName);
     }
 
     private void OnWorkItemReady(WorkItemReadyEvent workItem)

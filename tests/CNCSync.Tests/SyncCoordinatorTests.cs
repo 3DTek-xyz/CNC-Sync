@@ -167,6 +167,66 @@ public sealed class SyncCoordinatorTests
         }
     }
 
+    [Fact]
+    public async Task CatchUpMissingItemsAsync_UsesStagedOutboxAndPreservesChildFolderName()
+    {
+        var watchFolder = Path.Combine(Path.GetTempPath(), $"cncsync-watch-{Guid.NewGuid():N}");
+        var stagingFolder = Path.Combine(Path.GetTempPath(), $"cncsync-stage-{Guid.NewGuid():N}");
+        var stagedChildFolder = Path.Combine(stagingFolder, "job-123");
+        Directory.CreateDirectory(watchFolder);
+        Directory.CreateDirectory(stagingFolder);
+        Directory.CreateDirectory(Path.Combine(watchFolder, "job-123"));
+        Directory.CreateDirectory(stagedChildFolder);
+        await File.WriteAllTextAsync(Path.Combine(stagedChildFolder, "program.nc"), "G1 X1");
+
+        try
+        {
+            var destinationService = new CapturingDestinationService();
+            var processor = new StubProjectProcessor(stagingFolder, remoteFolderName: "job-123");
+            var coordinator = new SyncCoordinator(new StubFolderMonitor(), processor, destinationService, new AppSettingsValidator());
+
+            var profile = new WatchProfileSettings
+            {
+                Name = "Watch 1",
+                WatchFolder = watchFolder,
+                StagingFolder = stagingFolder,
+                RemoteSubfolder = string.Empty
+            };
+
+            var destination = new DestinationSettings
+            {
+                Name = "Destination 1",
+                Type = DestinationType.Sftp,
+                Host = "example.local",
+                Port = 22,
+                Username = "test",
+                Password = "dummy-password",
+                RemoteBasePath = "/upload"
+            };
+
+            var result = await coordinator.CatchUpMissingItemsAsync(
+                profile,
+                destination,
+                ProcessingSetupSettings.CreateDefault("Default"));
+
+            Assert.True(result.Success);
+            Assert.Equal("/upload/job-123", destinationService.LastUploadRemoteDirectoryPath);
+            Assert.False(Directory.Exists(stagedChildFolder));
+        }
+        finally
+        {
+            if (Directory.Exists(watchFolder))
+            {
+                Directory.Delete(watchFolder, recursive: true);
+            }
+
+            if (Directory.Exists(stagingFolder))
+            {
+                Directory.Delete(stagingFolder, recursive: true);
+            }
+        }
+    }
+
     private sealed class StubFolderMonitor : IFolderMonitor
     {
         public event Action<WorkItemReadyEvent>? WorkItemReady { add { } remove { } }

@@ -4,6 +4,8 @@ public sealed class AppSettings
 {
     public bool LaunchAtLogin { get; set; }
     public bool StartMinimized { get; set; } = true;
+    public bool ScheduledCatchUpEnabled { get; set; }
+    public int ScheduledCatchUpIntervalMinutes { get; set; } = 10;
     public List<DestinationSettings> Destinations { get; set; } = [];
     public List<ProcessingSetupSettings> ProcessingSetups { get; set; } = [];
     public List<WatchProfileSettings> WatchProfiles { get; set; } = [];
@@ -18,6 +20,8 @@ public sealed class AppSettings
         {
             LaunchAtLogin = false,
             StartMinimized = true,
+            ScheduledCatchUpEnabled = false,
+            ScheduledCatchUpIntervalMinutes = 10,
             Destinations = [ftpDestination],
             ProcessingSetups = [processingSetup],
             WatchProfiles = [watchProfile]
@@ -29,6 +33,11 @@ public sealed class AppSettings
         Destinations ??= [];
         ProcessingSetups ??= [];
         WatchProfiles ??= [];
+
+        if (ScheduledCatchUpIntervalMinutes <= 0)
+        {
+            ScheduledCatchUpIntervalMinutes = 10;
+        }
 
         if (Destinations.Count == 0)
         {

@@ -240,7 +240,42 @@ public sealed class AppSettingsValidator
             }
         }
 
+        AddUniqueFolderValidationErrors(
+            settings.WatchProfiles,
+            profile => profile.WatchFolder,
+            "watch folder",
+            result);
+
+        AddUniqueFolderValidationErrors(
+            settings.WatchProfiles,
+            profile => profile.StagingFolder,
+            "staging folder",
+            result);
+
         return result;
+    }
+
+    private static void AddUniqueFolderValidationErrors(
+        IReadOnlyList<WatchProfileSettings> profiles,
+        Func<WatchProfileSettings, string?> pathSelector,
+        string fieldLabel,
+        AppSettingsValidationResult result)
+    {
+        var duplicates = profiles
+            .Select(profile => new
+            {
+                ProfileName = string.IsNullOrWhiteSpace(profile.Name) ? profile.Id : profile.Name,
+                Path = NormalizeDirectoryPath(pathSelector(profile))
+            })
+            .Where(item => !string.IsNullOrWhiteSpace(item.Path))
+            .GroupBy(item => item.Path!, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1);
+
+        foreach (var duplicate in duplicates)
+        {
+            var profileNames = string.Join(", ", duplicate.Select(item => item.ProfileName));
+            result.Errors.Add($"Each watch profile must use a unique {fieldLabel}. Shared {fieldLabel} found for: {profileNames}.");
+        }
     }
 
     private static bool IsValidRemotePath(string? path)
@@ -263,5 +298,23 @@ public sealed class AppSettingsValidator
 
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         return Path.Combine(home, path[2..]);
+    }
+
+    private static string? NormalizeDirectoryPath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
+        try
+        {
+            return Path.GetFullPath(path)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        }
+        catch
+        {
+            return path.Trim();
+        }
     }
 }

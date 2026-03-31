@@ -14,6 +14,8 @@ public class AppSettingsTests
         Assert.Equal(21, ftp.Port);
         Assert.True(ftp.UseAnonymousFtp);
         Assert.True(settings.StartMinimized);
+        Assert.False(settings.ScheduledCatchUpEnabled);
+        Assert.Equal(10, settings.ScheduledCatchUpIntervalMinutes);
         Assert.Equal(10, profile.StabilityDelaySeconds);
         Assert.Equal(5, profile.StabilityPollingSeconds);
         Assert.Equal(ftp.Id, profile.DestinationId);
@@ -103,6 +105,46 @@ public class AppSettingsTests
         finally
         {
             Directory.Delete(watchFolder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Validator_RejectsSharedWatchOrStagingFolders()
+    {
+        var validator = new AppSettingsValidator();
+        var watchFolder = Path.Combine(Path.GetTempPath(), $"cncsync-watch-{Guid.NewGuid():N}");
+        var stagingFolder = Path.Combine(Path.GetTempPath(), $"cncsync-stage-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(watchFolder);
+        Directory.CreateDirectory(stagingFolder);
+
+        try
+        {
+            var settings = AppSettings.CreateDefault();
+            settings.WatchProfiles[0].WatchFolder = watchFolder;
+            settings.WatchProfiles[0].StagingFolder = stagingFolder;
+            settings.WatchProfiles.Add(new WatchProfileSettings
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                Name = "Watch 2",
+                Enabled = true,
+                WatchFolder = watchFolder,
+                StagingFolder = stagingFolder,
+                DestinationId = settings.Destinations[0].Id,
+                ProcessingSetupId = settings.ProcessingSetups[0].Id,
+                StabilityDelaySeconds = 10,
+                StabilityPollingSeconds = 5
+            });
+
+            var result = validator.Validate(settings);
+
+            Assert.False(result.IsValid);
+            Assert.Contains(result.Errors, error => error.Contains("unique watch folder", StringComparison.OrdinalIgnoreCase));
+            Assert.Contains(result.Errors, error => error.Contains("unique staging folder", StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            Directory.Delete(watchFolder, recursive: true);
+            Directory.Delete(stagingFolder, recursive: true);
         }
     }
 }

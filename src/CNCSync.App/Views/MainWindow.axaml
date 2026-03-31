@@ -92,6 +92,30 @@
                                         </ComboBox>
                                     </Grid>
                                     <Button Classes="primary" HorizontalAlignment="Left" Content="Catch Up Missing Files" Command="{Binding ManualProcessCommand}" />
+                                    <Separator Margin="0,8,0,4" />
+                                    <Grid ColumnDefinitions="180,*">
+                                        <TextBlock VerticalAlignment="Center" Text="Scheduled Catch-Up" />
+                                        <CheckBox Grid.Column="1"
+                                                  IsChecked="{Binding ScheduledCatchUpEnabled}"
+                                                  Content="Retry staged items automatically" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="180,*"
+                                          IsVisible="{Binding ScheduledCatchUpEnabled}">
+                                        <TextBlock VerticalAlignment="Center" Text="Interval" />
+                                        <ComboBox Grid.Column="1"
+                                                  ItemsSource="{Binding AvailableCatchUpIntervals}"
+                                                  SelectedItem="{Binding SelectedCatchUpIntervalOption}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:CatchUpIntervalOptionViewModel">
+                                                    <TextBlock Text="{Binding DisplayName}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </Grid>
+                                    <TextBlock Classes="muted" Text="{Binding ScheduledCatchUpSummary}" TextWrapping="Wrap" />
+                                    <TextBlock Classes="muted"
+                                               Text="Catch-up retries only files that are still staged locally. It cannot detect and reprocess files that were created while CNC Sync was not running and never made it into staging."
+                                               TextWrapping="Wrap" />
                                 </StackPanel>
                             </Border>
                         </Grid>
@@ -795,7 +819,9 @@
                         <Border Classes="card" Padding="18" CornerRadius="16">
                             <StackPanel Spacing="8">
                                 <TextBlock Text="Manual Catch-Up" FontSize="18" FontWeight="SemiBold" />
-                                <TextBlock Text="Manual catch-up checks the selected watch profile against the configured destination path and only processes/uploads missing or changed items. For files, it compares name plus file size." TextWrapping="Wrap" />
+                                <TextBlock Text="Manual catch-up retries items that are still sitting in the local staging folder because a previous upload did not complete successfully." TextWrapping="Wrap" />
+                                <TextBlock Text="Scheduled catch-up uses the same staged outbox model. It can only retry items that made it into staging while the app was running, so Launch At Login is recommended if you want fewer missed files." TextWrapping="Wrap" />
+                                <TextBlock Text="It cannot detect and reprocess files that were created while CNC Sync was not running and never made it into staging." TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 
