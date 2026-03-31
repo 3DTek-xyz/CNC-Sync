@@ -24,6 +24,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IAppUpdateService _updateService;
     private readonly ILoginStartupService _loginStartupService;
     private readonly IVpnService _vpnService;
+    private readonly IThemePreferenceService _themePreferenceService;
     private readonly SemaphoreSlim _saveLock = new(1, 1);
     private readonly Lock _activityLogFileLock = new();
     private readonly DispatcherTimer _scheduledCatchUpTimer = new();
@@ -61,6 +62,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool startMinimized = true;
+
+    [ObservableProperty]
+    private AppThemePreference themePreference = AppThemePreference.Light;
 
     [ObservableProperty]
     private bool scheduledCatchUpEnabled;
@@ -121,6 +125,7 @@ public partial class MainWindowViewModel : ViewModelBase
         IAppUpdateService updateService,
         ILoginStartupService loginStartupService,
         IVpnService vpnService,
+        IThemePreferenceService themePreferenceService,
         AppSettings initialSettings)
     {
         _settingsStore = settingsStore;
@@ -130,6 +135,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _updateService = updateService;
         _loginStartupService = loginStartupService;
         _vpnService = vpnService;
+        _themePreferenceService = themePreferenceService;
         _scheduledCatchUpTimer.Tick += OnScheduledCatchUpTimerTick;
         PropertyChanged += OnViewModelPropertyChanged;
         WatchProfiles.CollectionChanged += OnWatchProfilesCollectionChanged;
@@ -165,6 +171,7 @@ public partial class MainWindowViewModel : ViewModelBase
             new DesignAppUpdateService(),
             new DesignLoginStartupService(),
             new DesignVpnService(),
+            new DesignThemePreferenceService(),
             AppSettings.CreateDefault())
     {
     }
@@ -195,6 +202,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public IReadOnlyList<ScriptRunnerMode> AvailableRunnerModes { get; } = Enum.GetValues<ScriptRunnerMode>();
     public IReadOnlyList<DestinationType> AvailableDestinationTypes { get; } = Enum.GetValues<DestinationType>();
+    public IReadOnlyList<AppThemePreference> AvailableThemePreferences { get; } = Enum.GetValues<AppThemePreference>();
 
     public string AppVersion => ResolvedAppVersion;
     public string ProjectSiteUrl => "https://3dtek-xyz.github.io/CNC-Sync/";
@@ -388,6 +396,17 @@ public partial class MainWindowViewModel : ViewModelBase
 
         RequestAutoSave(restartMonitoringAfterSave: false);
         UpdateScheduledCatchUpTimer();
+    }
+
+    partial void OnThemePreferenceChanged(AppThemePreference value)
+    {
+        _themePreferenceService.Apply(value);
+        if (_isApplyingSettings)
+        {
+            return;
+        }
+
+        RequestAutoSave(restartMonitoringAfterSave: false);
     }
 
     [RelayCommand]
@@ -802,6 +821,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         LaunchAtLogin = settings.LaunchAtLogin;
         StartMinimized = settings.StartMinimized;
+        ThemePreference = settings.ThemePreference;
         ScheduledCatchUpEnabled = settings.ScheduledCatchUpEnabled;
         ScheduledCatchUpIntervalMinutes = settings.ScheduledCatchUpIntervalMinutes;
 
@@ -839,6 +859,7 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             LaunchAtLogin = LaunchAtLogin,
             StartMinimized = StartMinimized,
+            ThemePreference = ThemePreference,
             ScheduledCatchUpEnabled = ScheduledCatchUpEnabled,
             ScheduledCatchUpIntervalMinutes = ScheduledCatchUpIntervalMinutes,
             Destinations = Destinations.Select(destination => destination.ToSettings()).ToList(),
@@ -1322,6 +1343,13 @@ public partial class MainWindowViewModel : ViewModelBase
 
         public Task<(bool Success, string Message)> DisconnectAsync(string connectionName, CancellationToken cancellationToken = default) =>
             Task.FromResult<(bool Success, string Message)>((true, $"Disconnected required VPN '{connectionName}'."));
+    }
+
+    private sealed class DesignThemePreferenceService : IThemePreferenceService
+    {
+        public void Apply(AppThemePreference preference)
+        {
+        }
     }
 
     private static string ResolveAppVersion()

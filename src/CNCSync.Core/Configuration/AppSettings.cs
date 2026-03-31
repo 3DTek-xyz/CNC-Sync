@@ -4,6 +4,7 @@ public sealed class AppSettings
 {
     public bool LaunchAtLogin { get; set; }
     public bool StartMinimized { get; set; } = true;
+    public AppThemePreference ThemePreference { get; set; } = AppThemePreference.Light;
     public bool ScheduledCatchUpEnabled { get; set; }
     public int ScheduledCatchUpIntervalMinutes { get; set; } = 10;
     public List<DestinationSettings> Destinations { get; set; } = [];
@@ -20,6 +21,7 @@ public sealed class AppSettings
         {
             LaunchAtLogin = false,
             StartMinimized = true,
+            ThemePreference = AppThemePreference.Light,
             ScheduledCatchUpEnabled = false,
             ScheduledCatchUpIntervalMinutes = 10,
             Destinations = [ftpDestination],
@@ -33,6 +35,11 @@ public sealed class AppSettings
         Destinations ??= [];
         ProcessingSetups ??= [];
         WatchProfiles ??= [];
+
+        if (!Enum.IsDefined(ThemePreference))
+        {
+            ThemePreference = AppThemePreference.Light;
+        }
 
         if (ScheduledCatchUpIntervalMinutes <= 0)
         {

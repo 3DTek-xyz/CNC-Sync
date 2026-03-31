@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:CNCSync.App.ViewModels"
-        xmlns:core="using:CNCSync.Core.Services"
+        xmlns:core="using:CNCSync.Core.Configuration"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
@@ -152,6 +152,18 @@
                         <Border Classes="card" Padding="18" CornerRadius="16">
                             <StackPanel Spacing="12">
                                 <TextBlock Text="App Behavior" FontSize="18" FontWeight="SemiBold" />
+                                <Grid ColumnDefinitions="220,*">
+                                    <TextBlock VerticalAlignment="Center" Text="Theme" />
+                                    <ComboBox Grid.Column="1"
+                                              ItemsSource="{Binding AvailableThemePreferences}"
+                                              SelectedItem="{Binding ThemePreference}">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate x:DataType="core:AppThemePreference">
+                                                <TextBlock Text="{Binding ., Converter={StaticResource AppThemePreferenceDisplayConverter}}" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                </Grid>
                                 <Grid ColumnDefinitions="220,*">
                                     <TextBlock VerticalAlignment="Center" Text="Launch At Login" />
                                     <CheckBox Grid.Column="1" IsChecked="{Binding LaunchAtLogin}" />

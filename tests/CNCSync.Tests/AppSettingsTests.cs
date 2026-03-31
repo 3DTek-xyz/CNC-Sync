@@ -14,6 +14,7 @@ public class AppSettingsTests
         Assert.Equal(21, ftp.Port);
         Assert.True(ftp.UseAnonymousFtp);
         Assert.True(settings.StartMinimized);
+        Assert.Equal(AppThemePreference.Light, settings.ThemePreference);
         Assert.False(settings.ScheduledCatchUpEnabled);
         Assert.Equal(10, settings.ScheduledCatchUpIntervalMinutes);
         Assert.Equal(10, profile.StabilityDelaySeconds);

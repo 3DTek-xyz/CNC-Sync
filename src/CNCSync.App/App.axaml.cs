@@ -63,9 +63,11 @@ public partial class App : Application
             var destinationService = new DestinationService(ftpService, sftpService, scpService, networkShareService, vpnService);
             var updateService = new VelopackUpdateService();
             var loginStartupService = new LoginStartupService();
+            var themePreferenceService = new ThemePreferenceService();
             var coordinator = new SyncCoordinator(folderMonitor, projectProcessor, destinationService, validator);
             var initialSettings = settingsStore.Load();
-            _mainWindowViewModel = new MainWindowViewModel(settingsStore, validator, coordinator, destinationService, updateService, loginStartupService, vpnService, initialSettings);
+            themePreferenceService.Apply(initialSettings.ThemePreference);
+            _mainWindowViewModel = new MainWindowViewModel(settingsStore, validator, coordinator, destinationService, updateService, loginStartupService, vpnService, themePreferenceService, initialSettings);
             coordinator.StatusChanged += OnCoordinatorStatusChanged;
             coordinator.ActivityLogged += OnCoordinatorActivityLogged;
             _initialTrayHidePending = Program.LaunchedAtLogin &&
