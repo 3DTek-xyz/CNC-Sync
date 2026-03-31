@@ -1,7 +1,0 @@
-services:
-  sftp-test:
-    image: atmoz/sftp:latest
-    container_name: cncsync-sftp-test
-    ports:
-      - "2222:22"
-    restart: unless-stopped

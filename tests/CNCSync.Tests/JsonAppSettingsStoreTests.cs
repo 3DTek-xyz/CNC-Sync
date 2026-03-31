@@ -103,24 +103,24 @@ public sealed class JsonAppSettingsStoreTests
             var store = new JsonAppSettingsStore(settingsDirectory, legacyDirectory, bundledScriptsDirectory, secretStore);
             var settings = AppSettings.CreateDefault();
             settings.Destinations[0].Name = "Saved";
-            settings.Destinations[0].Password = "super-secret";
-            settings.Destinations[0].PrivateKeyPassphrase = "passphrase-secret";
+            settings.Destinations[0].Password = "example-secret";
+            settings.Destinations[0].PrivateKeyPassphrase = "example-passphrase";
 
             await store.SaveAsync(settings);
 
             Assert.True(File.Exists(Path.Combine(settingsDirectory, "settings.json")));
             Assert.False(File.Exists(Path.Combine(settingsDirectory, "settings.json.tmp")));
             var savedJson = await File.ReadAllTextAsync(Path.Combine(settingsDirectory, "settings.json"));
-            Assert.DoesNotContain("super-secret", savedJson, StringComparison.Ordinal);
-            Assert.DoesNotContain("passphrase-secret", savedJson, StringComparison.Ordinal);
+            Assert.DoesNotContain("example-secret", savedJson, StringComparison.Ordinal);
+            Assert.DoesNotContain("example-passphrase", savedJson, StringComparison.Ordinal);
             Assert.Null(secretStore.GetSecret(settings.Destinations[0].Id));
-            Assert.Equal("super-secret", secretStore.GetSecret($"{settings.Destinations[0].Id}:password"));
-            Assert.Equal("passphrase-secret", secretStore.GetSecret($"{settings.Destinations[0].Id}:private-key-passphrase"));
+            Assert.Equal("example-secret", secretStore.GetSecret($"{settings.Destinations[0].Id}:password"));
+            Assert.Equal("example-passphrase", secretStore.GetSecret($"{settings.Destinations[0].Id}:private-key-passphrase"));
 
             var reloaded = await store.LoadAsync();
             Assert.Equal("Saved", reloaded.Destinations[0].Name);
-            Assert.Equal("super-secret", reloaded.Destinations[0].Password);
-            Assert.Equal("passphrase-secret", reloaded.Destinations[0].PrivateKeyPassphrase);
+            Assert.Equal("example-secret", reloaded.Destinations[0].Password);
+            Assert.Equal("example-passphrase", reloaded.Destinations[0].PrivateKeyPassphrase);
         }
         finally
         {
@@ -144,8 +144,8 @@ public sealed class JsonAppSettingsStoreTests
         {
             var secretStore = new InMemorySecretStore();
             var settings = AppSettings.CreateDefault();
-            settings.Destinations[0].Password = "legacy-secret";
-            settings.Destinations[0].PrivateKeyPassphrase = "legacy-passphrase";
+            settings.Destinations[0].Password = "legacy-example-secret";
+            settings.Destinations[0].PrivateKeyPassphrase = "legacy-example-passphrase";
 
             await File.WriteAllTextAsync(
                 Path.Combine(settingsDirectory, "settings.json"),
@@ -154,10 +154,10 @@ public sealed class JsonAppSettingsStoreTests
             var store = new JsonAppSettingsStore(settingsDirectory, legacyDirectory, bundledScriptsDirectory, secretStore);
             var loaded = await store.LoadAsync();
 
-            Assert.Equal("legacy-secret", loaded.Destinations[0].Password);
-            Assert.Equal("legacy-passphrase", loaded.Destinations[0].PrivateKeyPassphrase);
-            Assert.Equal("legacy-secret", secretStore.GetSecret($"{loaded.Destinations[0].Id}:password"));
-            Assert.Equal("legacy-passphrase", secretStore.GetSecret($"{loaded.Destinations[0].Id}:private-key-passphrase"));
+            Assert.Equal("legacy-example-secret", loaded.Destinations[0].Password);
+            Assert.Equal("legacy-example-passphrase", loaded.Destinations[0].PrivateKeyPassphrase);
+            Assert.Equal("legacy-example-secret", secretStore.GetSecret($"{loaded.Destinations[0].Id}:password"));
+            Assert.Equal("legacy-example-passphrase", secretStore.GetSecret($"{loaded.Destinations[0].Id}:private-key-passphrase"));
         }
         finally
         {

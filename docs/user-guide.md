@@ -2,24 +2,24 @@
 
 ## What CNC Sync Does
 
-CNC Sync watches one or more local folders, optionally runs a local processing step, and uploads the prepared result to an FTP destination.
+CNC Sync watches one or more local folders, optionally runs a local processing step, and delivers the prepared result to a reusable destination.
 
 The app is built around four reusable setup types:
 
 - `App Settings`
   - global behaviour for the app itself
-- `FTP Servers`
-  - named FTP destinations that can be reused by many watch profiles
+- `Destinations`
+  - named FTP, SFTP, SCP, Local Folder, or Network Share targets that can be reused by many watch profiles
 - `Processing Setups`
   - named processing rules, including simple passthrough or external scripts
 - `Watch Folders`
-  - the actual monitored folders that combine a watch path, a processing setup, and an FTP setup
+  - the actual monitored folders that combine a watch path, a processing setup, and a destination
 
 ## Typical Setup Flow
 
-1. Create an `FTP Server`.
+1. Create a `Destination`.
 2. Create a `Processing Setup`.
-3. Create a `Watch Folder` that points to a local watch folder and staging folder, then select the FTP server and processing setup it should use.
+3. Create a `Watch Folder` that points to a local watch folder and staging folder, then select the destination and processing setup it should use.
 4. Validate settings.
 5. Start monitoring.
 
@@ -31,41 +31,62 @@ Use `App Settings` for behaviour that applies to the whole app:
   - start CNC Sync when the user logs in
 - `Start Minimized`
   - start hidden/minimized when supported on the current platform
-- `Load Settings`
-  - reload the saved configuration from disk
+- `Import Settings...`
+  - browse for a `settings.json` file from another machine or previous installation and import it into the current app profile
 - `Validate Settings`
   - check the current configuration for missing or invalid items
 
 Settings are saved automatically as you change them.
+Imported settings replace the current profile configuration.
+Passwords and SSH key passphrases are stored in the local OS secret store, so after moving a settings file between machines you may need to re-enter those secrets on the new machine.
 
-## FTP Servers
+## Destinations
 
-An FTP server defines one reusable destination:
+A destination defines one reusable delivery target:
 
 - `Destination Name`
   - friendly label shown in selectors
-- `FTP Host`
-  - server hostname or IP address
 - `Remote Base Path`
-  - optional base path on the server such as `/uploads`
-- `FTP Port`
-  - usually `21` unless the server uses another port
-- `Use Anonymous FTP`
-  - if enabled, username/password are not used
-- `FTP Username` / `FTP Password`
-  - credentials for non-anonymous access
-- `Auto Upload`
-  - whether successful processing should upload automatically
+  - optional base path on the target such as `/uploads`
+
+Supported destination types:
+
+- `FTP`
+  - host, port, optional anonymous mode, and username/password when needed
+- `SFTP`
+  - host, port, username, and either password or private-key authentication
+- `SCP`
+  - host, port, username, and either password or private-key authentication
+- `Local Folder`
+  - a normal local filesystem path
+- `Network Share`
+  - an SMB share such as a NAS or another computer on the network
+
+SSH destination authentication:
+
+- `Password`
+  - standard username/password sign-in
+- `Private Key`
+  - key file path plus optional key passphrase
+
+Network Share notes:
+
+- on macOS, explicit sign-in to a Mac SMB share may require enabling that account under `Windows File Sharing`
+- on Linux, SMB shares work best when they are already mounted by the desktop environment
+- on Linux, explicit SMB username/password access may still require mounting the share first in the desktop file manager
+- if a destination requires a VPN first, choose it in `Required VPN`
+- VPN profiles used by CNC Sync must be able to connect automatically without prompting for user interaction
+- if enabled, `Disconnect VPN When Finished` disconnects a VPN only when CNC Sync had to connect it itself, and only after a short idle window
 
 The effective remote path is built from:
 
-- FTP server base path
-- plus watch profile remote subfolder
+- destination base path
+- plus watch profile additional remote path
 
 Example:
 
-- FTP base path: `/uploads`
-- watch remote subfolder: `/watch1`
+- destination base path: `/uploads`
+- watch additional remote path: `/watch1`
 - final remote target: `/uploads/watch1`
 
 ## Processing Setups
@@ -158,12 +179,12 @@ Fields:
   - local folder being watched
 - `Staging Folder`
   - local folder used for prepared output
-- `Remote Subfolder`
-  - optional subfolder appended to the FTP setup base path
+- `Additional Remote Path`
+  - optional path appended under the selected destination base path
 - `Processing Setup`
   - which processing rule to run
-- `FTP Destination`
-  - which FTP setup to upload to
+- `Destination`
+  - which destination to upload to
 - `Required Quiet Time`
   - how long files/folders must stay unchanged before processing starts
 - `Stability Check Interval`
@@ -182,6 +203,7 @@ The `Monitoring` panel shows:
 `Stop` stops folder monitoring.
 
 If enabled watch profiles exist and settings validate successfully, the app can auto-start monitoring on launch.
+Changes to monitoring-related settings are applied live by reloading monitoring automatically.
 
 ## Manual Catch-Up
 
@@ -191,7 +213,7 @@ It does not blindly upload everything.
 It:
 
 - reads the selected watch profile
-- checks the target FTP directory
+- checks the target destination directory
 - compares local items against remote items
 - processes/uploads only missing or changed items
 
@@ -204,7 +226,7 @@ Current comparison approach:
 Use this when:
 
 - the app was not running
-- the FTP server was unavailable
+- the destination was unavailable
 - monitoring was stopped
 
 ## Activity Log
@@ -216,9 +238,21 @@ The `Activity` tab shows recent events with:
 - message
 
 Timestamps include milliseconds so quick processing sequences are easier to follow.
+The log text is selectable for copy/paste.
+The same activity stream is also written to a text file in the app data folder. On Linux that is typically `~/.config/CNC Sync/activity.log`, on macOS it is `~/Library/Application Support/CNC Sync/activity.log`, and on Windows it is typically `%AppData%\CNC Sync\activity.log`.
+
+## Help / About
+
+The `Help / About` tab includes:
+
+- setup reminders
+- destination and VPN notes
+- a link to the project page
+- a link to the update log / GitHub releases page
 
 ## Notes
 
 - FTP timestamps are not relied on for catch-up decisions.
-- Finder can be misleading for FTP browsing and refresh; use a dedicated FTP client when verifying server contents.
-- Old test folders left from earlier versions of the app may need to be cleaned up manually on the server.
+- Finder can be misleading for FTP or SMB browsing and refresh; use a dedicated client or your normal file manager when verifying remote contents.
+- Metadata junk such as `.DS_Store`, `._*`, `Thumbs.db`, `desktop.ini`, and `ehthumbs.db` is ignored during watching, staging, catch-up, and upload.
+- On Linux AppImage builds, make the file executable before first launch. Launch At Login uses the current AppImage path, so move it to its long-term location before enabling login startup.

@@ -20,7 +20,7 @@ public sealed class DestinationRoutingTests
             Host = "example.local",
             Port = 22,
             Username = "test",
-            Password = "test123"
+            Password = "dummy-password"
         };
 
         await destinationService.TestConnectionAsync(destination);
@@ -50,7 +50,7 @@ public sealed class DestinationRoutingTests
             NetworkShareName = "Jobs",
             UseCurrentUserCredentials = false,
             Username = "test",
-            Password = "test123"
+            Password = "dummy-password"
         };
 
         await destinationService.TestConnectionAsync(destination);

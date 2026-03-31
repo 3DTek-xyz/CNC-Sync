@@ -179,8 +179,8 @@ public partial class MainWindowViewModel : ViewModelBase
     public IReadOnlyList<DestinationType> AvailableDestinationTypes { get; } = Enum.GetValues<DestinationType>();
 
     public string AppVersion => ResolvedAppVersion;
-    public string ProjectSiteUrl => "https://3dtek-xyz.github.io/CNC-FTPSync/";
-    public string ReleaseNotesUrl => "https://github.com/3DTek-xyz/CNC-FTPSync/releases";
+    public string ProjectSiteUrl => "https://3dtek-xyz.github.io/CNC-Sync/";
+    public string ReleaseNotesUrl => "https://github.com/3DTek-xyz/CNC-Sync/releases";
 
     public string ActiveMonitoringProfilesSummary
     {

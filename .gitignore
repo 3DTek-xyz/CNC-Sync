@@ -12,9 +12,13 @@ obj/
 TestResults/
 *.nupkg
 *.snupkg
+dist/
+*.AppImage
 
 # Local tooling
 .vscode/
+docker-compose.test-services.yml
+scripts/manage-test-services.sh
 
 # Legacy archive noise
 Original/**/bin/
@@ -24,3 +28,7 @@ Original/**/*.dll
 Original/**/*.exe
 Original/**/*.pdb
 Original/**/*.msi
+
+# macOS Finder and app bundle noise
+**/.DS_Store
+*.app/

@@ -119,7 +119,7 @@ public sealed class LoginStartupService : ILoginStartupService
             return;
         }
 
-        var processPath = RequireProcessPath();
+        var processPath = RequireLinuxStartupPath();
         var command = $"{EscapeDesktopExecArgument(processPath)} {EscapeDesktopExecArgument(AppLaunchArguments.LaunchAtLoginArgument)}";
         var desktopEntry = $$"""
 [Desktop Entry]
@@ -147,7 +147,18 @@ X-GNOME-Autostart-enabled=true
         }
 
         var fileContents = File.ReadAllText(desktopFilePath);
-        return fileContents.Contains(RequireProcessPath(), StringComparison.Ordinal);
+        if (!fileContents.Contains(AppLaunchArguments.LaunchAtLoginArgument, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var configuredStartupPath = TryExtractDesktopExecPath(fileContents);
+        if (string.IsNullOrWhiteSpace(configuredStartupPath))
+        {
+            return false;
+        }
+
+        return File.Exists(configuredStartupPath);
     }
 
     private static string RequireProcessPath()
@@ -161,6 +172,17 @@ X-GNOME-Autostart-enabled=true
         return processPath;
     }
 
+    private static string RequireLinuxStartupPath()
+    {
+        var appImagePath = Environment.GetEnvironmentVariable("APPIMAGE");
+        if (!string.IsNullOrWhiteSpace(appImagePath) && File.Exists(appImagePath))
+        {
+            return appImagePath;
+        }
+
+        return RequireProcessPath();
+    }
+
     private static string EscapeDesktopExecArgument(string value)
     {
         var escaped = value
@@ -170,6 +192,64 @@ X-GNOME-Autostart-enabled=true
             .Replace("$", "\\$", StringComparison.Ordinal);
 
         return $"\"{escaped}\"";
+    }
+
+    private static string? TryExtractDesktopExecPath(string desktopEntryContents)
+    {
+        using var reader = new StringReader(desktopEntryContents);
+        string? line;
+        while ((line = reader.ReadLine()) is not null)
+        {
+            if (!line.StartsWith("Exec=", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var execValue = line["Exec=".Length..].Trim();
+            if (execValue.Length == 0)
+            {
+                return null;
+            }
+
+            if (execValue[0] == '"')
+            {
+                var closingQuoteIndex = FindClosingQuote(execValue, 1);
+                if (closingQuoteIndex <= 1)
+                {
+                    return null;
+                }
+
+                return UnescapeDesktopExecArgument(execValue[1..closingQuoteIndex]);
+            }
+
+            var firstSpaceIndex = execValue.IndexOf(' ');
+            var rawPath = firstSpaceIndex >= 0 ? execValue[..firstSpaceIndex] : execValue;
+            return UnescapeDesktopExecArgument(rawPath);
+        }
+
+        return null;
+    }
+
+    private static int FindClosingQuote(string value, int startIndex)
+    {
+        for (var i = startIndex; i < value.Length; i++)
+        {
+            if (value[i] == '"' && value[i - 1] != '\\')
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    private static string UnescapeDesktopExecArgument(string value)
+    {
+        return value
+            .Replace("\\\"", "\"", StringComparison.Ordinal)
+            .Replace("\\$", "$", StringComparison.Ordinal)
+            .Replace("\\`", "`", StringComparison.Ordinal)
+            .Replace("\\\\", "\\", StringComparison.Ordinal);
     }
 
     private static string GetMacBridgeErrorMessage(int code)

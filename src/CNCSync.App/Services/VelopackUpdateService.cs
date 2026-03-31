@@ -5,7 +5,7 @@ namespace CNCSync.App.Services;
 
 public sealed class VelopackUpdateService : IAppUpdateService
 {
-    private const string UpdateFeedUrl = "https://3dtek-xyz.github.io/CNC-FTPSync/updates";
+    private const string UpdateFeedUrl = "https://3dtek-xyz.github.io/CNC-Sync/updates";
     private UpdateInfo? _pendingUpdate;
 
     public bool IsSupported =>

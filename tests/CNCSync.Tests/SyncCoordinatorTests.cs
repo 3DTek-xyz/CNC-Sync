@@ -32,7 +32,7 @@ public sealed class SyncCoordinatorTests
                 Host = "example.local",
                 Port = 22,
                 Username = "test",
-                Password = "test123",
+                Password = "dummy-password",
                 RemoteBasePath = "/upload"
             };
 
@@ -83,7 +83,7 @@ public sealed class SyncCoordinatorTests
                 Host = "example.local",
                 Port = 22,
                 Username = "test",
-                Password = "test123",
+                Password = "dummy-password",
                 RemoteBasePath = "/upload"
             };
 
@@ -140,7 +140,7 @@ public sealed class SyncCoordinatorTests
                 Host = "example.local",
                 Port = 22,
                 Username = "test",
-                Password = "test123",
+                Password = "dummy-password",
                 RemoteBasePath = "/upload"
             };
 

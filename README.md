@@ -1,6 +1,6 @@
 # CNC Sync
 
-Cross-platform CNC file monitoring, processing, and FTP upload utility built with Avalonia UI and .NET.
+Cross-platform CNC file monitoring, optional processing, and destination delivery built with Avalonia UI and .NET.
 
 ## Workspace Layout
 
@@ -11,32 +11,28 @@ Cross-platform CNC file monitoring, processing, and FTP upload utility built wit
 - `src/CNCSync.Core`
   - platform-agnostic domain and application logic
 - `src/CNCSync.Infrastructure`
-  - file system, FTP, config persistence, startup integration
+  - file system, protocol services, config persistence, startup integration
 - `tests/CNCSync.Tests`
   - unit tests
-- `Original/`
-  - archived WinForms/service-based app kept for reference
 
 ## Product Direction
 
-This rebuild is intentionally simpler than the original app:
+The current app is built around reusable destinations, processing setups, and watch folders:
 
-- tray/menu bar desktop app
-- start at login instead of running as a Windows Service
-- Windows and macOS first
+- FTP, SFTP, SCP, Local Folder, and Network Share destinations
+- optional VPN preflight for destinations that require it
+- password and private-key SSH authentication
+- start at login desktop behavior instead of a service-style deployment
 - clean separation between UI, core logic, and infrastructure
-
-See [`docs/avalonia-rebuild-spec.md`](/Users/benharper/Coding/CBWSS-Sync/docs/avalonia-rebuild-spec.md) for the current rebuild spec.
 
 ## Release
 
-- Current target version: `0.1.11`
-- GitHub Actions release workflow: [`.github/workflows/release.yml`](/Users/benharper/Coding/CBWSS-Sync/.github/workflows/release.yml)
+- GitHub Actions release workflow: [`.github/workflows/release.yml`](.github/workflows/release.yml)
 - Packaging scripts:
-  - macOS: [`packaging/macos/package-app.sh`](/Users/benharper/Coding/CBWSS-Sync/packaging/macos/package-app.sh)
-  - Windows installer/update packaging: [`packaging/windows/package-velopack.ps1`](/Users/benharper/Coding/CBWSS-Sync/packaging/windows/package-velopack.ps1)
-  - Windows zip packaging: [`packaging/windows/package-zip.ps1`](/Users/benharper/Coding/CBWSS-Sync/packaging/windows/package-zip.ps1)
-  - Linux: [`packaging/linux/package-tarball.sh`](/Users/benharper/Coding/CBWSS-Sync/packaging/linux/package-tarball.sh)
+  - macOS: [`packaging/macos/package-app.sh`](packaging/macos/package-app.sh)
+  - Windows installer/update packaging: [`packaging/windows/package-velopack.ps1`](packaging/windows/package-velopack.ps1)
+  - Windows zip packaging: [`packaging/windows/package-zip.ps1`](packaging/windows/package-zip.ps1)
+  - Linux: [`packaging/linux/package-tarball.sh`](packaging/linux/package-tarball.sh)
 - Windows installer path:
   - Velopack `Setup.exe` installs by default to `%LocalAppData%\\3DTek.CNCSync`
 - Windows update feed:
@@ -45,4 +41,4 @@ See [`docs/avalonia-rebuild-spec.md`](/Users/benharper/Coding/CBWSS-Sync/docs/av
 ## Notes
 
 - Local builds are still useful for testing.
-- Tagged releases like `v0.1.11` are intended to produce the official GitHub release artifacts.
+- Tagged releases are intended to produce the official GitHub release artifacts.

@@ -211,9 +211,9 @@
   <main class="shell">
     <section class="hero">
       <span class="eyebrow">CNC Sync Guide</span>
-      <h1>Set up watch folders, processing, and FTP delivery with confidence.</h1>
+      <h1>Set up watch folders, processing, and destination delivery with confidence.</h1>
       <p>
-        This guide walks through how CNC Sync is organised, how to set up reusable FTP servers and
+        This guide walks through how CNC Sync is organised, how to set up reusable destinations and
         processing setups, and how monitoring, staging, and manual catch-up behave in practice.
       </p>
       <div class="actions">
@@ -228,12 +228,13 @@
           <li><a href="#what-it-does">What CNC Sync Does</a></li>
           <li><a href="#setup-flow">Typical Setup Flow</a></li>
           <li><a href="#app-settings">App Settings</a></li>
-          <li><a href="#ftp-servers">FTP Servers</a></li>
+          <li><a href="#destinations">Destinations</a></li>
           <li><a href="#processing-setups">Processing Setups</a></li>
           <li><a href="#watch-folders">Watch Folders</a></li>
           <li><a href="#monitoring">Monitoring</a></li>
           <li><a href="#manual-catch-up">Manual Catch-Up</a></li>
           <li><a href="#activity-log">Activity Log</a></li>
+          <li><a href="#help-about">Help / About</a></li>
           <li><a href="#security-prompts">Security Prompts</a></li>
           <li><a href="#notes">Notes</a></li>
         </ul>
@@ -244,7 +245,7 @@
           <h2>What CNC Sync Does</h2>
           <p>
             CNC Sync watches one or more local folders, optionally runs a local processing step,
-            and uploads the prepared result to an FTP destination.
+            and delivers the prepared result to a reusable destination.
           </p>
           <div class="lead-list">
             <div class="mini-card">
@@ -252,8 +253,8 @@
               <p>Global behaviour for the app itself.</p>
             </div>
             <div class="mini-card">
-              <h3>FTP Servers</h3>
-              <p>Reusable named FTP destinations.</p>
+              <h3>Destinations</h3>
+              <p>Reusable named FTP, SFTP, SCP, Local Folder, or Network Share targets.</p>
             </div>
             <div class="mini-card">
               <h3>Processing Setups</h3>
@@ -261,7 +262,7 @@
             </div>
             <div class="mini-card">
               <h3>Watch Folders</h3>
-              <p>The monitored folders that combine watch, processing, and FTP settings.</p>
+              <p>The monitored folders that combine watch, processing, and destination settings.</p>
             </div>
           </div>
         </section>
@@ -269,9 +270,9 @@
         <section id="setup-flow">
           <h2>Typical Setup Flow</h2>
           <ol>
-            <li>Create an <code>FTP Server</code>.</li>
+            <li>Create a <code>Destination</code>.</li>
             <li>Create a <code>Processing Setup</code>.</li>
-            <li>Create a <code>Watch Folder</code> that points to a local watch folder and staging folder, then select the FTP server and processing setup it should use.</li>
+            <li>Create a <code>Watch Folder</code> that points to a local watch folder and staging folder, then select the destination and processing setup it should use.</li>
             <li>Validate settings.</li>
             <li>Start monitoring.</li>
           </ol>
@@ -283,26 +284,44 @@
           <ul>
             <li><code>Launch At Login</code>: start CNC Sync when the user logs in.</li>
             <li><code>Start Minimized</code>: start hidden/minimized when supported on the current platform.</li>
-            <li><code>Load Settings</code>: reload the saved configuration from disk.</li>
+            <li><code>Import Settings...</code>: browse for a <code>settings.json</code> file from another machine or previous installation and import it into the current app profile.</li>
             <li><code>Validate Settings</code>: check the current configuration for missing or invalid items.</li>
           </ul>
           <p>Settings are saved automatically as you change them.</p>
+          <p>Imported settings replace the current profile configuration. Passwords and SSH key passphrases are stored in the local OS secret store, so after moving a settings file between machines you may need to re-enter those secrets on the new machine.</p>
         </section>
 
-        <section id="ftp-servers">
-          <h2>FTP Servers</h2>
-          <p>An FTP server defines one reusable destination:</p>
+        <section id="destinations">
+          <h2>Destinations</h2>
+          <p>A destination defines one reusable delivery target:</p>
           <ul>
             <li><code>Destination Name</code>: friendly label shown in selectors.</li>
-            <li><code>FTP Host</code>: server hostname or IP address.</li>
-            <li><code>Remote Base Path</code>: optional base path on the server such as <code>/uploads</code>.</li>
-            <li><code>FTP Port</code>: usually <code>21</code> unless the server uses another port.</li>
-            <li><code>Use Anonymous FTP</code>: if enabled, username/password are not used.</li>
-            <li><code>FTP Username</code> / <code>FTP Password</code>: credentials for non-anonymous access.</li>
-            <li><code>Auto Upload</code>: whether successful processing should upload automatically.</li>
+            <li><code>Remote Base Path</code>: optional base path on the target such as <code>/uploads</code>.</li>
           </ul>
-          <p>The effective remote path is built from the FTP server base path plus the watch profile remote subfolder.</p>
-          <p>Example: FTP base path <code>/uploads</code> and watch remote subfolder <code>/watch1</code> becomes <code>/uploads/watch1</code>.</p>
+          <p>Supported destination types:</p>
+          <ul>
+            <li><code>FTP</code>: host, port, optional anonymous mode, and username/password when needed.</li>
+            <li><code>SFTP</code>: host, port, username, and either password or private-key authentication.</li>
+            <li><code>SCP</code>: host, port, username, and either password or private-key authentication.</li>
+            <li><code>Local Folder</code>: a normal local filesystem path.</li>
+            <li><code>Network Share</code>: an SMB share such as a NAS or another computer on the network.</li>
+          </ul>
+          <p>SSH destination authentication:</p>
+          <ul>
+            <li><code>Password</code>: standard username/password sign-in.</li>
+            <li><code>Private Key</code>: key file path plus optional key passphrase.</li>
+          </ul>
+          <p>Network Share notes:</p>
+          <ul>
+            <li>On macOS, explicit sign-in to a Mac SMB share may require enabling that account under <code>Windows File Sharing</code>.</li>
+            <li>On Linux, SMB shares work best when they are already mounted by the desktop environment.</li>
+            <li>On Linux, explicit SMB username/password access may still require mounting the share first in the desktop file manager.</li>
+            <li>If a destination requires a VPN first, choose it in <code>Required VPN</code>.</li>
+            <li>VPN profiles used by CNC Sync must be able to connect automatically without prompting for user interaction.</li>
+            <li>If enabled, <code>Disconnect VPN When Finished</code> disconnects a VPN only when CNC Sync had to connect it itself, and only after a short idle window.</li>
+          </ul>
+          <p>The effective remote path is built from the destination base path plus the watch profile additional remote path.</p>
+          <p>Example: destination base path <code>/uploads</code> and watch additional remote path <code>/watch1</code> becomes <code>/uploads/watch1</code>.</p>
         </section>
 
         <section id="processing-setups">
@@ -354,9 +373,9 @@
             <li><code>Enabled</code>: whether this profile participates in monitoring.</li>
             <li><code>Watch Folder</code>: local folder being watched.</li>
             <li><code>Staging Folder</code>: local folder used for prepared output.</li>
-            <li><code>Remote Subfolder</code>: optional subfolder appended to the FTP server base path.</li>
+            <li><code>Additional Remote Path</code>: optional path appended under the selected destination base path.</li>
             <li><code>Processing Setup</code>: which processing rule to run.</li>
-            <li><code>FTP Destination</code>: which FTP server to upload to.</li>
+            <li><code>Destination</code>: which destination to upload to.</li>
             <li><code>Required Quiet Time</code>: how long files or folders must stay unchanged before processing starts.</li>
             <li><code>Stability Check Interval</code>: how often CNC Sync checks pending items to see if they are ready.</li>
           </ul>
@@ -373,6 +392,7 @@
           </ul>
           <p><code>Start</code> begins folder monitoring. <code>Stop</code> stops folder monitoring.</p>
           <p>If enabled watch profiles exist and settings validate successfully, the app can auto-start monitoring on launch.</p>
+          <p>Changes to monitoring-related settings are applied live by reloading monitoring automatically.</p>
         </section>
 
         <section id="manual-catch-up">
@@ -381,7 +401,7 @@
           <p>It does not blindly upload everything. It:</p>
           <ul>
             <li>reads the selected watch profile</li>
-            <li>checks the target FTP directory</li>
+            <li>checks the target destination directory</li>
             <li>compares local items against remote items</li>
             <li>processes/uploads only missing or changed items</li>
           </ul>
@@ -391,7 +411,7 @@
             <li>directories: name-based presence</li>
             <li>ignores metadata junk like <code>.DS_Store</code>, <code>Thumbs.db</code>, and <code>desktop.ini</code></li>
           </ul>
-          <p>Use this when the app was not running, the FTP server was unavailable, or monitoring was stopped.</p>
+          <p>Use this when the app was not running, the destination was unavailable, or monitoring was stopped.</p>
         </section>
 
         <section id="activity-log">
@@ -403,6 +423,19 @@
             <li>message</li>
           </ul>
           <p>Timestamps include milliseconds so quick processing sequences are easier to follow.</p>
+          <p>The log text is selectable for copy/paste.</p>
+          <p>The same activity stream is also written to a text file in the app data folder. On Linux that is typically <code>~/.config/CNC Sync/activity.log</code>, on macOS it is <code>~/Library/Application Support/CNC Sync/activity.log</code>, and on Windows it is typically <code>%AppData%\CNC Sync\activity.log</code>.</p>
+        </section>
+
+        <section id="help-about">
+          <h2>Help / About</h2>
+          <p>The <code>Help / About</code> tab includes:</p>
+          <ul>
+            <li>setup reminders</li>
+            <li>destination and VPN notes</li>
+            <li>a link to the project page</li>
+            <li>a link to the update log / GitHub releases page</li>
+          </ul>
         </section>
 
         <section id="security-prompts">
@@ -431,8 +464,9 @@
           <h2>Notes</h2>
           <ul>
             <li>FTP timestamps are not relied on for catch-up decisions.</li>
-            <li>Finder can be misleading for FTP browsing and refresh; use a dedicated FTP client when verifying server contents.</li>
-            <li>Old test folders left from earlier versions of the app may need to be cleaned up manually on the server.</li>
+            <li>Finder can be misleading for FTP or SMB browsing and refresh; use a dedicated client or your normal file manager when verifying remote contents.</li>
+            <li>Metadata junk such as <code>.DS_Store</code>, <code>._*</code>, <code>Thumbs.db</code>, <code>desktop.ini</code>, and <code>ehthumbs.db</code> is ignored during watching, staging, catch-up, and upload.</li>
+            <li>On Linux AppImage builds, make the file executable before first launch. Launch At Login uses the current AppImage path, so move it to its long-term location before enabling login startup.</li>
           </ul>
         </section>
       </article>
