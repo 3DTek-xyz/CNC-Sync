@@ -26,6 +26,7 @@
         <SolidColorBrush x:Key="AppAccentSoftBrush" Color="#DCE9FF" />
         <SolidColorBrush x:Key="AppPrimaryTextBrush" Color="#172433" />
         <SolidColorBrush x:Key="AppMutedTextBrush" Color="#58718B" />
+        <SolidColorBrush x:Key="AppSurfaceBackgroundBrush" Color="#F3F6FA" />
     </Application.Resources>
   
     <Application.Styles>
@@ -79,9 +80,20 @@
             <Setter Property="Foreground" Value="{StaticResource AppAccentBrush}" />
         </Style>
 
+        <Style Selector="CheckBox">
+            <Setter Property="Foreground" Value="{StaticResource AppPrimaryTextBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AppPrimaryTextBrush}" />
+        </Style>
+
         <Style Selector="TextBox, ComboBox, NumericUpDown, ListBox">
             <Setter Property="CornerRadius" Value="10" />
             <Setter Property="Foreground" Value="{StaticResource AppPrimaryTextBrush}" />
+        </Style>
+
+        <Style Selector="ListBox.validationList">
+            <Setter Property="Background" Value="{StaticResource AppSurfaceBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AppCardBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
         </Style>
 
         <Style Selector="TabControl">
@@ -92,6 +104,11 @@
             <Setter Property="Padding" Value="16,10" />
             <Setter Property="Margin" Value="0,0,8,0" />
             <Setter Property="Foreground" Value="{StaticResource AppPrimaryTextBrush}" />
+        </Style>
+
+        <Style Selector="TabItem:selected">
+            <Setter Property="Foreground" Value="{StaticResource AppPrimaryTextBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AppAccentBrush}" />
         </Style>
     </Application.Styles>
 

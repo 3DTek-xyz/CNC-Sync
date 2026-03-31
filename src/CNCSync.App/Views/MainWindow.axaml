@@ -170,7 +170,9 @@
                                     <TextBlock Classes="muted" Text="{Binding ValidationSummary}" TextWrapping="Wrap" />
                                 </StackPanel>
 
-                                <ListBox Height="160" ItemsSource="{Binding ValidationErrors}" />
+                                <ListBox Classes="validationList"
+                                         Height="160"
+                                         ItemsSource="{Binding ValidationErrors}" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
