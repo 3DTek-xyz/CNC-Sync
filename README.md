@@ -2,10 +2,13 @@
 
 Cross-platform CNC file monitoring, optional processing, and destination delivery built with Avalonia UI and .NET.
 
+- Documentation: [3dtek-xyz.github.io/CNC-Sync](https://3dtek-xyz.github.io/CNC-Sync/)
+- Releases: [github.com/3DTek-xyz/CNC-Sync/releases](https://github.com/3DTek-xyz/CNC-Sync/releases)
+
 ## Workspace Layout
 
 - `docs/`
-  - active rebuild notes and specs
+  - public documentation and download site content
 - `src/CNCSync.App`
   - Avalonia desktop application
 - `src/CNCSync.Core`
