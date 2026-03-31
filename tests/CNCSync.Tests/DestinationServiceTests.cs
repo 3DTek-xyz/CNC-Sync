@@ -217,6 +217,8 @@ public sealed class DestinationServiceTests
     private sealed class StubVpnService : IVpnService
     {
         public string? LastEnsuredConnectionName { get; private set; }
+        public string? LastDisconnectedConnectionName { get; private set; }
+        public int DisconnectCallCount { get; private set; }
 
         public Task<IReadOnlyList<VpnConnectionInfo>> ListConnectionsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<VpnConnectionInfo>>([]);
@@ -231,6 +233,13 @@ public sealed class DestinationServiceTests
                 ConnectionStateChanged = true,
                 Message = $"Connected required VPN '{connectionName}'."
             });
+        }
+
+        public Task<(bool Success, string Message)> DisconnectAsync(string connectionName, CancellationToken cancellationToken = default)
+        {
+            LastDisconnectedConnectionName = connectionName;
+            DisconnectCallCount++;
+            return Task.FromResult<(bool Success, string Message)>((true, $"Disconnected required VPN '{connectionName}'."));
         }
     }
 
@@ -255,5 +264,63 @@ public sealed class DestinationServiceTests
 
         public Task<(bool Success, string Message)> DeleteRemoteItemAsync(DestinationSettings destination, string remotePath, bool isDirectory, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
+    }
+
+    [Fact]
+    public async Task TestConnectionAsync_DisconnectsVpnAfterIdleTimeoutWhenConfigured()
+    {
+        var ftpService = new TrackingFtpService();
+        var vpnService = new StubVpnService();
+        var destination = new DestinationSettings
+        {
+            Type = DestinationType.Ftp,
+            Host = "example.local",
+            Port = 21,
+            RequiredVpnConnectionName = "CBWSS",
+            DisconnectVpnWhenFinished = true
+        };
+
+        var service = new DestinationService(ftpService, new StubSftpService(), new StubScpService(), new StubNetworkShareService(), vpnService, TimeSpan.FromMilliseconds(50));
+
+        var result = await service.TestConnectionAsync(destination);
+
+        Assert.True(result.Success);
+        Assert.Equal("CBWSS", vpnService.LastEnsuredConnectionName);
+        Assert.Null(vpnService.LastDisconnectedConnectionName);
+
+        await Task.Delay(150);
+
+        Assert.Equal("CBWSS", vpnService.LastDisconnectedConnectionName);
+    }
+
+    [Fact]
+    public async Task SecondOperationWithinIdleTimeout_ReusesVpnLeaseBeforeDisconnecting()
+    {
+        var ftpService = new TrackingFtpService();
+        var vpnService = new StubVpnService();
+        var destination = new DestinationSettings
+        {
+            Type = DestinationType.Ftp,
+            Host = "example.local",
+            Port = 21,
+            RequiredVpnConnectionName = "CBWSS",
+            DisconnectVpnWhenFinished = true
+        };
+
+        var service = new DestinationService(ftpService, new StubSftpService(), new StubScpService(), new StubNetworkShareService(), vpnService, TimeSpan.FromMilliseconds(120));
+
+        var firstResult = await service.TestConnectionAsync(destination);
+        Assert.True(firstResult.Success);
+
+        await Task.Delay(60);
+        var secondResult = await service.TestConnectionAsync(destination);
+        Assert.True(secondResult.Success);
+
+        await Task.Delay(80);
+        Assert.Equal(0, vpnService.DisconnectCallCount);
+
+        await Task.Delay(100);
+        Assert.Equal(1, vpnService.DisconnectCallCount);
+        Assert.Equal("CBWSS", vpnService.LastDisconnectedConnectionName);
     }
 }

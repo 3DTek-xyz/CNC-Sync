@@ -212,5 +212,8 @@ public sealed class DestinationRoutingTests
 
         public Task<VpnConnectionEnsureResult> EnsureConnectedAsync(string connectionName, CancellationToken cancellationToken = default) =>
             Task.FromResult(VpnConnectionEnsureResult.NoRequirement());
+
+        public Task<(bool Success, string Message)> DisconnectAsync(string connectionName, CancellationToken cancellationToken = default) =>
+            Task.FromResult<(bool Success, string Message)>((true, string.Empty));
     }
 }

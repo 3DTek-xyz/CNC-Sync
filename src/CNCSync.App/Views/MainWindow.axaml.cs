@@ -6,6 +6,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace CNCSync.App.Views;
 
@@ -98,6 +99,38 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void ImportSettings_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        var initialDirectory = Path.GetDirectoryName(viewModel.SettingsPath);
+        var selectedPath = await PickSettingsFileAsync(initialDirectory);
+        if (selectedPath is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await viewModel.ImportSettingsFromFileAsync(selectedPath);
+        }
+        catch (Exception ex)
+        {
+            viewModel.CurrentTask = $"Settings import failed: {ex.Message}";
+        }
+    }
+
+    private void OpenExternalLink_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: string url } && !string.IsNullOrWhiteSpace(url))
+        {
+            OpenUrlInShell(url);
+        }
+    }
+
     private void OpenScriptsFolder_OnClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel viewModel ||
@@ -158,6 +191,32 @@ public partial class MainWindow : Window
                 AllowMultiple = false,
                 Title = "Choose script",
                 SuggestedStartLocation = suggestedStartLocation
+            });
+
+        return files.FirstOrDefault()?.Path.LocalPath;
+    }
+
+    private async Task<string?> PickSettingsFileAsync(string? initialDirectory = null)
+    {
+        IStorageFolder? suggestedStartLocation = null;
+        if (!string.IsNullOrWhiteSpace(initialDirectory) && Directory.Exists(initialDirectory))
+        {
+            suggestedStartLocation = await StorageProvider.TryGetFolderFromPathAsync(ToFileUri(initialDirectory));
+        }
+
+        var files = await StorageProvider.OpenFilePickerAsync(
+            new FilePickerOpenOptions
+            {
+                AllowMultiple = false,
+                Title = "Import settings file",
+                SuggestedStartLocation = suggestedStartLocation,
+                FileTypeFilter =
+                [
+                    new FilePickerFileType("JSON files")
+                    {
+                        Patterns = ["*.json"]
+                    }
+                ]
             });
 
         return files.FirstOrDefault()?.Path.LocalPath;
@@ -247,6 +306,38 @@ public partial class MainWindow : Window
             UseShellExecute = false
         };
         linuxStartInfo.ArgumentList.Add(path);
+        Process.Start(linuxStartInfo);
+    }
+
+    private static void OpenUrlInShell(string url)
+    {
+        if (OperatingSystem.IsMacOS())
+        {
+            var startInfo = new ProcessStartInfo("open")
+            {
+                UseShellExecute = false
+            };
+            startInfo.ArgumentList.Add(url);
+            Process.Start(startInfo);
+            return;
+        }
+
+        if (OperatingSystem.IsWindows())
+        {
+            var startInfo = new ProcessStartInfo("explorer.exe")
+            {
+                UseShellExecute = false
+            };
+            startInfo.ArgumentList.Add(url);
+            Process.Start(startInfo);
+            return;
+        }
+
+        var linuxStartInfo = new ProcessStartInfo("xdg-open")
+        {
+            UseShellExecute = false
+        };
+        linuxStartInfo.ArgumentList.Add(url);
         Process.Start(linuxStartInfo);
     }
 }

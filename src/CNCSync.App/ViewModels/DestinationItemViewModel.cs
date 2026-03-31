@@ -59,6 +59,9 @@ public partial class DestinationItemViewModel : ObservableObject
     [ObservableProperty]
     private string requiredVpnConnectionName = string.Empty;
 
+    [ObservableProperty]
+    private bool disconnectVpnWhenFinished;
+
     public string DisplayName => string.IsNullOrWhiteSpace(Name) ? "Unnamed destination" : Name;
     public IReadOnlyList<SshAuthenticationMode> AvailableSshAuthenticationModes { get; } =
         [SshAuthenticationMode.Password, SshAuthenticationMode.PrivateKey];
@@ -188,7 +191,8 @@ public partial class DestinationItemViewModel : ObservableObject
             NetworkShareName = settings.NetworkShareName,
             NetworkDomain = settings.NetworkDomain,
             UseCurrentUserCredentials = settings.UseCurrentUserCredentials,
-            RequiredVpnConnectionName = settings.RequiredVpnConnectionName
+            RequiredVpnConnectionName = settings.RequiredVpnConnectionName,
+            DisconnectVpnWhenFinished = settings.DisconnectVpnWhenFinished
         };
 
     public DestinationSettings ToSettings() =>
@@ -211,6 +215,7 @@ public partial class DestinationItemViewModel : ObservableObject
             NetworkShareName = NetworkShareName,
             NetworkDomain = NetworkDomain,
             UseCurrentUserCredentials = UseCurrentUserCredentials,
-            RequiredVpnConnectionName = RequiredVpnConnectionName
+            RequiredVpnConnectionName = RequiredVpnConnectionName,
+            DisconnectVpnWhenFinished = DisconnectVpnWhenFinished
         };
 }

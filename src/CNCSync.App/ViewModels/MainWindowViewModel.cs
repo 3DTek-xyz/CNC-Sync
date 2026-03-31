@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Reflection;
+using System.Text.Json;
 using System.Threading;
 using Avalonia.Threading;
 using CNCSync.Core.Configuration;
@@ -169,7 +170,8 @@ public partial class MainWindowViewModel : ViewModelBase
     public ObservableCollection<ProcessingSetupItemViewModel> ProcessingSetups { get; } = [];
 
     public ObservableCollection<RemoteBrowserItemViewModel> RemoteBrowserItems { get; } = [];
-    public ObservableCollection<string> AvailableVpnConnectionNames { get; } = [string.Empty];
+    public ObservableCollection<VpnConnectionOptionViewModel> AvailableVpnConnectionOptions { get; } =
+        [new(string.Empty, "(None)")];
 
     public IReadOnlyList<ProcessingMode> AvailableProcessingModes { get; } = Enum.GetValues<ProcessingMode>();
 
@@ -177,6 +179,8 @@ public partial class MainWindowViewModel : ViewModelBase
     public IReadOnlyList<DestinationType> AvailableDestinationTypes { get; } = Enum.GetValues<DestinationType>();
 
     public string AppVersion => ResolvedAppVersion;
+    public string ProjectSiteUrl => "https://3dtek-xyz.github.io/CNC-FTPSync/";
+    public string ReleaseNotesUrl => "https://github.com/3DTek-xyz/CNC-FTPSync/releases";
 
     public string ActiveMonitoringProfilesSummary
     {
@@ -216,6 +220,27 @@ public partial class MainWindowViewModel : ViewModelBase
             }
 
             SelectedWatchProfile.DestinationId = value?.Id ?? string.Empty;
+            OnPropertyChanged();
+        }
+    }
+
+    public VpnConnectionOptionViewModel? SelectedDestinationVpnOption
+    {
+        get
+        {
+            var selectedVpnName = SelectedDestination?.RequiredVpnConnectionName ?? string.Empty;
+            return AvailableVpnConnectionOptions.FirstOrDefault(option =>
+                       string.Equals(option.Name, selectedVpnName, StringComparison.OrdinalIgnoreCase))
+                   ?? AvailableVpnConnectionOptions.FirstOrDefault();
+        }
+        set
+        {
+            if (SelectedDestination is null)
+            {
+                return;
+            }
+
+            SelectedDestination.RequiredVpnConnectionName = value?.Name ?? string.Empty;
             OnPropertyChanged();
         }
     }
@@ -280,6 +305,7 @@ public partial class MainWindowViewModel : ViewModelBase
     partial void OnSelectedDestinationChanged(DestinationItemViewModel? value)
     {
         OnPropertyChanged(nameof(HasSelectedDestination));
+        OnPropertyChanged(nameof(SelectedDestinationVpnOption));
         ResetRemoteBrowserState(value);
         DestinationTestStatus = value is null
             ? "Test the selected destination to verify access."
@@ -423,6 +449,18 @@ public partial class MainWindowViewModel : ViewModelBase
         SaveMessage = "Settings loaded.";
         ValidationSummary = "Settings loaded. Run validation to check them.";
         AddActivity($"Loaded settings from {SettingsPath}");
+    }
+
+    public async Task ImportSettingsFromFileAsync(string filePath)
+    {
+        await using var stream = File.OpenRead(filePath);
+        var imported = await JsonSerializer.DeserializeAsync<AppSettings>(stream);
+        var normalized = (imported ?? AppSettings.CreateDefault()).Normalize();
+        Apply(normalized);
+        await SaveCurrentSettingsAsync(CancellationToken.None);
+        SaveMessage = $"Settings imported from {filePath}.";
+        ValidationSummary = "Imported settings applied. Run validation to confirm them.";
+        AddActivity($"Imported settings from {filePath}");
     }
 
     [RelayCommand]
@@ -1012,6 +1050,12 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
+        if (ReferenceEquals(sender, SelectedDestination) &&
+            e.PropertyName == nameof(DestinationItemViewModel.RequiredVpnConnectionName))
+        {
+            OnPropertyChanged(nameof(SelectedDestinationVpnOption));
+        }
+
         RequestAutoSave(restartMonitoringAfterSave: true);
     }
 
@@ -1126,6 +1170,9 @@ public partial class MainWindowViewModel : ViewModelBase
                 ConnectionStateChanged = true,
                 Message = $"Connected required VPN '{connectionName}'."
             });
+
+        public Task<(bool Success, string Message)> DisconnectAsync(string connectionName, CancellationToken cancellationToken = default) =>
+            Task.FromResult<(bool Success, string Message)>((true, $"Disconnected required VPN '{connectionName}'."));
     }
 
     private static string ResolveAppVersion()
@@ -1215,17 +1262,27 @@ public partial class MainWindowViewModel : ViewModelBase
                 .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            AvailableVpnConnectionNames.Clear();
-            AvailableVpnConnectionNames.Add(string.Empty);
+            AvailableVpnConnectionOptions.Clear();
+            AvailableVpnConnectionOptions.Add(new VpnConnectionOptionViewModel(string.Empty, "(None)"));
 
-            foreach (var name in connections
-                         .Select(connection => connection.Name)
+            var detectedNames = connections
+                .Select(connection => connection.Name)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var name in detectedNames
                          .Concat(preservedNames)
                          .Distinct(StringComparer.OrdinalIgnoreCase)
                          .OrderBy(name => name, StringComparer.OrdinalIgnoreCase))
             {
-                AvailableVpnConnectionNames.Add(name);
+                var displayName = detectedNames.Contains(name)
+                    ? name
+                    : $"{name} (not found on this machine)";
+                AvailableVpnConnectionOptions.Add(new VpnConnectionOptionViewModel(name, displayName));
             }
+
+            OnPropertyChanged(nameof(SelectedDestinationVpnOption));
 
             if (logResult)
             {
@@ -1305,4 +1362,5 @@ public partial class MainWindowViewModel : ViewModelBase
         public Task<(bool Success, string Message)> DeleteRemoteItemAsync(DestinationSettings destination, string remotePath, bool isDirectory, CancellationToken cancellationToken = default) =>
             Task.FromResult<(bool Success, string Message)>((true, $"Design-time delete complete: {remotePath}"));
     }
+
 }

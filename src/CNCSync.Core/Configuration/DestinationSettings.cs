@@ -20,6 +20,7 @@ public sealed class DestinationSettings
     public string NetworkDomain { get; set; } = string.Empty;
     public bool UseCurrentUserCredentials { get; set; } = true;
     public string RequiredVpnConnectionName { get; set; } = string.Empty;
+    public bool DisconnectVpnWhenFinished { get; set; }
     public bool AutoUpload { get; set; } = true;
     public bool Enabled
     {
@@ -47,6 +48,7 @@ public sealed class DestinationSettings
             NetworkDomain = string.Empty,
             UseCurrentUserCredentials = true,
             RequiredVpnConnectionName = string.Empty,
+            DisconnectVpnWhenFinished = false,
             AutoUpload = true
         };
 }

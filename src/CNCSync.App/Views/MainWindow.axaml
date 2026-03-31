@@ -114,6 +114,7 @@
 
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <Button Classes="subtle" Content="Load Settings" Command="{Binding LoadSettingsCommand}" />
+                                    <Button Classes="subtle" Content="Import Settings..." Click="ImportSettings_OnClick" />
                                     <Button Classes="primary" Content="Validate Settings" Command="{Binding ValidateSettingsCommand}" />
                                     <Button Classes="subtle" Content="Check for Updates" Command="{Binding CheckForUpdatesCommand}" />
                                     <Button Classes="subtle" Content="Download and Restart" Command="{Binding DownloadAndRestartUpdateCommand}" IsEnabled="{Binding CanApplyUpdate}" />
@@ -528,11 +529,11 @@
                                           IsVisible="{Binding HasSelectedDestination}">
                                         <TextBlock VerticalAlignment="Center" Text="Required VPN" />
                                         <ComboBox Grid.Column="1"
-                                                  ItemsSource="{Binding AvailableVpnConnectionNames}"
-                                                  SelectedItem="{Binding SelectedDestination.RequiredVpnConnectionName}">
+                                                  ItemsSource="{Binding AvailableVpnConnectionOptions}"
+                                                  SelectedItem="{Binding SelectedDestinationVpnOption}">
                                             <ComboBox.ItemTemplate>
-                                                <DataTemplate>
-                                                    <TextBlock Text="{Binding ., Converter={StaticResource BlankValueDisplayConverter}}" />
+                                                <DataTemplate x:DataType="vm:VpnConnectionOptionViewModel">
+                                                    <TextBlock Text="{Binding DisplayName}" />
                                                 </DataTemplate>
                                             </ComboBox.ItemTemplate>
                                         </ComboBox>
@@ -542,6 +543,25 @@
                                                 Content="Refresh VPNs"
                                                 Command="{Binding RefreshVpnConnectionsCommand}" />
                                     </Grid>
+
+                                    <Grid ColumnDefinitions="220,Auto,*"
+                                          IsVisible="{Binding HasSelectedDestination}">
+                                        <TextBlock VerticalAlignment="Center" Text="VPN Behavior" />
+                                        <CheckBox Grid.Column="1"
+                                                  IsChecked="{Binding SelectedDestination.DisconnectVpnWhenFinished}" />
+                                        <TextBlock Grid.Column="2"
+                                                   Margin="12,0,0,0"
+                                                   VerticalAlignment="Center"
+                                                   Classes="muted"
+                                                   Text="If CNC Sync had to connect the required VPN for this destination, disconnect it when the operation finishes." 
+                                                   TextWrapping="Wrap" />
+                                    </Grid>
+
+                                    <TextBlock Classes="muted"
+                                               Margin="220,0,0,0"
+                                               IsVisible="{Binding HasSelectedDestination}"
+                                               Text="Required VPN profiles must be able to connect automatically without prompting for user interaction. Save credentials or use a profile that the OS can bring up unattended."
+                                               TextWrapping="Wrap" />
 
                                     <Grid ColumnDefinitions="220,180,*"
                                           IsVisible="{Binding SelectedDestination.UsesRemoteHost}">
@@ -702,7 +722,7 @@
                 </Grid>
             </TabItem>
 
-            <TabItem Header="Help">
+            <TabItem Header="Help / About">
                 <ScrollViewer Margin="0,12,0,0"
                               HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto">
@@ -710,8 +730,19 @@
                         <Border Classes="card" Padding="18" CornerRadius="16">
                             <StackPanel Spacing="8">
                                 <TextBlock Classes="sectionEyebrow" Text="Support" />
-                                <TextBlock Text="Getting Started" FontSize="20" FontWeight="SemiBold" />
+                                <TextBlock Text="Help / About" FontSize="20" FontWeight="SemiBold" />
                                 <TextBlock Text="CNC Sync works best when you set things up in this order: destination, processing setup, watch folder, validation, then monitoring." TextWrapping="Wrap" />
+                                <TextBlock Classes="muted" Text="Made with love by Ben at 3D Tech Spiel." TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Button Classes="subtle"
+                                            Content="Open Project Page"
+                                            Tag="{Binding ProjectSiteUrl}"
+                                            Click="OpenExternalLink_OnClick" />
+                                    <Button Classes="subtle"
+                                            Content="Open Update Log"
+                                            Tag="{Binding ReleaseNotesUrl}"
+                                            Click="OpenExternalLink_OnClick" />
+                                </StackPanel>
                             </StackPanel>
                         </Border>
 

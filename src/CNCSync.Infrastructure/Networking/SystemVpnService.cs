@@ -7,6 +7,9 @@ namespace CNCSync.Infrastructure.Networking;
 
 public sealed partial class SystemVpnService : IVpnService
 {
+    private const int ConnectPollAttempts = 20;
+    private static readonly TimeSpan ConnectPollInterval = TimeSpan.FromMilliseconds(500);
+
     public async Task<IReadOnlyList<VpnConnectionInfo>> ListConnectionsAsync(CancellationToken cancellationToken = default)
     {
         if (OperatingSystem.IsMacOS())
@@ -69,14 +72,14 @@ public sealed partial class SystemVpnService : IVpnService
             {
                 Success = false,
                 ConnectedNow = false,
-                Message = $"Could not connect required VPN '{connection.Name}': {error.Trim()}"
+                Message = $"Could not connect required VPN '{connection.Name}': {error.Trim()} VPN profiles used by CNC Sync must be able to connect automatically without prompting for user interaction."
             };
         }
 
-        for (var attempt = 0; attempt < 10; attempt++)
+        for (var attempt = 0; attempt < ConnectPollAttempts; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            await Task.Delay(500, cancellationToken);
+            await Task.Delay(ConnectPollInterval, cancellationToken);
             var refreshedConnection = (await ListConnectionsAsync(cancellationToken)).FirstOrDefault(item =>
                 string.Equals(item.Name, connection.Name, StringComparison.OrdinalIgnoreCase));
             if (refreshedConnection?.IsConnected == true)
@@ -95,8 +98,43 @@ public sealed partial class SystemVpnService : IVpnService
         {
             Success = false,
             ConnectedNow = false,
-            Message = $"VPN '{connection.Name}' did not report as connected after the connect request."
+            Message = $"VPN '{connection.Name}' did not report as connected within {ConnectPollAttempts * ConnectPollInterval.TotalSeconds:0} seconds of the connect request. VPN profiles used by CNC Sync must be able to connect automatically without prompting for user interaction."
         };
+    }
+
+    public async Task<(bool Success, string Message)> DisconnectAsync(string connectionName, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(connectionName))
+        {
+            return (true, string.Empty);
+        }
+
+        var connections = await ListConnectionsAsync(cancellationToken);
+        var connection = connections.FirstOrDefault(item =>
+            string.Equals(item.Name, connectionName, StringComparison.OrdinalIgnoreCase));
+        if (connection is null)
+        {
+            return (false, $"Required VPN '{connectionName}' is not configured on this machine.");
+        }
+
+        if (!connection.IsConnected)
+        {
+            return (true, $"Required VPN '{connection.Name}' was already disconnected.");
+        }
+
+        var disconnectResult = OperatingSystem.IsMacOS()
+            ? await RunProcessAsync("/usr/sbin/scutil", ["--nc", "stop", connection.Identifier], cancellationToken)
+            : OperatingSystem.IsWindows()
+                ? await RunProcessAsync("rasdial", [connection.Name, "/disconnect"], cancellationToken)
+                : await RunProcessAsync("nmcli", ["connection", "down", "id", connection.Name], cancellationToken);
+
+        if (disconnectResult.ExitCode != 0)
+        {
+            var error = string.IsNullOrWhiteSpace(disconnectResult.StandardError) ? disconnectResult.StandardOutput : disconnectResult.StandardError;
+            return (false, $"Could not disconnect required VPN '{connection.Name}': {error.Trim()}");
+        }
+
+        return (true, $"Disconnected required VPN '{connection.Name}'.");
     }
 
     private static async Task<IReadOnlyList<VpnConnectionInfo>> ListMacConnectionsAsync(CancellationToken cancellationToken)
@@ -129,7 +167,7 @@ public sealed partial class SystemVpnService : IVpnService
         {
             Identifier = match.Groups["id"].Value,
             Name = match.Groups["name"].Value,
-            IsConnected = status.Contains("Connected", StringComparison.OrdinalIgnoreCase)
+            IsConnected = string.Equals(status.Trim(), "Connected", StringComparison.OrdinalIgnoreCase)
         };
     }
 
