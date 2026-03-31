@@ -1,4 +1,5 @@
 name: Pages Site
+run-name: Pages Site
 
 on:
   push:
