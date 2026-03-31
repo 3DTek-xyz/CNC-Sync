@@ -54,6 +54,11 @@ public sealed class DestinationService : IDestinationService
 
     public async Task<(bool Success, string Message)> UploadDirectoryAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default)
     {
+        return await UploadFileSystemItemAsync(localPath, destination, remoteDirectoryPath, cancellationToken);
+    }
+
+    public async Task<(bool Success, string Message)> UploadFileSystemItemAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default)
+    {
         var vpnResult = await EnsureVpnConnectedIfRequiredAsync(destination, cancellationToken);
         if (!vpnResult.Success)
         {
@@ -65,10 +70,10 @@ public sealed class DestinationService : IDestinationService
             var result = destination.Type switch
             {
                 DestinationType.LocalFolder => await UploadToLocalFolderAsync(localPath, destination, remoteDirectoryPath, cancellationToken),
-                DestinationType.NetworkShare => await _networkShareService.UploadDirectoryAsync(localPath, destination, remoteDirectoryPath, cancellationToken),
-                DestinationType.Sftp => await _sftpService.UploadDirectoryAsync(localPath, destination, remoteDirectoryPath, cancellationToken),
-                DestinationType.Scp => await _scpService.UploadDirectoryAsync(localPath, destination, remoteDirectoryPath, cancellationToken),
-                _ => await _ftpService.UploadDirectoryAsync(localPath, destination, remoteDirectoryPath, cancellationToken)
+                DestinationType.NetworkShare => await _networkShareService.UploadFileSystemItemAsync(localPath, destination, remoteDirectoryPath, cancellationToken),
+                DestinationType.Sftp => await _sftpService.UploadFileSystemItemAsync(localPath, destination, remoteDirectoryPath, cancellationToken),
+                DestinationType.Scp => await _scpService.UploadFileSystemItemAsync(localPath, destination, remoteDirectoryPath, cancellationToken),
+                _ => await _ftpService.UploadFileSystemItemAsync(localPath, destination, remoteDirectoryPath, cancellationToken)
             };
 
             return DecorateWithVpnMessage(result, vpnResult);
@@ -326,7 +331,9 @@ public sealed class DestinationService : IDestinationService
             return (false, "Local upload skipped because no destination folder is configured.");
         }
 
-        if (!Directory.Exists(localPath))
+        var isDirectory = Directory.Exists(localPath);
+        var isFile = File.Exists(localPath);
+        if (!isDirectory && !isFile)
         {
             return (false, $"Local upload skipped because source path does not exist: {localPath}");
         }
@@ -336,18 +343,34 @@ public sealed class DestinationService : IDestinationService
             var targetRoot = CombineLocalPath(destination.LocalRootPath, remoteDirectoryPath);
             Directory.CreateDirectory(targetRoot);
 
-            foreach (var file in FileSystemItemFilter.EnumerateIncludedFiles(localPath))
+            if (isFile)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                var relativePath = Path.GetRelativePath(localPath, file);
-                var destinationFile = Path.Combine(targetRoot, relativePath);
-                var destinationDirectory = Path.GetDirectoryName(destinationFile);
-                if (!string.IsNullOrWhiteSpace(destinationDirectory))
+                var fileName = Path.GetFileName(localPath);
+                if (FileSystemItemFilter.ShouldIgnoreFileSystemItem(fileName))
                 {
-                    Directory.CreateDirectory(destinationDirectory);
+                    return (true, $"Skipped ignored file: {fileName}");
                 }
 
-                File.Copy(file, destinationFile, overwrite: true);
+                var destinationFile = Path.Combine(targetRoot, fileName);
+                await using var sourceStream = File.OpenRead(localPath);
+                await using var destinationStream = File.Create(destinationFile);
+                await sourceStream.CopyToAsync(destinationStream, cancellationToken);
+            }
+            else
+            {
+                foreach (var file in FileSystemItemFilter.EnumerateIncludedFiles(localPath))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var relativePath = Path.GetRelativePath(localPath, file);
+                    var destinationFile = Path.Combine(targetRoot, relativePath);
+                    var destinationDirectory = Path.GetDirectoryName(destinationFile);
+                    if (!string.IsNullOrWhiteSpace(destinationDirectory))
+                    {
+                        Directory.CreateDirectory(destinationDirectory);
+                    }
+
+                    File.Copy(file, destinationFile, overwrite: true);
+                }
             }
 
             return (true, $"Local upload completed to {targetRoot}: {localPath}");

@@ -45,6 +45,9 @@ public sealed class ScpService : IScpService, IDisposable
         }, cancellationToken);
 
     public Task<(bool Success, string Message)> UploadDirectoryAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
+        UploadFileSystemItemAsync(localPath, destination, remoteDirectoryPath, cancellationToken);
+
+    public Task<(bool Success, string Message)> UploadFileSystemItemAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
         Task.Run(() =>
         {
             var validation = ValidateSshDestination(destination, "SCP");
@@ -53,7 +56,9 @@ public sealed class ScpService : IScpService, IDisposable
                 return validation;
             }
 
-            if (!Directory.Exists(localPath))
+            var isDirectory = Directory.Exists(localPath);
+            var isFile = File.Exists(localPath);
+            if (!isDirectory && !isFile)
             {
                 return (false, $"SCP upload skipped because local path does not exist: {localPath}");
             }
@@ -68,17 +73,32 @@ public sealed class ScpService : IScpService, IDisposable
                 var targetRoot = NormalizeSessionDirectoryPath(remoteDirectoryPath);
                 EnsureDirectoryExists(sshClient, targetRoot, cancellationToken);
 
-                foreach (var file in FileSystemItemFilter.EnumerateIncludedFiles(localPath))
+                if (isFile)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
+                    var fileName = Path.GetFileName(localPath);
+                    if (FileSystemItemFilter.ShouldIgnoreFileSystemItem(fileName))
+                    {
+                        return (true, $"Skipped ignored file: {fileName}");
+                    }
 
-                    var relativePath = Path.GetRelativePath(localPath, file).Replace('\\', '/');
-                    var remoteFilePath = CombineRemoteFilePath(targetRoot, relativePath);
-                    var remoteDirectory = GetParentRemotePath(remoteFilePath);
-                    EnsureDirectoryExists(sshClient, remoteDirectory, cancellationToken);
-
-                    using var fileStream = File.OpenRead(file);
+                    var remoteFilePath = CombineRemoteFilePath(targetRoot, fileName);
+                    using var fileStream = File.OpenRead(localPath);
                     scpClient.Upload(fileStream, remoteFilePath);
+                }
+                else
+                {
+                    foreach (var file in FileSystemItemFilter.EnumerateIncludedFiles(localPath))
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        var relativePath = Path.GetRelativePath(localPath, file).Replace('\\', '/');
+                        var remoteFilePath = CombineRemoteFilePath(targetRoot, relativePath);
+                        var remoteDirectory = GetParentRemotePath(remoteFilePath);
+                        EnsureDirectoryExists(sshClient, remoteDirectory, cancellationToken);
+
+                        using var fileStream = File.OpenRead(file);
+                        scpClient.Upload(fileStream, remoteFilePath);
+                    }
                 }
 
                 return (true, $"SCP upload completed to {DescribeRemotePath(targetRoot)}: {localPath}");

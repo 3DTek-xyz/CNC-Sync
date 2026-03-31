@@ -32,22 +32,18 @@ public sealed class StagingProjectProcessor : IProjectProcessor
             var remoteFolderName = sourceIsDirectory ? sourceName : null;
 
             preparedOutputPath = Path.Combine(profile.StagingFolder, sourceName);
-
-            if (Directory.Exists(preparedOutputPath))
-            {
-                Directory.Delete(preparedOutputPath, recursive: true);
-            }
-
-            Directory.CreateDirectory(preparedOutputPath);
+            DeletePathIfExists(preparedOutputPath);
 
             if (processingSetup.Mode == ProcessingMode.ExternalScript)
             {
+                Directory.CreateDirectory(preparedOutputPath);
                 return await RunExternalScriptAsync(sourcePath, preparedOutputPath, processingSetup, startedAt, remoteFolderName, cancellationToken);
             }
 
             List<string> processedFiles;
             if (sourceIsDirectory)
             {
+                Directory.CreateDirectory(preparedOutputPath);
                 processedFiles = CopyDirectory(sourcePath, preparedOutputPath, cancellationToken);
             }
             else if (sourceIsFile)
@@ -66,7 +62,7 @@ public sealed class StagingProjectProcessor : IProjectProcessor
                     };
                 }
 
-                File.Copy(sourcePath, Path.Combine(preparedOutputPath, fileName), overwrite: true);
+                File.Copy(sourcePath, preparedOutputPath, overwrite: true);
                 processedFiles = [fileName];
             }
             else
@@ -107,6 +103,20 @@ public sealed class StagingProjectProcessor : IProjectProcessor
                 FinishedAtUtc = DateTime.UtcNow,
                 Errors = [ex.ToString()]
             };
+        }
+    }
+
+    private static void DeletePathIfExists(string path)
+    {
+        if (Directory.Exists(path))
+        {
+            Directory.Delete(path, recursive: true);
+            return;
+        }
+
+        if (File.Exists(path))
+        {
+            File.Delete(path);
         }
     }
 

@@ -83,6 +83,9 @@ public sealed class DestinationServiceTests
         public Task<(bool Success, string Message)> UploadDirectoryAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException("FTP should not be used in local destination tests.");
 
+        public Task<(bool Success, string Message)> UploadFileSystemItemAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException("FTP should not be used in local destination tests.");
+
         public Task<(bool Success, IReadOnlyList<RemoteEntryInfo> Entries, string Message)> ListRootEntriesAsync(DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException("FTP should not be used in local destination tests.");
 
@@ -99,6 +102,9 @@ public sealed class DestinationServiceTests
             throw new NotSupportedException("SFTP should not be used in local destination tests.");
 
         public Task<(bool Success, string Message)> UploadDirectoryAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException("SFTP should not be used in local destination tests.");
+
+        public Task<(bool Success, string Message)> UploadFileSystemItemAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException("SFTP should not be used in local destination tests.");
 
         public Task<(bool Success, IReadOnlyList<RemoteEntryInfo> Entries, string Message)> ListRootEntriesAsync(DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
@@ -119,6 +125,9 @@ public sealed class DestinationServiceTests
         public Task<(bool Success, string Message)> UploadDirectoryAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException("SCP should not be used in local destination tests.");
 
+        public Task<(bool Success, string Message)> UploadFileSystemItemAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException("SCP should not be used in local destination tests.");
+
         public Task<(bool Success, IReadOnlyList<RemoteEntryInfo> Entries, string Message)> ListRootEntriesAsync(DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException("SCP should not be used in local destination tests.");
 
@@ -135,6 +144,9 @@ public sealed class DestinationServiceTests
             throw new NotSupportedException("Network shares should not be used in local destination tests.");
 
         public Task<(bool Success, string Message)> UploadDirectoryAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException("Network shares should not be used in local destination tests.");
+
+        public Task<(bool Success, string Message)> UploadFileSystemItemAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException("Network shares should not be used in local destination tests.");
 
         public Task<(bool Success, IReadOnlyList<RemoteEntryInfo> Entries, string Message)> ListRootEntriesAsync(DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
@@ -254,6 +266,9 @@ public sealed class DestinationServiceTests
         }
 
         public Task<(bool Success, string Message)> UploadDirectoryAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<(bool Success, string Message)> UploadFileSystemItemAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
         public Task<(bool Success, IReadOnlyList<RemoteEntryInfo> Entries, string Message)> ListRootEntriesAsync(DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>

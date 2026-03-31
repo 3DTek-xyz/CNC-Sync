@@ -42,40 +42,70 @@ public sealed class FtpService : IFtpService
         string remoteDirectoryPath,
         CancellationToken cancellationToken = default)
     {
+        return await UploadFileSystemItemAsync(localPath, destination, remoteDirectoryPath, cancellationToken);
+    }
+
+    public async Task<(bool Success, string Message)> UploadFileSystemItemAsync(
+        string localPath,
+        DestinationSettings destination,
+        string remoteDirectoryPath,
+        CancellationToken cancellationToken = default)
+    {
         if (string.IsNullOrWhiteSpace(destination.Host))
         {
             return (false, "FTP upload skipped because no FTP host is configured.");
         }
 
-        if (!Directory.Exists(localPath))
+        var isDirectory = Directory.Exists(localPath);
+        var isFile = File.Exists(localPath);
+        if (!isDirectory && !isFile)
         {
             return (false, $"FTP upload skipped because local path does not exist: {localPath}");
         }
 
         try
         {
-            await CreateDirectoryChainIfNeededAsync(destination, remoteDirectoryPath, cancellationToken);
+            var targetRoot = string.IsNullOrWhiteSpace(remoteDirectoryPath) ? string.Empty : remoteDirectoryPath;
+            await CreateDirectoryChainIfNeededAsync(destination, targetRoot, cancellationToken);
 
-            foreach (var file in FileSystemItemFilter.EnumerateIncludedFiles(localPath))
+            if (isFile)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var relativePath = Path.GetRelativePath(localPath, file).Replace('\\', '/');
-                var remoteFilePath = CombineRemotePath(remoteDirectoryPath, relativePath);
-                var remoteDir = Path.GetDirectoryName(remoteFilePath)?.Replace('\\', '/');
-                if (!string.IsNullOrWhiteSpace(remoteDir))
+                var fileName = Path.GetFileName(localPath);
+                if (FileSystemItemFilter.ShouldIgnoreFileSystemItem(fileName))
                 {
-                    await CreateDirectoryChainIfNeededAsync(destination, remoteDir, cancellationToken);
+                    return (true, $"Skipped ignored file: {fileName}");
                 }
 
+                var remoteFilePath = CombineRemotePath(targetRoot, fileName);
                 var request = CreateRequest(destination, remoteFilePath, WebRequestMethods.Ftp.UploadFile);
-                await using var fileStream = File.OpenRead(file);
+                await using var fileStream = File.OpenRead(localPath);
                 await using var requestStream = await GetRequestStreamWithTimeoutAsync(request, cancellationToken);
                 await fileStream.CopyToAsync(requestStream, cancellationToken);
                 using var response = (FtpWebResponse)await GetResponseWithTimeoutAsync(request, cancellationToken);
             }
+            else
+            {
+                foreach (var file in FileSystemItemFilter.EnumerateIncludedFiles(localPath))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
 
-            var targetDescription = string.IsNullOrWhiteSpace(remoteDirectoryPath) ? "/" : remoteDirectoryPath;
+                    var relativePath = Path.GetRelativePath(localPath, file).Replace('\\', '/');
+                    var remoteFilePath = CombineRemotePath(targetRoot, relativePath);
+                    var remoteDir = Path.GetDirectoryName(remoteFilePath)?.Replace('\\', '/');
+                    if (!string.IsNullOrWhiteSpace(remoteDir))
+                    {
+                        await CreateDirectoryChainIfNeededAsync(destination, remoteDir, cancellationToken);
+                    }
+
+                    var request = CreateRequest(destination, remoteFilePath, WebRequestMethods.Ftp.UploadFile);
+                    await using var fileStream = File.OpenRead(file);
+                    await using var requestStream = await GetRequestStreamWithTimeoutAsync(request, cancellationToken);
+                    await fileStream.CopyToAsync(requestStream, cancellationToken);
+                    using var response = (FtpWebResponse)await GetResponseWithTimeoutAsync(request, cancellationToken);
+                }
+            }
+
+            var targetDescription = string.IsNullOrWhiteSpace(targetRoot) ? "/" : targetRoot;
             return (true, $"FTP upload completed to {targetDescription}: {localPath}");
         }
         catch (TimeoutException)

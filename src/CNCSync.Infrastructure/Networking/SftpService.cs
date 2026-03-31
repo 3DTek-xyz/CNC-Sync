@@ -51,6 +51,9 @@ public sealed class SftpService : ISftpService
         }, cancellationToken);
 
     public Task<(bool Success, string Message)> UploadDirectoryAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
+        UploadFileSystemItemAsync(localPath, destination, remoteDirectoryPath, cancellationToken);
+
+    public Task<(bool Success, string Message)> UploadFileSystemItemAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
         Task.Run(() =>
         {
             if (string.IsNullOrWhiteSpace(destination.Host))
@@ -58,7 +61,9 @@ public sealed class SftpService : ISftpService
                 return (false, "SFTP upload skipped because no SFTP host is configured.");
             }
 
-            if (!Directory.Exists(localPath))
+            var isDirectory = Directory.Exists(localPath);
+            var isFile = File.Exists(localPath);
+            if (!isDirectory && !isFile)
             {
                 return (false, $"SFTP upload skipped because local path does not exist: {localPath}");
             }
@@ -71,17 +76,32 @@ public sealed class SftpService : ISftpService
                 var targetRoot = NormalizeSessionDirectoryPath(remoteDirectoryPath);
                 EnsureDirectoryExists(client, targetRoot, cancellationToken);
 
-                foreach (var file in FileSystemItemFilter.EnumerateIncludedFiles(localPath))
+                if (isFile)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
+                    var fileName = Path.GetFileName(localPath);
+                    if (FileSystemItemFilter.ShouldIgnoreFileSystemItem(fileName))
+                    {
+                        return (true, $"Skipped ignored file: {fileName}");
+                    }
 
-                    var relativePath = Path.GetRelativePath(localPath, file).Replace('\\', '/');
-                    var remoteFilePath = CombineRemoteFilePath(targetRoot, relativePath);
-                    var remoteDirectory = GetParentRemotePath(remoteFilePath);
-                    EnsureDirectoryExists(client, remoteDirectory, cancellationToken);
-
-                    using var fileStream = File.OpenRead(file);
+                    var remoteFilePath = CombineRemoteFilePath(targetRoot, fileName);
+                    using var fileStream = File.OpenRead(localPath);
                     client.UploadFile(fileStream, remoteFilePath, true, null);
+                }
+                else
+                {
+                    foreach (var file in FileSystemItemFilter.EnumerateIncludedFiles(localPath))
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        var relativePath = Path.GetRelativePath(localPath, file).Replace('\\', '/');
+                        var remoteFilePath = CombineRemoteFilePath(targetRoot, relativePath);
+                        var remoteDirectory = GetParentRemotePath(remoteFilePath);
+                        EnsureDirectoryExists(client, remoteDirectory, cancellationToken);
+
+                        using var fileStream = File.OpenRead(file);
+                        client.UploadFile(fileStream, remoteFilePath, true, null);
+                    }
                 }
 
                 return (true, $"SFTP upload completed to {DescribeRemotePath(targetRoot)}: {localPath}");

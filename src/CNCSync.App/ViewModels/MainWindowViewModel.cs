@@ -1493,6 +1493,9 @@ public partial class MainWindowViewModel : ViewModelBase
         public Task<(bool Success, string Message)> TestConnectionAsync(DestinationSettings destination, CancellationToken cancellationToken = default) =>
             Task.FromResult<(bool Success, string Message)>((true, "Design-time destination test complete."));
 
+        public Task<(bool Success, string Message)> UploadFileSystemItemAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
+            Task.FromResult<(bool Success, string Message)>((true, "Design-time destination upload complete."));
+
         public Task<(bool Success, string Message)> UploadDirectoryAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
             Task.FromResult<(bool Success, string Message)>((true, "Design-time destination upload complete."));
 

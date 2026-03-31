@@ -17,8 +17,10 @@ public static class FileSystemItemFilter
     }
 
     public static IEnumerable<string> EnumerateIncludedFiles(string rootPath) =>
-        Directory.EnumerateFiles(rootPath, "*", SearchOption.AllDirectories)
-            .Where(path => !ShouldIgnoreAnyPathSegment(path, rootPath));
+        File.Exists(rootPath)
+            ? EnumerateSingleFile(rootPath)
+            : Directory.EnumerateFiles(rootPath, "*", SearchOption.AllDirectories)
+                .Where(path => !ShouldIgnoreAnyPathSegment(path, rootPath));
 
     public static IEnumerable<string> EnumerateIncludedDirectories(string rootPath) =>
         Directory.EnumerateDirectories(rootPath, "*", SearchOption.AllDirectories)
@@ -29,5 +31,13 @@ public static class FileSystemItemFilter
         var relativePath = Path.GetRelativePath(rootPath, fullPath);
         var segments = relativePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         return segments.Any(ShouldIgnoreFileSystemItem);
+    }
+
+    private static IEnumerable<string> EnumerateSingleFile(string filePath)
+    {
+        if (!ShouldIgnoreFileSystemItem(Path.GetFileName(filePath)))
+        {
+            yield return filePath;
+        }
     }
 }

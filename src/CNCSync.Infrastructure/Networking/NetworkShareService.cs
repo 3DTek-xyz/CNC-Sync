@@ -30,13 +30,20 @@ public sealed class NetworkShareService : INetworkShareService
 
     public async Task<(bool Success, string Message)> UploadDirectoryAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default)
     {
+        return await UploadFileSystemItemAsync(localPath, destination, remoteDirectoryPath, cancellationToken);
+    }
+
+    public async Task<(bool Success, string Message)> UploadFileSystemItemAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default)
+    {
         var validation = Validate(destination);
         if (!validation.Success)
         {
             return validation;
         }
 
-        if (!Directory.Exists(localPath))
+        var isDirectory = Directory.Exists(localPath);
+        var isFile = File.Exists(localPath);
+        if (!isDirectory && !isFile)
         {
             return (false, $"Network upload skipped because source path does not exist: {localPath}");
         }
@@ -47,18 +54,32 @@ public sealed class NetworkShareService : INetworkShareService
             var targetRoot = CombineLocalPath(shareRoot, remoteDirectoryPath);
             Directory.CreateDirectory(targetRoot);
 
-            foreach (var file in FileSystemItemFilter.EnumerateIncludedFiles(localPath))
+            if (isFile)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                var relativePath = Path.GetRelativePath(localPath, file);
-                var destinationFile = Path.Combine(targetRoot, relativePath);
-                var destinationDirectory = Path.GetDirectoryName(destinationFile);
-                if (!string.IsNullOrWhiteSpace(destinationDirectory))
+                var fileName = Path.GetFileName(localPath);
+                if (FileSystemItemFilter.ShouldIgnoreFileSystemItem(fileName))
                 {
-                    Directory.CreateDirectory(destinationDirectory);
+                    return (true, $"Skipped ignored file: {fileName}");
                 }
 
-                File.Copy(file, destinationFile, overwrite: true);
+                var destinationFile = Path.Combine(targetRoot, fileName);
+                File.Copy(localPath, destinationFile, overwrite: true);
+            }
+            else
+            {
+                foreach (var file in FileSystemItemFilter.EnumerateIncludedFiles(localPath))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var relativePath = Path.GetRelativePath(localPath, file);
+                    var destinationFile = Path.Combine(targetRoot, relativePath);
+                    var destinationDirectory = Path.GetDirectoryName(destinationFile);
+                    if (!string.IsNullOrWhiteSpace(destinationDirectory))
+                    {
+                        Directory.CreateDirectory(destinationDirectory);
+                    }
+
+                    File.Copy(file, destinationFile, overwrite: true);
+                }
             }
 
             return (true, $"Network upload completed to {targetRoot}: {localPath}");

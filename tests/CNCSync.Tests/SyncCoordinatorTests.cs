@@ -264,6 +264,12 @@ public sealed class SyncCoordinatorTests
             return Task.FromResult<(bool Success, string Message)>((true, "uploaded"));
         }
 
+        public Task<(bool Success, string Message)> UploadFileSystemItemAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default)
+        {
+            LastUploadRemoteDirectoryPath = remoteDirectoryPath;
+            return Task.FromResult<(bool Success, string Message)>((true, "uploaded"));
+        }
+
         public Task<(bool Success, IReadOnlyList<RemoteEntryInfo> Entries, string Message)> ListRootEntriesAsync(DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
             Task.FromResult<(bool Success, IReadOnlyList<RemoteEntryInfo> Entries, string Message)>((true, [], "ok"));
 

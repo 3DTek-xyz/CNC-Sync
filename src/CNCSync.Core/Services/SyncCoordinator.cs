@@ -284,7 +284,7 @@ public sealed class SyncCoordinator : ISyncCoordinator
             _ => "FTP upload"
         };
         LogActivity($"{destinationLabel} starting to {(string.IsNullOrWhiteSpace(effectiveRemotePath) ? "/" : effectiveRemotePath)} from {result.OutputPath}", profile.Name);
-        var uploadResult = await _destinationService.UploadDirectoryAsync(result.OutputPath, destination, effectiveRemotePath, cancellationToken);
+        var uploadResult = await _destinationService.UploadFileSystemItemAsync(result.OutputPath, destination, effectiveRemotePath, cancellationToken);
         LogActivity(uploadResult.Message, profile.Name);
 
         if (!uploadResult.Success)
@@ -380,7 +380,7 @@ public sealed class SyncCoordinator : ISyncCoordinator
     {
         if (string.IsNullOrWhiteSpace(outputPath) ||
             string.IsNullOrWhiteSpace(stagingRoot) ||
-            !Directory.Exists(outputPath) ||
+            (!Directory.Exists(outputPath) && !File.Exists(outputPath)) ||
             !Directory.Exists(stagingRoot))
         {
             return;
@@ -399,7 +399,15 @@ public sealed class SyncCoordinator : ISyncCoordinator
                 return;
             }
 
-            Directory.Delete(normalizedOutputPath, recursive: true);
+            if (Directory.Exists(normalizedOutputPath))
+            {
+                Directory.Delete(normalizedOutputPath, recursive: true);
+            }
+            else if (File.Exists(normalizedOutputPath))
+            {
+                File.Delete(normalizedOutputPath);
+            }
+
             LogActivity($"Cleaned staged output: {normalizedOutputPath}", profileName);
         }
         catch (Exception ex)
