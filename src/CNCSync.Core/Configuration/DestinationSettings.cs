@@ -11,12 +11,15 @@ public sealed class DestinationSettings
     public bool UseAnonymousFtp { get; set; } = true;
     public string Username { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
+    public SshAuthenticationMode SshAuthenticationMode { get; set; } = SshAuthenticationMode.Password;
+    public string PrivateKeyPath { get; set; } = string.Empty;
+    public string PrivateKeyPassphrase { get; set; } = string.Empty;
     public string LocalRootPath { get; set; } = string.Empty;
-    public NetworkShareProtocol NetworkProtocol { get; set; } = NetworkShareProtocol.Smb;
     public string NetworkHost { get; set; } = string.Empty;
     public string NetworkShareName { get; set; } = string.Empty;
     public string NetworkDomain { get; set; } = string.Empty;
     public bool UseCurrentUserCredentials { get; set; } = true;
+    public string RequiredVpnConnectionName { get; set; } = string.Empty;
     public bool AutoUpload { get; set; } = true;
     public bool Enabled
     {
@@ -35,12 +38,15 @@ public sealed class DestinationSettings
             UseAnonymousFtp = true,
             Username = string.Empty,
             Password = string.Empty,
+            SshAuthenticationMode = SshAuthenticationMode.Password,
+            PrivateKeyPath = string.Empty,
+            PrivateKeyPassphrase = string.Empty,
             LocalRootPath = string.Empty,
-            NetworkProtocol = NetworkShareProtocol.Smb,
             NetworkHost = string.Empty,
             NetworkShareName = string.Empty,
             NetworkDomain = string.Empty,
             UseCurrentUserCredentials = true,
+            RequiredVpnConnectionName = string.Empty,
             AutoUpload = true
         };
 }

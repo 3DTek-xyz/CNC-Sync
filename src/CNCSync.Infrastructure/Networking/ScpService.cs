@@ -250,9 +250,16 @@ public sealed class ScpService : IScpService, IDisposable
             return (false, $"{protocolLabel} username is not configured.");
         }
 
-        if (string.IsNullOrWhiteSpace(destination.Password))
+        if (destination.SshAuthenticationMode == SshAuthenticationMode.Password &&
+            string.IsNullOrWhiteSpace(destination.Password))
         {
             return (false, $"{protocolLabel} password is not configured.");
+        }
+
+        if (destination.SshAuthenticationMode == SshAuthenticationMode.PrivateKey &&
+            string.IsNullOrWhiteSpace(destination.PrivateKeyPath))
+        {
+            return (false, $"{protocolLabel} private key path is not configured.");
         }
 
         return (true, string.Empty);
@@ -396,14 +403,12 @@ public sealed class ScpService : IScpService, IDisposable
 
     private static SshClient CreateSshClient(DestinationSettings destination)
     {
-        var port = destination.Port > 0 ? destination.Port : 22;
-        return new SshClient(destination.Host, port, destination.Username, destination.Password);
+        return new SshClient(SshConnectionFactory.CreateConnectionInfo(destination));
     }
 
     private static ScpClient CreateScpClient(DestinationSettings destination)
     {
-        var port = destination.Port > 0 ? destination.Port : 22;
-        return new ScpClient(destination.Host, port, destination.Username, destination.Password);
+        return new ScpClient(SshConnectionFactory.CreateConnectionInfo(destination));
     }
 
     private static void EnsureDirectoryExists(SshClient client, string? remotePath, CancellationToken cancellationToken)
@@ -529,7 +534,7 @@ public sealed class ScpService : IScpService, IDisposable
     }
 
     private static string BuildConnectionKey(DestinationSettings destination) =>
-        $"{destination.Host}\n{destination.Port}\n{destination.Username}\n{destination.Password}";
+        $"{destination.Host}\n{destination.Port}\n{destination.Username}\n{destination.SshAuthenticationMode}\n{destination.Password}\n{destination.PrivateKeyPath}\n{destination.PrivateKeyPassphrase}";
 
     private static string DescribeRemotePath(string path) =>
         string.IsNullOrWhiteSpace(path) || path == "." ? "/" : path;

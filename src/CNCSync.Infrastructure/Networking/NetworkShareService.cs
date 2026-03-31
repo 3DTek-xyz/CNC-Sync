@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text;
 using CNCSync.Core.Configuration;
 using CNCSync.Core.Services;
 
@@ -199,7 +201,7 @@ public sealed class NetworkShareService : INetworkShareService
     {
         if (OperatingSystem.IsMacOS())
         {
-            var mountPoint = Path.Combine(Path.GetTempPath(), "cncsync-network-shares", destination.Id);
+            var mountPoint = Path.Combine(Path.GetTempPath(), "cncsync-network-shares", BuildMountPointKey(destination));
             Directory.CreateDirectory(mountPoint);
 
             if (!await IsMountedAsync(mountPoint, cancellationToken))
@@ -212,15 +214,74 @@ public sealed class NetworkShareService : INetworkShareService
 
         if (OperatingSystem.IsWindows())
         {
+            var uncPath = $@"\\{destination.NetworkHost}\{destination.NetworkShareName}";
             if (!destination.UseCurrentUserCredentials)
             {
-                throw new InvalidOperationException("Explicit Windows network-share credentials are not implemented yet.");
+                await EnsureWindowsShareConnectedAsync(destination, uncPath, cancellationToken);
             }
 
-            return $@"\\{destination.NetworkHost}\{destination.NetworkShareName}";
+            return uncPath;
         }
 
-        throw new PlatformNotSupportedException("Network share destinations are currently implemented for macOS, with Windows current-user UNC access planned next.");
+        if (OperatingSystem.IsLinux())
+        {
+            return await EnsureLinuxShareAccessibleAsync(destination, cancellationToken);
+        }
+
+        throw new PlatformNotSupportedException("Network share destinations are currently implemented for macOS, Windows SMB, and Linux desktop SMB mounts.");
+    }
+
+    private static async Task EnsureWindowsShareConnectedAsync(DestinationSettings destination, string uncPath, CancellationToken cancellationToken)
+    {
+        var qualifiedUsername = string.IsNullOrWhiteSpace(destination.NetworkDomain)
+            ? destination.Username
+            : $@"{destination.NetworkDomain}\{destination.Username}";
+
+        var result = await RunProcessAsync(
+            "net",
+            $"use {EscapeWindowsArgument(uncPath)} {EscapeWindowsArgument(destination.Password)} /user:{EscapeWindowsArgument(qualifiedUsername)} /persistent:no",
+            cancellationToken);
+
+        if (result.ExitCode == 0)
+        {
+            return;
+        }
+
+        var output = string.Concat(result.StandardOutput, "\n", result.StandardError);
+        if (output.Contains("The command completed successfully.", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        throw new InvalidOperationException($"Windows SMB sign-in failed: {output.Trim()}");
+    }
+
+    private static async Task<string> EnsureLinuxShareAccessibleAsync(DestinationSettings destination, CancellationToken cancellationToken)
+    {
+        var existingMountPath = FindLinuxMountedSharePath(destination);
+        if (!string.IsNullOrWhiteSpace(existingMountPath))
+        {
+            return existingMountPath;
+        }
+
+        if (destination.UseCurrentUserCredentials)
+        {
+            var gioMountUri = $"smb://{EscapeGioUriSegment(destination.NetworkHost)}/{EscapeGioUriSegment(destination.NetworkShareName)}";
+            var mountResult = await RunProcessAsync("gio", $"mount {EscapeArgument(gioMountUri)}", cancellationToken);
+            if (mountResult.ExitCode == 0)
+            {
+                existingMountPath = FindLinuxMountedSharePath(destination);
+                if (!string.IsNullOrWhiteSpace(existingMountPath))
+                {
+                    return existingMountPath;
+                }
+            }
+        }
+
+        throw new InvalidOperationException(
+            destination.UseCurrentUserCredentials
+                ? $"Linux SMB share is not mounted yet: {destination.NetworkHost}/{destination.NetworkShareName}. Mount it in the desktop file manager or make sure gio can access it."
+                : $"Linux explicit SMB credentials are not yet automated. Mount {destination.NetworkHost}/{destination.NetworkShareName} in the desktop file manager with those credentials first.");
     }
 
     private static async Task<bool> IsMountedAsync(string mountPoint, CancellationToken cancellationToken)
@@ -231,24 +292,32 @@ public sealed class NetworkShareService : INetworkShareService
             return false;
         }
 
+        var comparableMountPoints = GetComparableMountPoints(mountPoint);
+
         return result.StandardOutput
             .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Any(line => line.Contains($" on {mountPoint} ", StringComparison.Ordinal));
+            .Any(line => comparableMountPoints.Any(candidate => line.Contains($" on {candidate} ", StringComparison.Ordinal)));
     }
 
     private static async Task MountMacShareAsync(DestinationSettings destination, string mountPoint, CancellationToken cancellationToken)
     {
-        var (fileName, arguments) = destination.NetworkProtocol switch
-        {
-            NetworkShareProtocol.Afp => ("/sbin/mount_afp", $"{BuildAfpUrl(destination)} {EscapeArgument(mountPoint)}"),
-            _ => ("/sbin/mount_smbfs", $"{BuildSmbSpecifier(destination)} {EscapeArgument(mountPoint)}")
-        };
+        await PrepareMountPointAsync(mountPoint, cancellationToken);
 
-        var result = await RunProcessAsync(fileName, arguments, cancellationToken);
+        var specifier = BuildSmbSpecifier(destination);
+        var result = await RunProcessAsync("/sbin/mount_smbfs", $"{EscapeArgument(specifier)} {EscapeArgument(mountPoint)}", cancellationToken);
+        if (result.ExitCode != 0 && ContainsFileExistsError(result))
+        {
+            await TryUnmountAsync(mountPoint, cancellationToken);
+            await PrepareMountPointAsync(mountPoint, cancellationToken);
+            var retryArguments = $"-s {EscapeArgument(specifier)} {EscapeArgument(mountPoint)}";
+            result = await RunProcessAsync("/sbin/mount_smbfs", retryArguments, cancellationToken);
+        }
+
         if (result.ExitCode != 0)
         {
             var error = string.IsNullOrWhiteSpace(result.StandardError) ? result.StandardOutput : result.StandardError;
-            throw new InvalidOperationException(string.IsNullOrWhiteSpace(error) ? "Mount command failed." : error.Trim());
+            var details = string.IsNullOrWhiteSpace(error) ? "Mount command failed." : error.Trim();
+            throw new InvalidOperationException($"{details} (SMB {destination.NetworkHost}/{destination.NetworkShareName})");
         }
     }
 
@@ -260,12 +329,14 @@ public sealed class NetworkShareService : INetworkShareService
         return $"//{authority}{EscapeSmbComponent(destination.NetworkHost)}/{EscapeSmbComponent(destination.NetworkShareName)}";
     }
 
-    private static string BuildAfpUrl(DestinationSettings destination)
+    private static string BuildMountPointKey(DestinationSettings destination)
     {
-        var credentials = destination.UseCurrentUserCredentials
-            ? string.Empty
-            : $"{Uri.EscapeDataString(BuildDomainQualifiedUsername(destination))}:{Uri.EscapeDataString(destination.Password)}@";
-        return $"afp://{credentials}{Uri.EscapeDataString(destination.NetworkHost)}/{Uri.EscapeDataString(destination.NetworkShareName)}";
+        var identity = destination.UseCurrentUserCredentials
+            ? "current-user"
+            : $"{destination.NetworkDomain}|{destination.Username}";
+        var raw = $"{destination.Id}|{destination.NetworkHost}|{destination.NetworkShareName}|{identity}";
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(raw))).ToLowerInvariant()[..12];
+        return $"{destination.Id}-{hash}";
     }
 
     private static string BuildDomainQualifiedUsername(DestinationSettings destination)
@@ -279,12 +350,13 @@ public sealed class NetworkShareService : INetworkShareService
     }
 
     private static string EscapeSmbComponent(string value) =>
-        value.Replace("/", "%2f", StringComparison.Ordinal)
-            .Replace(":", "%3a", StringComparison.Ordinal)
-            .Replace("@", "%40", StringComparison.Ordinal);
+        Uri.EscapeDataString(value);
 
     private static string EscapeArgument(string value) =>
         $"\"{value.Replace("\"", "\\\"", StringComparison.Ordinal)}\"";
+
+    private static string EscapeWindowsArgument(string value) =>
+        $"\"{value.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
 
     private static async Task<ProcessResult> RunProcessAsync(string fileName, string arguments, CancellationToken cancellationToken)
     {
@@ -311,6 +383,51 @@ public sealed class NetworkShareService : INetworkShareService
             await standardErrorTask);
     }
 
+    private static string? FindLinuxMountedSharePath(DestinationSettings destination)
+    {
+        var runtimeDirectory = Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR");
+        if (string.IsNullOrWhiteSpace(runtimeDirectory))
+        {
+            var userId = Environment.GetEnvironmentVariable("UID");
+            if (!string.IsNullOrWhiteSpace(userId))
+            {
+                runtimeDirectory = $"/run/user/{userId}";
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(runtimeDirectory))
+        {
+            return null;
+        }
+
+        var gvfsRoot = Path.Combine(runtimeDirectory, "gvfs");
+        if (!Directory.Exists(gvfsRoot))
+        {
+            return null;
+        }
+
+        return Directory.EnumerateDirectories(gvfsRoot)
+            .FirstOrDefault(path => LinuxMountMatches(path, destination));
+    }
+
+    private static bool LinuxMountMatches(string path, DestinationSettings destination)
+    {
+        var name = Path.GetFileName(path);
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return false;
+        }
+
+        var serverMatch = $"server={destination.NetworkHost}";
+        var shareMatch = $"share={destination.NetworkShareName}";
+        return name.Contains("smb-share:", StringComparison.OrdinalIgnoreCase) &&
+               name.Contains(serverMatch, StringComparison.OrdinalIgnoreCase) &&
+               name.Contains(shareMatch, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string EscapeGioUriSegment(string value) =>
+        Uri.EscapeDataString(value);
+
     private static string CombineLocalPath(string rootPath, string relativePath)
     {
         var segments = relativePath
@@ -335,9 +452,68 @@ public sealed class NetworkShareService : INetworkShareService
         string.IsNullOrWhiteSpace(path) ? "/" : path;
 
     private static string DescribeNetworkShare(DestinationSettings destination)
+        => $"SMB {destination.NetworkHost}/{destination.NetworkShareName}";
+
+    private static IReadOnlyList<string> GetComparableMountPoints(string mountPoint)
     {
-        var protocol = destination.NetworkProtocol == NetworkShareProtocol.Afp ? "AFP" : "SMB";
-        return $"{protocol} {destination.NetworkHost}/{destination.NetworkShareName}";
+        var fullPath = Path.GetFullPath(mountPoint);
+        var values = new HashSet<string>(StringComparer.Ordinal)
+        {
+            mountPoint,
+            fullPath
+        };
+
+        if (fullPath.StartsWith("/var/", StringComparison.Ordinal))
+        {
+            values.Add($"/private{fullPath}");
+        }
+        else if (fullPath.StartsWith("/private/var/", StringComparison.Ordinal))
+        {
+            values.Add(fullPath["/private".Length..]);
+        }
+
+        return values.ToList();
+    }
+
+    private static bool ContainsFileExistsError(ProcessResult result)
+    {
+        var output = string.Concat(result.StandardOutput, "\n", result.StandardError);
+        return output.Contains("File exists", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static async Task PrepareMountPointAsync(string mountPoint, CancellationToken cancellationToken)
+    {
+        if (await IsMountedAsync(mountPoint, cancellationToken))
+        {
+            return;
+        }
+
+        if (Directory.Exists(mountPoint))
+        {
+            foreach (var directory in Directory.EnumerateDirectories(mountPoint))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+
+            foreach (var file in Directory.EnumerateFiles(mountPoint))
+            {
+                File.Delete(file);
+            }
+        }
+        else
+        {
+            Directory.CreateDirectory(mountPoint);
+        }
+    }
+
+    private static async Task TryUnmountAsync(string mountPoint, CancellationToken cancellationToken)
+    {
+        if (!await IsMountedAsync(mountPoint, cancellationToken))
+        {
+            return;
+        }
+
+        await RunProcessAsync("/sbin/umount", EscapeArgument(mountPoint), cancellationToken);
     }
 
     private sealed record ProcessResult(int ExitCode, string StandardOutput, string StandardError);

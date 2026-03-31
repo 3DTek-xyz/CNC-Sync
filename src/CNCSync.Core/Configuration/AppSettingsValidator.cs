@@ -77,9 +77,26 @@ public sealed class AppSettingsValidator
                 result.Errors.Add($"{label} username is required.");
             }
 
-            if (destination.Type == DestinationType.Sftp && string.IsNullOrWhiteSpace(destination.Password))
+            if (destination.Type == DestinationType.Sftp &&
+                destination.SshAuthenticationMode == SshAuthenticationMode.Password &&
+                string.IsNullOrWhiteSpace(destination.Password))
             {
                 result.Errors.Add($"{label} password is required.");
+            }
+
+            if (destination.Type == DestinationType.Sftp &&
+                destination.SshAuthenticationMode == SshAuthenticationMode.PrivateKey &&
+                string.IsNullOrWhiteSpace(destination.PrivateKeyPath))
+            {
+                result.Errors.Add($"{label} private key path is required.");
+            }
+
+            if (destination.Type == DestinationType.Sftp &&
+                destination.SshAuthenticationMode == SshAuthenticationMode.PrivateKey &&
+                !string.IsNullOrWhiteSpace(destination.PrivateKeyPath) &&
+                !File.Exists(ExpandHomeDirectory(destination.PrivateKeyPath)))
+            {
+                result.Errors.Add($"{label} private key path does not exist.");
             }
 
             if (destination.Type == DestinationType.Scp && string.IsNullOrWhiteSpace(destination.Host))
@@ -92,9 +109,26 @@ public sealed class AppSettingsValidator
                 result.Errors.Add($"{label} username is required.");
             }
 
-            if (destination.Type == DestinationType.Scp && string.IsNullOrWhiteSpace(destination.Password))
+            if (destination.Type == DestinationType.Scp &&
+                destination.SshAuthenticationMode == SshAuthenticationMode.Password &&
+                string.IsNullOrWhiteSpace(destination.Password))
             {
                 result.Errors.Add($"{label} password is required.");
+            }
+
+            if (destination.Type == DestinationType.Scp &&
+                destination.SshAuthenticationMode == SshAuthenticationMode.PrivateKey &&
+                string.IsNullOrWhiteSpace(destination.PrivateKeyPath))
+            {
+                result.Errors.Add($"{label} private key path is required.");
+            }
+
+            if (destination.Type == DestinationType.Scp &&
+                destination.SshAuthenticationMode == SshAuthenticationMode.PrivateKey &&
+                !string.IsNullOrWhiteSpace(destination.PrivateKeyPath) &&
+                !File.Exists(ExpandHomeDirectory(destination.PrivateKeyPath)))
+            {
+                result.Errors.Add($"{label} private key path does not exist.");
             }
 
             if (destination.Type == DestinationType.LocalFolder && string.IsNullOrWhiteSpace(destination.LocalRootPath))
@@ -217,5 +251,17 @@ public sealed class AppSettingsValidator
         }
 
         return !path.Contains('\\');
+    }
+
+    private static string ExpandHomeDirectory(string path)
+    {
+        if (!path.StartsWith("~/", StringComparison.Ordinal) &&
+            !path.StartsWith("~\\", StringComparison.Ordinal))
+        {
+            return path;
+        }
+
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        return Path.Combine(home, path[2..]);
     }
 }

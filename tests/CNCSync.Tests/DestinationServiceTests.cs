@@ -30,7 +30,7 @@ public sealed class DestinationServiceTests
                 LocalRootPath = destinationRoot
             };
 
-            var service = new DestinationService(new StubFtpService(), new StubSftpService(), new StubScpService(), new StubNetworkShareService());
+            var service = new DestinationService(new StubFtpService(), new StubSftpService(), new StubScpService(), new StubNetworkShareService(), new StubVpnService());
 
             var testResult = await service.TestConnectionAsync(destination);
             Assert.True(testResult.Success);
@@ -169,7 +169,7 @@ public sealed class DestinationServiceTests
                 LocalRootPath = destinationRoot
             };
 
-            var service = new DestinationService(new StubFtpService(), new StubSftpService(), new StubScpService(), new StubNetworkShareService());
+            var service = new DestinationService(new StubFtpService(), new StubSftpService(), new StubScpService(), new StubNetworkShareService(), new StubVpnService());
             var uploadResult = await service.UploadDirectoryAsync(sourceRoot, destination, "/");
 
             Assert.True(uploadResult.Success);
@@ -191,5 +191,69 @@ public sealed class DestinationServiceTests
                 Directory.Delete(destinationRoot, recursive: true);
             }
         }
+    }
+
+    [Fact]
+    public async Task RemoteDestination_WithRequiredVpn_EnsuresVpnBeforeTesting()
+    {
+        var ftpService = new TrackingFtpService();
+        var vpnService = new StubVpnService();
+        var destination = new DestinationSettings
+        {
+            Type = DestinationType.Ftp,
+            Host = "example.local",
+            RequiredVpnConnectionName = "Office VPN"
+        };
+
+        var service = new DestinationService(ftpService, new StubSftpService(), new StubScpService(), new StubNetworkShareService(), vpnService);
+        var result = await service.TestConnectionAsync(destination);
+
+        Assert.True(result.Success);
+        Assert.Equal("Office VPN", vpnService.LastEnsuredConnectionName);
+        Assert.Equal(1, ftpService.TestCallCount);
+        Assert.Contains("Connected required VPN", result.Message, StringComparison.Ordinal);
+    }
+
+    private sealed class StubVpnService : IVpnService
+    {
+        public string? LastEnsuredConnectionName { get; private set; }
+
+        public Task<IReadOnlyList<VpnConnectionInfo>> ListConnectionsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<VpnConnectionInfo>>([]);
+
+        public Task<VpnConnectionEnsureResult> EnsureConnectedAsync(string connectionName, CancellationToken cancellationToken = default)
+        {
+            LastEnsuredConnectionName = connectionName;
+            return Task.FromResult(new VpnConnectionEnsureResult
+            {
+                Success = true,
+                ConnectedNow = true,
+                ConnectionStateChanged = true,
+                Message = $"Connected required VPN '{connectionName}'."
+            });
+        }
+    }
+
+    private sealed class TrackingFtpService : IFtpService
+    {
+        public int TestCallCount { get; private set; }
+
+        public Task<(bool Success, string Message)> TestConnectionAsync(DestinationSettings destination, CancellationToken cancellationToken = default)
+        {
+            TestCallCount++;
+            return Task.FromResult<(bool Success, string Message)>((true, "FTP destination reachable."));
+        }
+
+        public Task<(bool Success, string Message)> UploadDirectoryAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<(bool Success, IReadOnlyList<RemoteEntryInfo> Entries, string Message)> ListRootEntriesAsync(DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<(bool Exists, long? SizeBytes, string Message)> TryGetFileSizeAsync(DestinationSettings destination, string remoteFilePath, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<(bool Success, string Message)> DeleteRemoteItemAsync(DestinationSettings destination, string remotePath, bool isDirectory, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 }

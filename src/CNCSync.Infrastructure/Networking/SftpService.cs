@@ -21,9 +21,16 @@ public sealed class SftpService : ISftpService
                 return (false, "SFTP username is not configured.");
             }
 
-            if (string.IsNullOrWhiteSpace(destination.Password))
+            if (destination.SshAuthenticationMode == SshAuthenticationMode.Password &&
+                string.IsNullOrWhiteSpace(destination.Password))
             {
                 return (false, "SFTP password is not configured.");
+            }
+
+            if (destination.SshAuthenticationMode == SshAuthenticationMode.PrivateKey &&
+                string.IsNullOrWhiteSpace(destination.PrivateKeyPath))
+            {
+                return (false, "SFTP private key path is not configured.");
             }
 
             try
@@ -213,8 +220,7 @@ public sealed class SftpService : ISftpService
 
     private static SftpClient CreateClient(DestinationSettings destination)
     {
-        var port = destination.Port > 0 ? destination.Port : 22;
-        return new SftpClient(destination.Host, port, destination.Username, destination.Password);
+        return new SftpClient(SshConnectionFactory.CreateConnectionInfo(destination));
     }
 
     private static void EnsureDirectoryExists(SftpClient client, string? remotePath, CancellationToken cancellationToken)

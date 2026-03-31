@@ -59,12 +59,13 @@ public partial class App : Application
             var sftpService = new SftpService();
             var scpService = new ScpService();
             var networkShareService = new NetworkShareService();
-            var destinationService = new DestinationService(ftpService, sftpService, scpService, networkShareService);
+            var vpnService = new SystemVpnService();
+            var destinationService = new DestinationService(ftpService, sftpService, scpService, networkShareService, vpnService);
             var updateService = new VelopackUpdateService();
             var loginStartupService = new LoginStartupService();
             var coordinator = new SyncCoordinator(folderMonitor, projectProcessor, destinationService, validator);
             var initialSettings = settingsStore.Load();
-            _mainWindowViewModel = new MainWindowViewModel(settingsStore, validator, coordinator, destinationService, updateService, loginStartupService, initialSettings);
+            _mainWindowViewModel = new MainWindowViewModel(settingsStore, validator, coordinator, destinationService, updateService, loginStartupService, vpnService, initialSettings);
             coordinator.StatusChanged += OnCoordinatorStatusChanged;
             coordinator.ActivityLogged += OnCoordinatorActivityLogged;
             _initialTrayHidePending = Program.LaunchedAtLogin &&

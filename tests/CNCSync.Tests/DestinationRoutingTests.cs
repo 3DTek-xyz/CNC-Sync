@@ -13,7 +13,7 @@ public sealed class DestinationRoutingTests
         var sftpService = new TrackingSftpService();
         var scpService = new TrackingScpService();
         var networkShareService = new TrackingNetworkShareService();
-        var destinationService = new DestinationService(ftpService, sftpService, scpService, networkShareService);
+        var destinationService = new DestinationService(ftpService, sftpService, scpService, networkShareService, new StubVpnService());
         var destination = new DestinationSettings
         {
             Type = DestinationType.Scp,
@@ -42,7 +42,7 @@ public sealed class DestinationRoutingTests
         var sftpService = new TrackingSftpService();
         var scpService = new TrackingScpService();
         var networkShareService = new TrackingNetworkShareService();
-        var destinationService = new DestinationService(ftpService, sftpService, scpService, networkShareService);
+        var destinationService = new DestinationService(ftpService, sftpService, scpService, networkShareService, new StubVpnService());
         var destination = new DestinationSettings
         {
             Type = DestinationType.NetworkShare,
@@ -203,5 +203,14 @@ public sealed class DestinationRoutingTests
             CallCount++;
             return Task.FromResult<(bool Success, string Message)>((true, "network"));
         }
+    }
+
+    private sealed class StubVpnService : IVpnService
+    {
+        public Task<IReadOnlyList<VpnConnectionInfo>> ListConnectionsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<VpnConnectionInfo>>([]);
+
+        public Task<VpnConnectionEnsureResult> EnsureConnectedAsync(string connectionName, CancellationToken cancellationToken = default) =>
+            Task.FromResult(VpnConnectionEnsureResult.NoRequirement());
     }
 }

@@ -47,10 +47,17 @@ public sealed class AppSettings
                 destination.Port = destination.Type is DestinationType.Sftp or DestinationType.Scp ? 22 : 21;
             }
 
+            destination.Host ??= string.Empty;
+            destination.Username ??= string.Empty;
+            destination.Password ??= string.Empty;
+            destination.PrivateKeyPath ??= string.Empty;
+            destination.PrivateKeyPassphrase ??= string.Empty;
+            destination.LocalRootPath ??= string.Empty;
             destination.RemoteBasePath = NormalizeRemotePath(destination.RemoteBasePath);
-            destination.NetworkHost = destination.NetworkHost.Trim();
-            destination.NetworkShareName = destination.NetworkShareName.Trim().Trim('/').Trim('\\');
-            destination.NetworkDomain = destination.NetworkDomain.Trim();
+            destination.NetworkHost = (destination.NetworkHost ?? string.Empty).Trim();
+            destination.NetworkShareName = (destination.NetworkShareName ?? string.Empty).Trim().Trim('/').Trim('\\');
+            destination.NetworkDomain = (destination.NetworkDomain ?? string.Empty).Trim();
+            destination.RequiredVpnConnectionName = (destination.RequiredVpnConnectionName ?? string.Empty).Trim();
         }
 
         if (ProcessingSetups.Count == 0)

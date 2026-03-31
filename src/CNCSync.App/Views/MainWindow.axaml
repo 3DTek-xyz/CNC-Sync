@@ -295,8 +295,9 @@
                         <Grid ColumnDefinitions="320,*">
                             <Border Classes="card" Margin="0,0,8,0" Padding="18" CornerRadius="16">
                                 <StackPanel Spacing="12">
+                                    <TextBlock Text="Processing Setups" FontSize="18" FontWeight="SemiBold" />
+
                                     <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <TextBlock VerticalAlignment="Center" Text="Processing Setups" FontSize="18" FontWeight="SemiBold" />
                                         <Button Classes="subtle" Content="Add" Command="{Binding AddProcessingSetupCommand}" />
                                         <Button Classes="subtle" Content="Remove" Command="{Binding RemoveProcessingSetupCommand}" />
                                     </StackPanel>
@@ -475,20 +476,6 @@
 
                                     <Grid ColumnDefinitions="220,*"
                                           IsVisible="{Binding SelectedDestination.UsesNetworkShare}">
-                                        <TextBlock VerticalAlignment="Center" Text="Network Protocol" />
-                                        <ComboBox Grid.Column="1"
-                                                  ItemsSource="{Binding SelectedDestination.AvailableNetworkProtocols}"
-                                                  SelectedItem="{Binding SelectedDestination.NetworkProtocol}">
-                                            <ComboBox.ItemTemplate>
-                                                <DataTemplate>
-                                                    <TextBlock Text="{Binding ., Converter={StaticResource NetworkShareProtocolDisplayConverter}}" />
-                                                </DataTemplate>
-                                            </ComboBox.ItemTemplate>
-                                        </ComboBox>
-                                    </Grid>
-
-                                    <Grid ColumnDefinitions="220,*"
-                                          IsVisible="{Binding SelectedDestination.UsesNetworkShare}">
                                         <TextBlock VerticalAlignment="Center" Text="Server Host" />
                                         <TextBox Grid.Column="1"
                                                  Text="{Binding SelectedDestination.NetworkHost, UpdateSourceTrigger=LostFocus}"
@@ -511,10 +498,17 @@
                                                  Watermark="Optional" />
                                     </Grid>
 
-                                    <Grid ColumnDefinitions="220,*"
+                                    <Grid ColumnDefinitions="220,Auto,*"
                                           IsVisible="{Binding SelectedDestination.UsesNetworkShare}">
                                         <TextBlock VerticalAlignment="Center" Text="Use Current User Credentials" />
                                         <CheckBox Grid.Column="1" IsChecked="{Binding SelectedDestination.UseCurrentUserCredentials}" />
+                                        <TextBlock Grid.Column="2"
+                                                   Margin="12,0,0,0"
+                                                   VerticalAlignment="Center"
+                                                   Classes="muted"
+                                                   IsVisible="{Binding SelectedDestination.UseCurrentUserCredentials, Converter={StaticResource BooleanNegationConverter}}"
+                                                   Text="If the remote server is a Mac, explicit SMB sign-in may require enabling this account under Windows File Sharing in System Settings > General > Sharing > File Sharing > Options."
+                                                   TextWrapping="Wrap" />
                                     </Grid>
 
                                     <Grid ColumnDefinitions="220,*"
@@ -530,6 +524,25 @@
                                                  Watermark="/uploads or blank for the destination root" />
                                     </Grid>
 
+                                    <Grid ColumnDefinitions="220,*,Auto"
+                                          IsVisible="{Binding HasSelectedDestination}">
+                                        <TextBlock VerticalAlignment="Center" Text="Required VPN" />
+                                        <ComboBox Grid.Column="1"
+                                                  ItemsSource="{Binding AvailableVpnConnectionNames}"
+                                                  SelectedItem="{Binding SelectedDestination.RequiredVpnConnectionName}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding ., Converter={StaticResource BlankValueDisplayConverter}}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                        <Button Grid.Column="2"
+                                                Margin="8,0,0,0"
+                                                Classes="subtle"
+                                                Content="Refresh VPNs"
+                                                Command="{Binding RefreshVpnConnectionsCommand}" />
+                                    </Grid>
+
                                     <Grid ColumnDefinitions="220,180,*"
                                           IsVisible="{Binding SelectedDestination.UsesRemoteHost}">
                                         <TextBlock VerticalAlignment="Center" Text="Port" />
@@ -543,30 +556,65 @@
                                     </Grid>
 
                                     <Grid ColumnDefinitions="220,*"
+                                          IsVisible="{Binding SelectedDestination.UsesSshAuthentication}">
+                                        <TextBlock VerticalAlignment="Center" Text="Authentication" />
+                                        <ComboBox Grid.Column="1"
+                                                  ItemsSource="{Binding SelectedDestination.AvailableSshAuthenticationModes}"
+                                                  SelectedItem="{Binding SelectedDestination.SshAuthenticationMode}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding ., Converter={StaticResource SshAuthenticationModeDisplayConverter}}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </Grid>
+
+                                    <Grid ColumnDefinitions="220,*"
                                           IsVisible="{Binding SelectedDestination.SupportsAnonymousFtp}">
                                         <TextBlock VerticalAlignment="Center" Text="Use Anonymous FTP" />
                                         <CheckBox Grid.Column="1" IsChecked="{Binding SelectedDestination.UseAnonymousFtp}" />
                                     </Grid>
 
                                     <Grid ColumnDefinitions="220,*"
-                                          IsVisible="{Binding SelectedDestination.UsesCredentials}">
+                                          IsVisible="{Binding SelectedDestination.UsesUsername}">
                                         <TextBlock VerticalAlignment="Center" Text="Username" />
                                         <TextBox Grid.Column="1"
-                                                 IsEnabled="{Binding SelectedDestination.CredentialsAreEditable}"
-                                                 Opacity="{Binding SelectedDestination.CredentialsOpacity}"
+                                                 IsEnabled="{Binding SelectedDestination.UsernameIsEditable}"
+                                                 Opacity="{Binding SelectedDestination.UsernameOpacity}"
                                                  Text="{Binding SelectedDestination.Username, UpdateSourceTrigger=LostFocus}"
                                                  Watermark="Required for SFTP, SCP, network shares, and non-anonymous FTP" />
                                     </Grid>
 
                                     <Grid ColumnDefinitions="220,*"
-                                          IsVisible="{Binding SelectedDestination.UsesCredentials}">
+                                          IsVisible="{Binding SelectedDestination.UsesPassword}">
                                         <TextBlock VerticalAlignment="Center" Text="Password" />
                                         <TextBox Grid.Column="1"
-                                                 IsEnabled="{Binding SelectedDestination.CredentialsAreEditable}"
-                                                 Opacity="{Binding SelectedDestination.CredentialsOpacity}"
+                                                 IsEnabled="{Binding SelectedDestination.PasswordIsEditable}"
+                                                 Opacity="{Binding SelectedDestination.PasswordOpacity}"
                                                  PasswordChar="*"
                                                  Text="{Binding SelectedDestination.Password, UpdateSourceTrigger=LostFocus}"
                                                  Watermark="SFTP, SCP, network share, or FTP password" />
+                                    </Grid>
+
+                                    <Grid ColumnDefinitions="220,*,Auto"
+                                          IsVisible="{Binding SelectedDestination.UsesPrivateKeyPath}">
+                                        <TextBlock VerticalAlignment="Center" Text="Private Key Path" />
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding SelectedDestination.PrivateKeyPath, UpdateSourceTrigger=LostFocus}"
+                                                 Watermark="~/.ssh/id_ed25519 or C:\\Users\\you\\.ssh\\id_ed25519" />
+                                        <Button Grid.Column="2"
+                                                Margin="8,0,0,0"
+                                                Content="Browse..."
+                                                Click="BrowsePrivateKey_OnClick" />
+                                    </Grid>
+
+                                    <Grid ColumnDefinitions="220,*"
+                                          IsVisible="{Binding SelectedDestination.UsesPrivateKeyPassphrase}">
+                                        <TextBlock VerticalAlignment="Center" Text="Key Passphrase" />
+                                        <TextBox Grid.Column="1"
+                                                 PasswordChar="*"
+                                                 Text="{Binding SelectedDestination.PrivateKeyPassphrase, UpdateSourceTrigger=LostFocus}"
+                                                 Watermark="Optional private key passphrase" />
                                     </Grid>
 
                                     <Button HorizontalAlignment="Left"
@@ -663,18 +711,46 @@
                             <StackPanel Spacing="8">
                                 <TextBlock Classes="sectionEyebrow" Text="Support" />
                                 <TextBlock Text="Getting Started" FontSize="20" FontWeight="SemiBold" />
-                                <TextBlock Text="CNC Sync works best when you set things up in this order: FTP setup, processing setup, folder watch, validation, then monitoring." TextWrapping="Wrap" />
+                                <TextBlock Text="CNC Sync works best when you set things up in this order: destination, processing setup, watch folder, validation, then monitoring." TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 
                         <Border Classes="card" Padding="18" CornerRadius="16">
                             <StackPanel Spacing="8">
                                 <TextBlock Text="Recommended Setup Order" FontSize="18" FontWeight="SemiBold" />
-                                <TextBlock Text="1. Create an FTP setup with the correct host, port, login, and optional remote base path." TextWrapping="Wrap" />
+                                <TextBlock Text="1. Create a destination. Start with FTP, SFTP, SCP, Local Folder, or Network Share and confirm it with Test This Destination." TextWrapping="Wrap" />
                                 <TextBlock Text="2. Create a processing setup. Use the default copy mode if no transformation is needed, or an external script if files need local preparation first." TextWrapping="Wrap" />
-                                <TextBlock Text="3. Create a folder watch and select both the FTP setup and processing setup it should use." TextWrapping="Wrap" />
+                                <TextBlock Text="3. Create a folder watch and select both the destination and processing setup it should use." TextWrapping="Wrap" />
                                 <TextBlock Text="4. Validate settings to catch missing folders, scripts, or broken references." TextWrapping="Wrap" />
                                 <TextBlock Text="5. Start monitoring." TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Classes="card" Padding="18" CornerRadius="16">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Destination Types" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock Text="FTP is the simplest remote option and supports anonymous mode if your server allows it." TextWrapping="Wrap" />
+                                <TextBlock Text="SFTP and SCP use SSH. They support username/password or private-key authentication. Private keys can live in your normal .ssh folder." TextWrapping="Wrap" />
+                                <TextBlock Text="Local Folder writes to a normal filesystem path. Network Share is for SMB shares and may need OS-level sign-in or mounting depending on the platform." TextWrapping="Wrap" />
+                                <TextBlock Text="Remote Base Path is the destination root. A watch profile&apos;s Additional Remote Path is appended underneath it, if set." TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Classes="card" Padding="18" CornerRadius="16">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="SSH Authentication" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock Text="For SFTP and SCP, choose Password when the server expects a normal login. Choose Private Key when the server expects an SSH key file." TextWrapping="Wrap" />
+                                <TextBlock Text="Private Key Path can point at a file such as ~/.ssh/id_ed25519 on macOS or Linux, or C:\Users\you\.ssh\id_ed25519 on Windows. If the key has a passphrase, enter it in Key Passphrase." TextWrapping="Wrap" />
+                                <TextBlock Text="Passwords and private-key passphrases are kept out of settings.json and stored using the platform secret store where available." TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Classes="card" Padding="18" CornerRadius="16">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Network Shares and VPNs" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock Text="Network Share currently means SMB. On macOS, explicit username/password access to a Mac server may require enabling that account under Windows File Sharing in System Settings &gt; General &gt; Sharing &gt; File Sharing &gt; Options." TextWrapping="Wrap" />
+                                <TextBlock Text="On Linux, Network Share works best with desktop-mounted SMB shares. On Windows, current-user UNC access and explicit SMB sign-in are both supported." TextWrapping="Wrap" />
+                                <TextBlock Text="If a destination needs a system-managed VPN first, choose it in Required VPN. CNC Sync will try to connect that VPN before testing, browsing, uploading, or deleting." TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 
@@ -689,7 +765,16 @@
                         <Border Classes="card" Padding="18" CornerRadius="16">
                             <StackPanel Spacing="8">
                                 <TextBlock Text="Manual Catch-Up" FontSize="18" FontWeight="SemiBold" />
-                                <TextBlock Text="Manual catch-up checks the selected watch profile against the configured FTP path and only processes/uploads missing or changed items. For files, it compares name plus file size." TextWrapping="Wrap" />
+                                <TextBlock Text="Manual catch-up checks the selected watch profile against the configured destination path and only processes/uploads missing or changed items. For files, it compares name plus file size." TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Classes="card" Padding="18" CornerRadius="16">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Activity and Troubleshooting" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock Text="The Activity tab is selectable, so you can copy log text directly out of the app while testing." TextWrapping="Wrap" />
+                                <TextBlock Text="The same activity stream is also written to a text log file under your app-data folder. On macOS that file is ~/Library/Application Support/CNC Sync/activity.log." TextWrapping="Wrap" />
+                                <TextBlock Text="Junk files such as .DS_Store, ._* files, Thumbs.db, desktop.ini, and ehthumbs.db are ignored throughout watching, staging, and uploading." TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 

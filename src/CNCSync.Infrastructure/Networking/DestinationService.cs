@@ -9,74 +9,134 @@ public sealed class DestinationService : IDestinationService
     private readonly ISftpService _sftpService;
     private readonly IScpService _scpService;
     private readonly INetworkShareService _networkShareService;
+    private readonly IVpnService _vpnService;
 
-    public DestinationService(IFtpService ftpService, ISftpService sftpService, IScpService scpService, INetworkShareService networkShareService)
+    public DestinationService(IFtpService ftpService, ISftpService sftpService, IScpService scpService, INetworkShareService networkShareService, IVpnService vpnService)
     {
         _ftpService = ftpService;
         _sftpService = sftpService;
         _scpService = scpService;
         _networkShareService = networkShareService;
+        _vpnService = vpnService;
     }
 
-    public Task<(bool Success, string Message)> TestConnectionAsync(DestinationSettings destination, CancellationToken cancellationToken = default)
+    public async Task<(bool Success, string Message)> TestConnectionAsync(DestinationSettings destination, CancellationToken cancellationToken = default)
     {
-        return destination.Type switch
+        var vpnResult = await EnsureVpnConnectedIfRequiredAsync(destination, cancellationToken);
+        if (!vpnResult.Success)
         {
-            DestinationType.LocalFolder => Task.FromResult(TestLocalDestination(destination)),
-            DestinationType.NetworkShare => _networkShareService.TestConnectionAsync(destination, cancellationToken),
-            DestinationType.Sftp => _sftpService.TestConnectionAsync(destination, cancellationToken),
-            DestinationType.Scp => _scpService.TestConnectionAsync(destination, cancellationToken),
-            _ => _ftpService.TestConnectionAsync(destination, cancellationToken)
+            return (false, vpnResult.Message);
+        }
+
+        var result = destination.Type switch
+        {
+            DestinationType.LocalFolder => TestLocalDestination(destination),
+            DestinationType.NetworkShare => await _networkShareService.TestConnectionAsync(destination, cancellationToken),
+            DestinationType.Sftp => await _sftpService.TestConnectionAsync(destination, cancellationToken),
+            DestinationType.Scp => await _scpService.TestConnectionAsync(destination, cancellationToken),
+            _ => await _ftpService.TestConnectionAsync(destination, cancellationToken)
         };
+
+        return DecorateWithVpnMessage(result, vpnResult);
     }
 
-    public Task<(bool Success, string Message)> UploadDirectoryAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default)
+    public async Task<(bool Success, string Message)> UploadDirectoryAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default)
     {
-        return destination.Type switch
+        var vpnResult = await EnsureVpnConnectedIfRequiredAsync(destination, cancellationToken);
+        if (!vpnResult.Success)
         {
-            DestinationType.LocalFolder => UploadToLocalFolderAsync(localPath, destination, remoteDirectoryPath, cancellationToken),
-            DestinationType.NetworkShare => _networkShareService.UploadDirectoryAsync(localPath, destination, remoteDirectoryPath, cancellationToken),
-            DestinationType.Sftp => _sftpService.UploadDirectoryAsync(localPath, destination, remoteDirectoryPath, cancellationToken),
-            DestinationType.Scp => _scpService.UploadDirectoryAsync(localPath, destination, remoteDirectoryPath, cancellationToken),
-            _ => _ftpService.UploadDirectoryAsync(localPath, destination, remoteDirectoryPath, cancellationToken)
+            return (false, vpnResult.Message);
+        }
+
+        var result = destination.Type switch
+        {
+            DestinationType.LocalFolder => await UploadToLocalFolderAsync(localPath, destination, remoteDirectoryPath, cancellationToken),
+            DestinationType.NetworkShare => await _networkShareService.UploadDirectoryAsync(localPath, destination, remoteDirectoryPath, cancellationToken),
+            DestinationType.Sftp => await _sftpService.UploadDirectoryAsync(localPath, destination, remoteDirectoryPath, cancellationToken),
+            DestinationType.Scp => await _scpService.UploadDirectoryAsync(localPath, destination, remoteDirectoryPath, cancellationToken),
+            _ => await _ftpService.UploadDirectoryAsync(localPath, destination, remoteDirectoryPath, cancellationToken)
         };
+
+        return DecorateWithVpnMessage(result, vpnResult);
     }
 
-    public Task<(bool Success, IReadOnlyList<RemoteEntryInfo> Entries, string Message)> ListRootEntriesAsync(DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default)
+    public async Task<(bool Success, IReadOnlyList<RemoteEntryInfo> Entries, string Message)> ListRootEntriesAsync(DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default)
     {
-        return destination.Type switch
+        var vpnResult = await EnsureVpnConnectedIfRequiredAsync(destination, cancellationToken);
+        if (!vpnResult.Success)
         {
-            DestinationType.LocalFolder => Task.FromResult(ListLocalEntries(destination, remoteDirectoryPath)),
-            DestinationType.NetworkShare => _networkShareService.ListRootEntriesAsync(destination, remoteDirectoryPath, cancellationToken),
-            DestinationType.Sftp => _sftpService.ListRootEntriesAsync(destination, remoteDirectoryPath, cancellationToken),
-            DestinationType.Scp => _scpService.ListRootEntriesAsync(destination, remoteDirectoryPath, cancellationToken),
-            _ => _ftpService.ListRootEntriesAsync(destination, remoteDirectoryPath, cancellationToken)
+            return (false, [], vpnResult.Message);
+        }
+
+        var result = destination.Type switch
+        {
+            DestinationType.LocalFolder => ListLocalEntries(destination, remoteDirectoryPath),
+            DestinationType.NetworkShare => await _networkShareService.ListRootEntriesAsync(destination, remoteDirectoryPath, cancellationToken),
+            DestinationType.Sftp => await _sftpService.ListRootEntriesAsync(destination, remoteDirectoryPath, cancellationToken),
+            DestinationType.Scp => await _scpService.ListRootEntriesAsync(destination, remoteDirectoryPath, cancellationToken),
+            _ => await _ftpService.ListRootEntriesAsync(destination, remoteDirectoryPath, cancellationToken)
         };
+
+        return (result.Success, result.Entries, DecorateMessageWithVpn(result.Message, vpnResult));
     }
 
-    public Task<(bool Exists, long? SizeBytes, string Message)> TryGetFileSizeAsync(DestinationSettings destination, string remoteFilePath, CancellationToken cancellationToken = default)
+    public async Task<(bool Exists, long? SizeBytes, string Message)> TryGetFileSizeAsync(DestinationSettings destination, string remoteFilePath, CancellationToken cancellationToken = default)
     {
-        return destination.Type switch
+        var vpnResult = await EnsureVpnConnectedIfRequiredAsync(destination, cancellationToken);
+        if (!vpnResult.Success)
         {
-            DestinationType.LocalFolder => Task.FromResult(GetLocalFileSize(destination, remoteFilePath)),
-            DestinationType.NetworkShare => _networkShareService.TryGetFileSizeAsync(destination, remoteFilePath, cancellationToken),
-            DestinationType.Sftp => _sftpService.TryGetFileSizeAsync(destination, remoteFilePath, cancellationToken),
-            DestinationType.Scp => _scpService.TryGetFileSizeAsync(destination, remoteFilePath, cancellationToken),
-            _ => _ftpService.TryGetFileSizeAsync(destination, remoteFilePath, cancellationToken)
+            return (false, null, vpnResult.Message);
+        }
+
+        var result = destination.Type switch
+        {
+            DestinationType.LocalFolder => GetLocalFileSize(destination, remoteFilePath),
+            DestinationType.NetworkShare => await _networkShareService.TryGetFileSizeAsync(destination, remoteFilePath, cancellationToken),
+            DestinationType.Sftp => await _sftpService.TryGetFileSizeAsync(destination, remoteFilePath, cancellationToken),
+            DestinationType.Scp => await _scpService.TryGetFileSizeAsync(destination, remoteFilePath, cancellationToken),
+            _ => await _ftpService.TryGetFileSizeAsync(destination, remoteFilePath, cancellationToken)
         };
+
+        return (result.Exists, result.SizeBytes, DecorateMessageWithVpn(result.Message, vpnResult));
     }
 
-    public Task<(bool Success, string Message)> DeleteRemoteItemAsync(DestinationSettings destination, string remotePath, bool isDirectory, CancellationToken cancellationToken = default)
+    public async Task<(bool Success, string Message)> DeleteRemoteItemAsync(DestinationSettings destination, string remotePath, bool isDirectory, CancellationToken cancellationToken = default)
     {
-        return destination.Type switch
+        var vpnResult = await EnsureVpnConnectedIfRequiredAsync(destination, cancellationToken);
+        if (!vpnResult.Success)
         {
-            DestinationType.LocalFolder => Task.FromResult(DeleteLocalItem(destination, remotePath, isDirectory)),
-            DestinationType.NetworkShare => _networkShareService.DeleteRemoteItemAsync(destination, remotePath, isDirectory, cancellationToken),
-            DestinationType.Sftp => _sftpService.DeleteRemoteItemAsync(destination, remotePath, isDirectory, cancellationToken),
-            DestinationType.Scp => _scpService.DeleteRemoteItemAsync(destination, remotePath, isDirectory, cancellationToken),
-            _ => _ftpService.DeleteRemoteItemAsync(destination, remotePath, isDirectory, cancellationToken)
+            return (false, vpnResult.Message);
+        }
+
+        var result = destination.Type switch
+        {
+            DestinationType.LocalFolder => DeleteLocalItem(destination, remotePath, isDirectory),
+            DestinationType.NetworkShare => await _networkShareService.DeleteRemoteItemAsync(destination, remotePath, isDirectory, cancellationToken),
+            DestinationType.Sftp => await _sftpService.DeleteRemoteItemAsync(destination, remotePath, isDirectory, cancellationToken),
+            DestinationType.Scp => await _scpService.DeleteRemoteItemAsync(destination, remotePath, isDirectory, cancellationToken),
+            _ => await _ftpService.DeleteRemoteItemAsync(destination, remotePath, isDirectory, cancellationToken)
         };
+
+        return DecorateWithVpnMessage(result, vpnResult);
     }
+
+    private async Task<VpnConnectionEnsureResult> EnsureVpnConnectedIfRequiredAsync(DestinationSettings destination, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(destination.RequiredVpnConnectionName))
+        {
+            return VpnConnectionEnsureResult.NoRequirement();
+        }
+
+        return await _vpnService.EnsureConnectedAsync(destination.RequiredVpnConnectionName, cancellationToken);
+    }
+
+    private static (bool Success, string Message) DecorateWithVpnMessage((bool Success, string Message) result, VpnConnectionEnsureResult vpnResult) =>
+        (result.Success, DecorateMessageWithVpn(result.Message, vpnResult));
+
+    private static string DecorateMessageWithVpn(string message, VpnConnectionEnsureResult vpnResult) =>
+        vpnResult.ConnectionStateChanged && !string.IsNullOrWhiteSpace(vpnResult.Message)
+            ? $"{vpnResult.Message} {message}".Trim()
+            : message;
 
     private static (bool Success, string Message) TestLocalDestination(DestinationSettings destination)
     {

@@ -14,8 +14,9 @@
     <Application.Resources>
         <converters:BooleanNegationConverter x:Key="BooleanNegationConverter" />
         <converters:BooleanOpacityConverter x:Key="BooleanOpacityConverter" />
+        <converters:BlankValueDisplayConverter x:Key="BlankValueDisplayConverter" />
         <converters:DestinationTypeDisplayConverter x:Key="DestinationTypeDisplayConverter" />
-        <converters:NetworkShareProtocolDisplayConverter x:Key="NetworkShareProtocolDisplayConverter" />
+        <converters:SshAuthenticationModeDisplayConverter x:Key="SshAuthenticationModeDisplayConverter" />
         <SolidColorBrush x:Key="AppPageBackgroundBrush" Color="#F4F7FB" />
         <SolidColorBrush x:Key="AppCardBackgroundBrush" Color="#FCFDFE" />
         <SolidColorBrush x:Key="AppCardBorderBrush" Color="#D7E0EA" />

@@ -33,10 +33,16 @@ public partial class DestinationItemViewModel : ObservableObject
     private string password = string.Empty;
 
     [ObservableProperty]
-    private string localRootPath = string.Empty;
+    private SshAuthenticationMode sshAuthenticationMode = SshAuthenticationMode.Password;
 
     [ObservableProperty]
-    private NetworkShareProtocol networkProtocol = NetworkShareProtocol.Smb;
+    private string privateKeyPath = string.Empty;
+
+    [ObservableProperty]
+    private string privateKeyPassphrase = string.Empty;
+
+    [ObservableProperty]
+    private string localRootPath = string.Empty;
 
     [ObservableProperty]
     private string networkHost = string.Empty;
@@ -50,7 +56,12 @@ public partial class DestinationItemViewModel : ObservableObject
     [ObservableProperty]
     private bool useCurrentUserCredentials = true;
 
+    [ObservableProperty]
+    private string requiredVpnConnectionName = string.Empty;
+
     public string DisplayName => string.IsNullOrWhiteSpace(Name) ? "Unnamed destination" : Name;
+    public IReadOnlyList<SshAuthenticationMode> AvailableSshAuthenticationModes { get; } =
+        [SshAuthenticationMode.Password, SshAuthenticationMode.PrivateKey];
     public string EndpointSummary => Type switch
     {
         DestinationType.LocalFolder => LocalRootPath,
@@ -62,33 +73,48 @@ public partial class DestinationItemViewModel : ObservableObject
     public bool UsesFtp => Type == DestinationType.Ftp;
     public bool UsesSftp => Type == DestinationType.Sftp;
     public bool UsesScp => Type == DestinationType.Scp;
+    public bool UsesSshAuthentication => Type is DestinationType.Sftp or DestinationType.Scp;
     public bool UsesLocalFolder => Type == DestinationType.LocalFolder;
     public bool UsesNetworkShare => Type == DestinationType.NetworkShare;
     public bool UsesRemoteHost => Type is DestinationType.Ftp or DestinationType.Sftp or DestinationType.Scp;
-    public bool UsesCredentials => Type is DestinationType.Ftp or DestinationType.Sftp or DestinationType.Scp or DestinationType.NetworkShare;
+    public bool UsesUsername => Type is DestinationType.Ftp or DestinationType.Sftp or DestinationType.Scp or DestinationType.NetworkShare;
+    public bool UsesPassword => Type switch
+    {
+        DestinationType.Sftp or DestinationType.Scp => SshAuthenticationMode == SshAuthenticationMode.Password,
+        DestinationType.NetworkShare => !UseCurrentUserCredentials,
+        _ => Type == DestinationType.Ftp && !UseAnonymousFtp
+    };
+    public bool UsesPrivateKeyPath => UsesSshAuthentication && SshAuthenticationMode == SshAuthenticationMode.PrivateKey;
+    public bool UsesPrivateKeyPassphrase => UsesPrivateKeyPath;
     public bool SupportsAnonymousFtp => Type == DestinationType.Ftp;
-    public bool CredentialsAreEditable => Type switch
+    public bool UsernameIsEditable => Type switch
     {
         DestinationType.NetworkShare => !UseCurrentUserCredentials,
         DestinationType.Sftp or DestinationType.Scp => true,
         _ => !UseAnonymousFtp
     };
-    public double CredentialsOpacity => CredentialsAreEditable ? 1.0 : 0.55;
-    public IReadOnlyList<NetworkShareProtocol> AvailableNetworkProtocols { get; } = Enum.GetValues<NetworkShareProtocol>();
-
+    public bool PasswordIsEditable => UsesPassword;
+    public double UsernameOpacity => UsernameIsEditable ? 1.0 : 0.55;
+    public double PasswordOpacity => PasswordIsEditable ? 1.0 : 0.55;
     partial void OnNameChanged(string value) => OnPropertyChanged(nameof(DisplayName));
     partial void OnTypeChanged(DestinationType value)
     {
         OnPropertyChanged(nameof(UsesFtp));
         OnPropertyChanged(nameof(UsesSftp));
         OnPropertyChanged(nameof(UsesScp));
+        OnPropertyChanged(nameof(UsesSshAuthentication));
         OnPropertyChanged(nameof(UsesLocalFolder));
         OnPropertyChanged(nameof(UsesNetworkShare));
         OnPropertyChanged(nameof(UsesRemoteHost));
-        OnPropertyChanged(nameof(UsesCredentials));
+        OnPropertyChanged(nameof(UsesUsername));
+        OnPropertyChanged(nameof(UsesPassword));
+        OnPropertyChanged(nameof(UsesPrivateKeyPath));
+        OnPropertyChanged(nameof(UsesPrivateKeyPassphrase));
         OnPropertyChanged(nameof(SupportsAnonymousFtp));
-        OnPropertyChanged(nameof(CredentialsAreEditable));
-        OnPropertyChanged(nameof(CredentialsOpacity));
+        OnPropertyChanged(nameof(UsernameIsEditable));
+        OnPropertyChanged(nameof(PasswordIsEditable));
+        OnPropertyChanged(nameof(UsernameOpacity));
+        OnPropertyChanged(nameof(PasswordOpacity));
         OnPropertyChanged(nameof(EndpointSummary));
         OnPropertyChanged(nameof(DisplayName));
 
@@ -111,8 +137,12 @@ public partial class DestinationItemViewModel : ObservableObject
     }
     partial void OnUseAnonymousFtpChanged(bool value)
     {
-        OnPropertyChanged(nameof(CredentialsAreEditable));
-        OnPropertyChanged(nameof(CredentialsOpacity));
+        OnPropertyChanged(nameof(UsesUsername));
+        OnPropertyChanged(nameof(UsesPassword));
+        OnPropertyChanged(nameof(UsernameIsEditable));
+        OnPropertyChanged(nameof(PasswordIsEditable));
+        OnPropertyChanged(nameof(UsernameOpacity));
+        OnPropertyChanged(nameof(PasswordOpacity));
     }
     partial void OnHostChanged(string value) => OnPropertyChanged(nameof(EndpointSummary));
     partial void OnLocalRootPathChanged(string value) => OnPropertyChanged(nameof(EndpointSummary));
@@ -120,8 +150,22 @@ public partial class DestinationItemViewModel : ObservableObject
     partial void OnNetworkShareNameChanged(string value) => OnPropertyChanged(nameof(EndpointSummary));
     partial void OnUseCurrentUserCredentialsChanged(bool value)
     {
-        OnPropertyChanged(nameof(CredentialsAreEditable));
-        OnPropertyChanged(nameof(CredentialsOpacity));
+        OnPropertyChanged(nameof(UsesUsername));
+        OnPropertyChanged(nameof(UsesPassword));
+        OnPropertyChanged(nameof(UsernameIsEditable));
+        OnPropertyChanged(nameof(PasswordIsEditable));
+        OnPropertyChanged(nameof(UsernameOpacity));
+        OnPropertyChanged(nameof(PasswordOpacity));
+    }
+    partial void OnSshAuthenticationModeChanged(SshAuthenticationMode value)
+    {
+        OnPropertyChanged(nameof(UsesPassword));
+        OnPropertyChanged(nameof(UsesPrivateKeyPath));
+        OnPropertyChanged(nameof(UsesPrivateKeyPassphrase));
+        OnPropertyChanged(nameof(UsernameIsEditable));
+        OnPropertyChanged(nameof(PasswordIsEditable));
+        OnPropertyChanged(nameof(UsernameOpacity));
+        OnPropertyChanged(nameof(PasswordOpacity));
     }
 
     public static DestinationItemViewModel FromSettings(DestinationSettings settings) =>
@@ -136,12 +180,15 @@ public partial class DestinationItemViewModel : ObservableObject
             UseAnonymousFtp = settings.UseAnonymousFtp,
             Username = settings.Username,
             Password = settings.Password,
+            SshAuthenticationMode = settings.SshAuthenticationMode,
+            PrivateKeyPath = settings.PrivateKeyPath,
+            PrivateKeyPassphrase = settings.PrivateKeyPassphrase,
             LocalRootPath = settings.LocalRootPath,
-            NetworkProtocol = settings.NetworkProtocol,
             NetworkHost = settings.NetworkHost,
             NetworkShareName = settings.NetworkShareName,
             NetworkDomain = settings.NetworkDomain,
-            UseCurrentUserCredentials = settings.UseCurrentUserCredentials
+            UseCurrentUserCredentials = settings.UseCurrentUserCredentials,
+            RequiredVpnConnectionName = settings.RequiredVpnConnectionName
         };
 
     public DestinationSettings ToSettings() =>
@@ -156,11 +203,14 @@ public partial class DestinationItemViewModel : ObservableObject
             UseAnonymousFtp = UseAnonymousFtp,
             Username = Username,
             Password = Password,
+            SshAuthenticationMode = SshAuthenticationMode,
+            PrivateKeyPath = PrivateKeyPath,
+            PrivateKeyPassphrase = PrivateKeyPassphrase,
             LocalRootPath = LocalRootPath,
-            NetworkProtocol = NetworkProtocol,
             NetworkHost = NetworkHost,
             NetworkShareName = NetworkShareName,
             NetworkDomain = NetworkDomain,
-            UseCurrentUserCredentials = UseCurrentUserCredentials
+            UseCurrentUserCredentials = UseCurrentUserCredentials,
+            RequiredVpnConnectionName = RequiredVpnConnectionName
         };
 }

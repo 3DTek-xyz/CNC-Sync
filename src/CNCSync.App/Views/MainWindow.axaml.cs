@@ -66,6 +66,22 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void BrowsePrivateKey_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel ||
+            viewModel.SelectedDestination is null)
+        {
+            return;
+        }
+
+        var initialDirectory = ResolveInitialPrivateKeyDirectory(viewModel);
+        var selectedPath = await PickFileAsync(initialDirectory);
+        if (selectedPath is not null)
+        {
+            viewModel.SelectedDestination.PrivateKeyPath = selectedPath;
+        }
+    }
+
     private async void BrowseProcessingScript_OnClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel viewModel ||
@@ -169,10 +185,37 @@ public partial class MainWindow : Window
         return Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
     }
 
+    private static string? ResolveInitialPrivateKeyDirectory(MainWindowViewModel viewModel)
+    {
+        var currentKeyPath = viewModel.SelectedDestination?.PrivateKeyPath;
+        if (!string.IsNullOrWhiteSpace(currentKeyPath))
+        {
+            var expandedPath = ExpandHomeDirectory(currentKeyPath);
+            if (File.Exists(expandedPath))
+            {
+                return Path.GetDirectoryName(expandedPath);
+            }
+        }
+
+        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh");
+    }
+
     private static Uri ToFileUri(string path)
     {
         var normalizedPath = Path.GetFullPath(path);
         return new Uri(normalizedPath, UriKind.Absolute);
+    }
+
+    private static string ExpandHomeDirectory(string path)
+    {
+        if (!path.StartsWith("~/", StringComparison.Ordinal) &&
+            !path.StartsWith("~\\", StringComparison.Ordinal))
+        {
+            return path;
+        }
+
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        return Path.Combine(home, path[2..]);
     }
 
     private static void OpenFolderInShell(string path)

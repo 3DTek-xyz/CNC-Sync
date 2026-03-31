@@ -22,6 +22,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IDestinationService _destinationService;
     private readonly IAppUpdateService _updateService;
     private readonly ILoginStartupService _loginStartupService;
+    private readonly IVpnService _vpnService;
     private readonly SemaphoreSlim _saveLock = new(1, 1);
     private readonly Lock _activityLogFileLock = new();
     private CancellationTokenSource? _autoSaveCts;
@@ -110,6 +111,7 @@ public partial class MainWindowViewModel : ViewModelBase
         IDestinationService destinationService,
         IAppUpdateService updateService,
         ILoginStartupService loginStartupService,
+        IVpnService vpnService,
         AppSettings initialSettings)
     {
         _settingsStore = settingsStore;
@@ -118,6 +120,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _destinationService = destinationService;
         _updateService = updateService;
         _loginStartupService = loginStartupService;
+        _vpnService = vpnService;
         PropertyChanged += OnViewModelPropertyChanged;
         WatchProfiles.CollectionChanged += OnWatchProfilesCollectionChanged;
         Destinations.CollectionChanged += OnDestinationsCollectionChanged;
@@ -139,6 +142,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         AddActivity("App shell created.");
         AddActivity("Initial settings loaded.");
+        _ = RefreshVpnConnectionsCoreAsync(logResult: false);
     }
 
     public MainWindowViewModel()
@@ -149,6 +153,7 @@ public partial class MainWindowViewModel : ViewModelBase
             new DesignDestinationService(),
             new DesignAppUpdateService(),
             new DesignLoginStartupService(),
+            new DesignVpnService(),
             AppSettings.CreateDefault())
     {
     }
@@ -164,6 +169,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public ObservableCollection<ProcessingSetupItemViewModel> ProcessingSetups { get; } = [];
 
     public ObservableCollection<RemoteBrowserItemViewModel> RemoteBrowserItems { get; } = [];
+    public ObservableCollection<string> AvailableVpnConnectionNames { get; } = [string.Empty];
 
     public IReadOnlyList<ProcessingMode> AvailableProcessingModes { get; } = Enum.GetValues<ProcessingMode>();
 
@@ -500,6 +506,12 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             await RefreshRemoteBrowserAsync();
         }
+    }
+
+    [RelayCommand]
+    private async Task RefreshVpnConnectionsAsync()
+    {
+        await RefreshVpnConnectionsCoreAsync(logResult: true);
     }
 
     [RelayCommand]
@@ -1097,6 +1109,25 @@ public partial class MainWindowViewModel : ViewModelBase
         public Task ApplyAsync(bool enabled, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
+    private sealed class DesignVpnService : IVpnService
+    {
+        public Task<IReadOnlyList<VpnConnectionInfo>> ListConnectionsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<VpnConnectionInfo>>(
+                [
+                    new VpnConnectionInfo { Name = "Office VPN", Identifier = "office-vpn", IsConnected = true },
+                    new VpnConnectionInfo { Name = "Tailscale", Identifier = "tailscale", IsConnected = false }
+                ]);
+
+        public Task<VpnConnectionEnsureResult> EnsureConnectedAsync(string connectionName, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new VpnConnectionEnsureResult
+            {
+                Success = true,
+                ConnectedNow = true,
+                ConnectionStateChanged = true,
+                Message = $"Connected required VPN '{connectionName}'."
+            });
+    }
+
     private static string ResolveAppVersion()
     {
         var assembly = typeof(MainWindowViewModel).Assembly;
@@ -1169,6 +1200,44 @@ public partial class MainWindowViewModel : ViewModelBase
             OnPropertyChanged(nameof(CanApplyUpdate));
             DownloadAndRestartUpdateCommand.NotifyCanExecuteChanged();
             return new AppUpdateResult(false, message);
+        }
+    }
+
+    private async Task RefreshVpnConnectionsCoreAsync(bool logResult)
+    {
+        try
+        {
+            var connections = await _vpnService.ListConnectionsAsync();
+            var preservedNames = Destinations
+                .Select(destination => destination.RequiredVpnConnectionName)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            AvailableVpnConnectionNames.Clear();
+            AvailableVpnConnectionNames.Add(string.Empty);
+
+            foreach (var name in connections
+                         .Select(connection => connection.Name)
+                         .Concat(preservedNames)
+                         .Distinct(StringComparer.OrdinalIgnoreCase)
+                         .OrderBy(name => name, StringComparer.OrdinalIgnoreCase))
+            {
+                AvailableVpnConnectionNames.Add(name);
+            }
+
+            if (logResult)
+            {
+                AddActivity($"Loaded {connections.Count} system VPN connection(s).");
+            }
+        }
+        catch (Exception ex)
+        {
+            if (logResult)
+            {
+                AddActivity($"Could not list system VPN connections: {ex.Message}");
+            }
         }
     }
 

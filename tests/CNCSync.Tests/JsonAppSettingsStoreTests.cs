@@ -6,6 +6,17 @@ namespace CNCSync.Tests;
 
 public sealed class JsonAppSettingsStoreTests
 {
+    private sealed class InMemorySecretStore : ISecretStore
+    {
+        private readonly Dictionary<string, string> _secrets = new();
+
+        public string? GetSecret(string key) => _secrets.TryGetValue(key, out var secret) ? secret : null;
+
+        public void SetSecret(string key, string secret) => _secrets[key] = secret;
+
+        public void DeleteSecret(string key) => _secrets.Remove(key);
+    }
+
     [Fact]
     public async Task LoadAsync_UsesExistingUserSettingsWithoutReplacingThem()
     {
@@ -24,7 +35,7 @@ public sealed class JsonAppSettingsStoreTests
             var settingsPath = Path.Combine(settingsDirectory, "settings.json");
             await File.WriteAllTextAsync(settingsPath, JsonSerializer.Serialize(existingSettings, new JsonSerializerOptions { WriteIndented = true }));
 
-            var store = new JsonAppSettingsStore(settingsDirectory, legacyDirectory, bundledScriptsDirectory);
+            var store = new JsonAppSettingsStore(settingsDirectory, legacyDirectory, bundledScriptsDirectory, new InMemorySecretStore());
             var loaded = await store.LoadAsync();
 
             Assert.Equal("User Destination", loaded.Destinations[0].Name);
@@ -64,7 +75,7 @@ public sealed class JsonAppSettingsStoreTests
                 Path.Combine(legacyDirectory, "settings.json"),
                 JsonSerializer.Serialize(legacySettings, new JsonSerializerOptions { WriteIndented = true }));
 
-            var store = new JsonAppSettingsStore(settingsDirectory, legacyDirectory, bundledScriptsDirectory);
+            var store = new JsonAppSettingsStore(settingsDirectory, legacyDirectory, bundledScriptsDirectory, new InMemorySecretStore());
             var loaded = await store.LoadAsync();
 
             Assert.Equal("Current", loaded.Destinations[0].Name);
@@ -88,17 +99,65 @@ public sealed class JsonAppSettingsStoreTests
 
         try
         {
-            var store = new JsonAppSettingsStore(settingsDirectory, legacyDirectory, bundledScriptsDirectory);
+            var secretStore = new InMemorySecretStore();
+            var store = new JsonAppSettingsStore(settingsDirectory, legacyDirectory, bundledScriptsDirectory, secretStore);
             var settings = AppSettings.CreateDefault();
             settings.Destinations[0].Name = "Saved";
+            settings.Destinations[0].Password = "super-secret";
+            settings.Destinations[0].PrivateKeyPassphrase = "passphrase-secret";
 
             await store.SaveAsync(settings);
 
             Assert.True(File.Exists(Path.Combine(settingsDirectory, "settings.json")));
             Assert.False(File.Exists(Path.Combine(settingsDirectory, "settings.json.tmp")));
+            var savedJson = await File.ReadAllTextAsync(Path.Combine(settingsDirectory, "settings.json"));
+            Assert.DoesNotContain("super-secret", savedJson, StringComparison.Ordinal);
+            Assert.DoesNotContain("passphrase-secret", savedJson, StringComparison.Ordinal);
+            Assert.Null(secretStore.GetSecret(settings.Destinations[0].Id));
+            Assert.Equal("super-secret", secretStore.GetSecret($"{settings.Destinations[0].Id}:password"));
+            Assert.Equal("passphrase-secret", secretStore.GetSecret($"{settings.Destinations[0].Id}:private-key-passphrase"));
 
             var reloaded = await store.LoadAsync();
             Assert.Equal("Saved", reloaded.Destinations[0].Name);
+            Assert.Equal("super-secret", reloaded.Destinations[0].Password);
+            Assert.Equal("passphrase-secret", reloaded.Destinations[0].PrivateKeyPassphrase);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task LoadAsync_MigratesLegacyPlaintextPasswordsIntoSecretStore()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"cncsync-store-{Guid.NewGuid():N}");
+        var settingsDirectory = Path.Combine(root, "current");
+        var legacyDirectory = Path.Combine(root, "legacy");
+        var bundledScriptsDirectory = Path.Combine(root, "bundled");
+        Directory.CreateDirectory(settingsDirectory);
+
+        try
+        {
+            var secretStore = new InMemorySecretStore();
+            var settings = AppSettings.CreateDefault();
+            settings.Destinations[0].Password = "legacy-secret";
+            settings.Destinations[0].PrivateKeyPassphrase = "legacy-passphrase";
+
+            await File.WriteAllTextAsync(
+                Path.Combine(settingsDirectory, "settings.json"),
+                JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));
+
+            var store = new JsonAppSettingsStore(settingsDirectory, legacyDirectory, bundledScriptsDirectory, secretStore);
+            var loaded = await store.LoadAsync();
+
+            Assert.Equal("legacy-secret", loaded.Destinations[0].Password);
+            Assert.Equal("legacy-passphrase", loaded.Destinations[0].PrivateKeyPassphrase);
+            Assert.Equal("legacy-secret", secretStore.GetSecret($"{loaded.Destinations[0].Id}:password"));
+            Assert.Equal("legacy-passphrase", secretStore.GetSecret($"{loaded.Destinations[0].Id}:private-key-passphrase"));
         }
         finally
         {

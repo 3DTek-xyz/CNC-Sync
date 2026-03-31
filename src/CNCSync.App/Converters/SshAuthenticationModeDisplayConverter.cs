@@ -5,14 +5,14 @@ using CNCSync.Core.Configuration;
 
 namespace CNCSync.App.Converters;
 
-public sealed class NetworkShareProtocolDisplayConverter : IValueConverter
+public sealed class SshAuthenticationModeDisplayConverter : IValueConverter
 {
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         return value switch
         {
-            NetworkShareProtocol.Smb => "SMB",
-            NetworkShareProtocol.Afp => "AFP",
+            SshAuthenticationMode.Password => "Password",
+            SshAuthenticationMode.PrivateKey => "Private Key",
             _ => value?.ToString()
         };
     }
