@@ -1,0 +1,39 @@
+bin/
+obj/
+.DS_Store
+
+# User and IDE files
+.idea/
+.vs/
+*.user
+*.suo
+
+# Avalonia / .NET artifacts
+TestResults/
+*.nupkg
+*.snupkg
+dist/
+*.AppImage
+
+# Local tooling
+.vscode/
+docker-compose.test-services.yml
+scripts/manage-test-services.sh
+
+# Legacy archive noise
+Original/**/bin/
+Original/**/obj/
+Original/**/*.log
+Original/**/*.dll
+Original/**/*.exe
+Original/**/*.pdb
+Original/**/*.msi
+SampleJob/
+
+# macOS Finder and app bundle noise
+**/.DS_Store
+*.app/
+!src/CNCSync.App/
+!src/CNCSync.App/**
+src/CNCSync.App/bin/
+src/CNCSync.App/obj/

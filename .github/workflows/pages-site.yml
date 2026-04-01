@@ -1,0 +1,83 @@
+name: Pages Site
+run-name: Pages Site
+
+on:
+  push:
+    branches:
+      - main
+  workflow_run:
+    workflows:
+      - Release
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy-pages-site:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare Pages site
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          download_release_assets() {
+            local target_dir="$1"
+            shift
+            if ! gh release download --repo "$GITHUB_REPOSITORY" --clobber --dir "$target_dir" "$@"; then
+              echo "No release assets matched for $target_dir; continuing."
+            fi
+          }
+
+          mkdir -p site
+          cp -R docs/. site/
+          mkdir -p site/downloads/win site/downloads/macos site/downloads/linux site/updates
+          if gh release view --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            download_release_assets site/downloads/win \
+              --pattern "3DTek.CNCSync-win-Setup.exe" \
+              --pattern "3DTek.CNCSync-win-Portable.zip"
+            download_release_assets site/downloads/macos \
+              --pattern "cnc-sync-macos-arm64-latest.pkg" \
+              --pattern "cnc-sync-macos-arm64-latest.zip" \
+              --pattern "cnc-sync-macos-x64-latest.pkg" \
+              --pattern "cnc-sync-macos-x64-latest.zip"
+            download_release_assets site/downloads/linux \
+              --pattern "cnc-sync-linux-x64-latest.AppImage"
+            download_release_assets site/updates \
+              --pattern "RELEASES" \
+              --pattern "RELEASES-osx-arm64" \
+              --pattern "RELEASES-osx-x64" \
+              --pattern "RELEASES-linux-x64" \
+              --pattern "releases.win.json" \
+              --pattern "releases.osx-arm64.json" \
+              --pattern "releases.osx-x64.json" \
+              --pattern "releases.linux-x64.json" \
+              --pattern "assets.win.json" \
+              --pattern "assets.osx-arm64.json" \
+              --pattern "assets.osx-x64.json" \
+              --pattern "assets.linux-x64.json" \
+              --pattern "*.nupkg" \
+              --pattern "3DTek.CNCSync-win-Setup.exe" \
+              --pattern "3DTek.CNCSync-win-Portable.zip" \
+              --pattern "3DTek.CNCSync-osx-arm64-Setup.pkg" \
+              --pattern "3DTek.CNCSync-osx-arm64-Portable.zip" \
+              --pattern "3DTek.CNCSync-osx-x64-Setup.pkg" \
+              --pattern "3DTek.CNCSync-osx-x64-Portable.zip" \
+              --pattern "*.AppImage"
+          fi
+          touch site/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - uses: actions/deploy-pages@v4
+        id: deployment

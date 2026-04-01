@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CNC Sync User Guide</title>
+  <style>
+    :root {
+      --bg: #eff5fb;
+      --panel: #ffffff;
+      --ink: #14314d;
+      --muted: #56718c;
+      --line: #d6e2ef;
+      --accent: #0f6ad9;
+      --accent-soft: #dcebff;
+      --shadow: 0 24px 48px rgba(20, 49, 77, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Inter, system-ui, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(15,106,217,.14), transparent 28rem),
+        linear-gradient(180deg, #f5f9fd 0%, var(--bg) 100%);
+      color: var(--ink);
+    }
+
+    .shell {
+      max-width: 68rem;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem 4rem;
+    }
+
+    .hero {
+      background: linear-gradient(145deg, #153a63 0%, #0c5dbd 100%);
+      color: #fff;
+      border-radius: 1.5rem;
+      padding: 2.25rem;
+      box-shadow: var(--shadow);
+    }
+
+    .eyebrow {
+      display: inline-block;
+      padding: .38rem .75rem;
+      border-radius: 999px;
+      background: rgba(255,255,255,.16);
+      font-size: .9rem;
+      letter-spacing: .02em;
+    }
+
+    h1 {
+      margin: 1rem 0 .65rem;
+      font-size: clamp(2rem, 4vw, 3.1rem);
+      line-height: 1.05;
+    }
+
+    .hero p {
+      max-width: 44rem;
+      margin: 0;
+      color: rgba(255,255,255,.9);
+      line-height: 1.65;
+      font-size: 1.03rem;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .8rem;
+      margin-top: 1.35rem;
+    }
+
+    .button {
+      display: inline-block;
+      padding: .9rem 1.15rem;
+      border-radius: .95rem;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .button.primary {
+      background: #fff;
+      color: #0e4d99;
+    }
+
+    .button.secondary {
+      background: rgba(255,255,255,.12);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,.22);
+    }
+
+    .layout {
+      display: grid;
+      gap: 1.25rem;
+      margin-top: 1.5rem;
+      grid-template-columns: minmax(0, 17rem) minmax(0, 1fr);
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 1.25rem;
+      padding: 1.25rem;
+      box-shadow: var(--shadow);
+    }
+
+    .toc {
+      position: sticky;
+      top: 1.25rem;
+      align-self: start;
+    }
+
+    .toc h2,
+    .content h2,
+    .content h3 {
+      margin-top: 0;
+    }
+
+    .toc ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .toc li + li {
+      margin-top: .5rem;
+    }
+
+    .toc a {
+      color: var(--muted);
+      text-decoration: none;
+    }
+
+    .toc a:hover,
+    .content a:hover {
+      color: var(--accent);
+    }
+
+    .content section + section {
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--line);
+    }
+
+    .content p,
+    .content li {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .content ul,
+    .content ol {
+      padding-left: 1.2rem;
+      margin: .75rem 0 0;
+    }
+
+    .content li + li {
+      margin-top: .4rem;
+    }
+
+    code {
+      background: var(--accent-soft);
+      color: #14457c;
+      padding: .15rem .38rem;
+      border-radius: .4rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: .92rem;
+    }
+
+    pre {
+      background: #edf5ff;
+      color: #184775;
+      padding: 1rem;
+      border-radius: 1rem;
+      overflow: auto;
+      border: 1px solid #d4e4f7;
+    }
+
+    .lead-list {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+      margin-top: 1rem;
+    }
+
+    .mini-card {
+      background: #f9fbfe;
+      border: 1px solid var(--line);
+      border-radius: 1rem;
+      padding: 1rem;
+    }
+
+    .mini-card h3 {
+      margin: 0 0 .45rem;
+      font-size: 1rem;
+    }
+
+    @media (max-width: 860px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .toc {
+        position: static;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <span class="eyebrow">CNC Sync Guide</span>
+      <h1>Set up watch folders, processing, and destination delivery with confidence.</h1>
+      <p>
+        This guide walks through how CNC Sync is organised, how to set up reusable destinations and
+        processing setups, and how monitoring, staging, and manual catch-up behave in practice.
+      </p>
+      <div class="actions">
+        <a class="button primary" href="./index.html">Back to Downloads</a>
+      </div>
+    </section>
+
+    <div class="layout">
+      <aside class="card toc">
+        <h2>On This Page</h2>
+        <ul>
+          <li><a href="#what-it-does">What CNC Sync Does</a></li>
+          <li><a href="#setup-flow">Typical Setup Flow</a></li>
+          <li><a href="#app-settings">App Settings</a></li>
+          <li><a href="#destinations">Destinations</a></li>
+          <li><a href="#processing-setups">Processing Setups</a></li>
+          <li><a href="#watch-folders">Watch Folders</a></li>
+          <li><a href="#monitoring">Monitoring</a></li>
+          <li><a href="#manual-catch-up">Manual Catch-Up</a></li>
+          <li><a href="#activity-log">Activity Log</a></li>
+          <li><a href="#help-about">Help / About</a></li>
+          <li><a href="#security-prompts">Security Prompts</a></li>
+          <li><a href="#notes">Notes</a></li>
+        </ul>
+      </aside>
+
+      <article class="card content">
+        <section id="what-it-does">
+          <h2>What CNC Sync Does</h2>
+          <p>
+            CNC Sync watches one or more local folders, optionally runs a local processing step,
+            and delivers the prepared result to a reusable destination.
+          </p>
+          <div class="lead-list">
+            <div class="mini-card">
+              <h3>App Settings</h3>
+              <p>Global behaviour for the app itself.</p>
+            </div>
+            <div class="mini-card">
+              <h3>Destinations</h3>
+              <p>Reusable named FTP, SFTP, SCP, Local Folder, or Network Share targets.</p>
+            </div>
+            <div class="mini-card">
+              <h3>Processing Setups</h3>
+              <p>Reusable processing rules including external scripts.</p>
+            </div>
+            <div class="mini-card">
+              <h3>Watch Folders</h3>
+              <p>The monitored folders that combine watch, processing, and destination settings.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="setup-flow">
+          <h2>Typical Setup Flow</h2>
+          <ol>
+            <li>Create a <code>Destination</code>.</li>
+            <li>Create a <code>Processing Setup</code>.</li>
+            <li>Create a <code>Watch Folder</code> that points to a local watch folder and staging folder, then select the destination and processing setup it should use.</li>
+            <li>Validate settings.</li>
+            <li>Start monitoring.</li>
+          </ol>
+        </section>
+
+        <section id="app-settings">
+          <h2>App Settings</h2>
+          <p>Use <code>App Settings</code> for behaviour that applies to the whole app:</p>
+          <ul>
+            <li><code>Launch At Login</code>: start CNC Sync when the user logs in.</li>
+            <li><code>Start Minimized</code>: start hidden/minimized when supported on the current platform.</li>
+            <li><code>Import Settings...</code>: browse for a <code>settings.json</code> file from another machine or previous installation and import it into the current app profile.</li>
+            <li><code>Validate Settings</code>: check the current configuration for missing or invalid items.</li>
+          </ul>
+          <p>Settings are saved automatically as you change them.</p>
+          <p>Imported settings replace the current profile configuration. Passwords and SSH key passphrases are stored in the local OS secret store, so after moving a settings file between machines you may need to re-enter those secrets on the new machine.</p>
+        </section>
+
+        <section id="destinations">
+          <h2>Destinations</h2>
+          <p>A destination defines one reusable delivery target:</p>
+          <ul>
+            <li><code>Destination Name</code>: friendly label shown in selectors.</li>
+            <li><code>Remote Base Path</code>: optional base path on the target such as <code>/uploads</code>.</li>
+          </ul>
+          <p>Supported destination types:</p>
+          <ul>
+            <li><code>FTP</code>: host, port, optional anonymous mode, and username/password when needed.</li>
+            <li><code>SFTP</code>: host, port, username, and either password or private-key authentication.</li>
+            <li><code>SCP</code>: host, port, username, and either password or private-key authentication.</li>
+            <li><code>Local Folder</code>: a normal local filesystem path.</li>
+            <li><code>Network Share</code>: an SMB share such as a NAS or another computer on the network.</li>
+          </ul>
+          <p>SSH destination authentication:</p>
+          <ul>
+            <li><code>Password</code>: standard username/password sign-in.</li>
+            <li><code>Private Key</code>: key file path plus optional key passphrase.</li>
+          </ul>
+          <p>Network Share notes:</p>
+          <ul>
+            <li>On macOS, explicit sign-in to a Mac SMB share may require enabling that account under <code>Windows File Sharing</code>.</li>
+            <li>On Linux, SMB shares work best when they are already mounted by the desktop environment.</li>
+            <li>On Linux, explicit SMB username/password access may still require mounting the share first in the desktop file manager.</li>
+            <li>If a destination requires a VPN first, choose it in <code>Required VPN</code>.</li>
+            <li>VPN profiles used by CNC Sync must be able to connect automatically without prompting for user interaction.</li>
+            <li>If enabled, <code>Disconnect VPN When Finished</code> disconnects a VPN only when CNC Sync had to connect it itself, and only after a short idle window.</li>
+          </ul>
+          <p>The effective remote path is built from the destination base path plus the watch profile additional remote path.</p>
+          <p>Example: destination base path <code>/uploads</code> and watch additional remote path <code>/watch1</code> becomes <code>/uploads/watch1</code>.</p>
+        </section>
+
+        <section id="processing-setups">
+          <h2>Processing Setups</h2>
+          <p>A processing setup defines what happens to a detected file or folder before upload.</p>
+
+          <h3>Default Upload</h3>
+          <p>This is the default passthrough option. The source item is copied into staging/output and the copied result is uploaded.</p>
+
+          <h3>External Script</h3>
+          <p>This runs a local script or executable before upload.</p>
+          <ul>
+            <li><code>Mode</code>: choose <code>ExternalScript</code>.</li>
+            <li><code>Runner</code>: choose how to launch the script: <code>Auto</code>, <code>PowerShell</code>, <code>Bash</code>, <code>Python</code>, <code>Command</code>, or <code>Direct</code>.</li>
+            <li><code>Script Path</code>: the local file to execute.</li>
+            <li><code>Arguments Template</code>: arguments passed to the script at runtime.</li>
+          </ul>
+
+          <p>Supported placeholders:</p>
+          <ul>
+            <li><code>{sourcePath}</code>: the detected source file or folder.</li>
+            <li><code>{outputPath}</code>: the prepared output folder where processed files should be written.</li>
+            <li><code>{scriptPath}</code>: the selected script path.</li>
+          </ul>
+
+          <p>Any other text is passed through literally, which means you can add extra fixed arguments if your script expects them.</p>
+          <pre><code>"{sourcePath}" "{outputPath}"</code></pre>
+          <p>For example, if your script expects a literal text parameter after the normal source and output paths, you can write:</p>
+          <pre><code>"{sourcePath}" "{outputPath}" "watch1"</code></pre>
+          <p>In that case, the script receives the real source path, the real output path, and the literal text <code>watch1</code>.</p>
+          <p>The bundled <code>legacy_revision</code> script uses one extra flag to enable the CYC Y-coordinate update:</p>
+          <pre><code>"{sourcePath}" "{outputPath}" --update-cyc-y</code></pre>
+          <p>That extra <code>--update-cyc-y</code> text is not replaced. It is passed straight through to the script as written.</p>
+
+          <p>Script contract:</p>
+          <ul>
+            <li>Exit code <code>0</code> means success.</li>
+            <li>Non-zero means failure.</li>
+            <li>Optional stdout line: <code>OUTPUT_PATH=/path/to/final/output</code></li>
+          </ul>
+          <p>If <code>OUTPUT_PATH=</code> is printed, CNC Sync uploads that folder. If not, it uploads the prepared output folder it already passed in.</p>
+        </section>
+
+        <section id="watch-folders">
+          <h2>Watch Folders</h2>
+          <p>A watch folder ties everything together.</p>
+          <ul>
+            <li><code>Profile Name</code>: friendly label for this watch profile.</li>
+            <li><code>Enabled</code>: whether this profile participates in monitoring.</li>
+            <li><code>Watch Folder</code>: local folder being watched.</li>
+            <li><code>Staging Folder</code>: local folder used for prepared output.</li>
+            <li><code>Additional Remote Path</code>: optional path appended under the selected destination base path.</li>
+            <li><code>Processing Setup</code>: which processing rule to run.</li>
+            <li><code>Destination</code>: which destination to upload to.</li>
+            <li><code>Required Quiet Time</code>: how long files or folders must stay unchanged before processing starts.</li>
+            <li><code>Stability Check Interval</code>: how often CNC Sync checks pending items to see if they are ready.</li>
+          </ul>
+        </section>
+
+        <section id="monitoring">
+          <h2>Monitoring</h2>
+          <p>The monitoring area shows:</p>
+          <ul>
+            <li>whether monitoring is running</li>
+            <li>which watch profiles are active</li>
+            <li>the current task</li>
+            <li>the last processing summary</li>
+          </ul>
+          <p><code>Start</code> begins folder monitoring. <code>Stop</code> stops folder monitoring.</p>
+          <p>If enabled watch profiles exist and settings validate successfully, the app can auto-start monitoring on launch.</p>
+          <p>Changes to monitoring-related settings are applied live by reloading monitoring automatically.</p>
+        </section>
+
+        <section id="manual-catch-up">
+          <h2>Manual Catch-Up</h2>
+          <p><code>Manual Catch-Up</code> is for reconciling missed uploads.</p>
+          <p>It does not blindly upload everything. It:</p>
+          <ul>
+            <li>reads the selected watch profile</li>
+            <li>checks the target destination directory</li>
+            <li>compares local items against remote items</li>
+            <li>processes/uploads only missing or changed items</li>
+          </ul>
+          <p>Current comparison approach:</p>
+          <ul>
+            <li>files: <code>name + size</code></li>
+            <li>directories: name-based presence</li>
+            <li>ignores metadata junk like <code>.DS_Store</code>, <code>Thumbs.db</code>, and <code>desktop.ini</code></li>
+          </ul>
+          <p>Use this when the app was not running, the destination was unavailable, or monitoring was stopped.</p>
+        </section>
+
+        <section id="activity-log">
+          <h2>Activity Log</h2>
+          <p>The <code>Activity</code> tab shows recent events with:</p>
+          <ul>
+            <li>time</li>
+            <li>source/profile</li>
+            <li>message</li>
+          </ul>
+          <p>Timestamps include milliseconds so quick processing sequences are easier to follow.</p>
+          <p>The log text is selectable for copy/paste.</p>
+          <p>The same activity stream is also written to a text file in the app data folder. On Linux that is typically <code>~/.config/CNC Sync/activity.log</code>, on macOS it is <code>~/Library/Application Support/CNC Sync/activity.log</code>, and on Windows it is typically <code>%AppData%\CNC Sync\activity.log</code>.</p>
+        </section>
+
+        <section id="help-about">
+          <h2>Help / About</h2>
+          <p>The <code>Help / About</code> tab includes:</p>
+          <ul>
+            <li>setup reminders</li>
+            <li>destination and VPN notes</li>
+            <li>a link to the project page</li>
+            <li>a link to the update log / GitHub releases page</li>
+          </ul>
+        </section>
+
+        <section id="security-prompts">
+          <h2>Security Prompts</h2>
+          <p>
+            CNC Sync is not yet code signed on Windows and is not yet notarized on macOS, so the
+            first install or first launch may trigger platform trust prompts.
+          </p>
+          <div class="lead-list">
+            <div class="mini-card">
+              <h3>Windows</h3>
+              <p>If the installer is flagged, keep the download and use <strong>More info</strong> then <strong>Run anyway</strong> if SmartScreen appears.</p>
+            </div>
+            <div class="mini-card">
+              <h3>macOS</h3>
+              <p>If macOS blocks the installer or app, open <strong>System Settings &gt; Privacy &amp; Security</strong> and choose <strong>Open Anyway</strong>.</p>
+            </div>
+            <div class="mini-card">
+              <h3>What It Means</h3>
+              <p>These prompts are expected platform trust checks for unsigned software, not CNC Sync reporting that it found malware.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="notes">
+          <h2>Notes</h2>
+          <ul>
+            <li>FTP timestamps are not relied on for catch-up decisions.</li>
+            <li>Finder can be misleading for FTP or SMB browsing and refresh; use a dedicated client or your normal file manager when verifying remote contents.</li>
+            <li>Metadata junk such as <code>.DS_Store</code>, <code>._*</code>, <code>Thumbs.db</code>, <code>desktop.ini</code>, and <code>ehthumbs.db</code> is ignored during watching, staging, catch-up, and upload.</li>
+            <li>On Linux AppImage builds, make the file executable before first launch. Launch At Login uses the current AppImage path, so move it to its long-term location before enabling login startup.</li>
+          </ul>
+        </section>
+      </article>
+    </div>
+  </main>
+</body>
+</html>

@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CNC Sync</title>
+  <style>
+    :root {
+      --bg: #eff5fb;
+      --panel: #ffffff;
+      --ink: #14314d;
+      --muted: #56718c;
+      --line: #d6e2ef;
+      --accent: #0f6ad9;
+      --accent-soft: #dcebff;
+      --shadow: 0 24px 48px rgba(20, 49, 77, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Inter, system-ui, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(15,106,217,.14), transparent 28rem),
+        linear-gradient(180deg, #f5f9fd 0%, var(--bg) 100%);
+      color: var(--ink);
+    }
+
+    .shell {
+      max-width: 72rem;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem 4rem;
+    }
+
+    .hero {
+      background: linear-gradient(145deg, #153a63 0%, #0c5dbd 100%);
+      color: #fff;
+      border-radius: 1.5rem;
+      padding: 2.5rem;
+      box-shadow: var(--shadow);
+    }
+
+    .hero-badge {
+      display: inline-block;
+      padding: .4rem .75rem;
+      border-radius: 999px;
+      background: rgba(255,255,255,.16);
+      font-size: .9rem;
+      letter-spacing: .02em;
+    }
+
+    h1 {
+      margin: 1rem 0 .75rem;
+      font-size: clamp(2.2rem, 4vw, 3.5rem);
+      line-height: 1.05;
+    }
+
+    .hero p {
+      max-width: 46rem;
+      margin: 0;
+      color: rgba(255,255,255,.88);
+      font-size: 1.05rem;
+      line-height: 1.6;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .85rem;
+      margin-top: 1.5rem;
+    }
+
+    .button {
+      display: inline-block;
+      padding: .9rem 1.2rem;
+      border-radius: .95rem;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .button.primary {
+      background: #fff;
+      color: #0e4d99;
+    }
+
+    .button.secondary {
+      background: rgba(255,255,255,.12);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,.22);
+    }
+
+    .grid {
+      display: grid;
+      gap: 1rem;
+      margin-top: 1.5rem;
+      grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 1.25rem;
+      padding: 1.25rem;
+      box-shadow: var(--shadow);
+    }
+
+    .card h2,
+    .card h3 {
+      margin: 0 0 .6rem;
+    }
+
+    .card p,
+    .card li {
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .card ul {
+      margin: 0;
+      padding-left: 1.1rem;
+    }
+
+    .section-title {
+      margin: 2rem 0 .75rem;
+      font-size: 1.5rem;
+    }
+
+    .code {
+      display: inline-block;
+      background: var(--accent-soft);
+      color: #14457c;
+      padding: .25rem .5rem;
+      border-radius: .5rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: .92rem;
+    }
+
+    footer {
+      margin-top: 2rem;
+      color: var(--muted);
+      font-size: .95rem;
+    }
+
+    .muted-note {
+      margin-top: .85rem;
+      font-size: .95rem;
+      color: var(--muted);
+    }
+
+    a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <span class="hero-badge">CNC Sync</span>
+      <h1>Watch local CNC export folders, process them, and deliver them reliably.</h1>
+      <p>
+        CNC Sync monitors watch folders, runs optional local processing scripts, stages the result,
+        delivers it to reusable destinations, and supports manual catch-up when a destination or connection was unavailable.
+      </p>
+      <div class="actions">
+        <a class="button primary" href="./user-guide.html">Open User Guide</a>
+      </div>
+    </section>
+
+    <h2 class="section-title">Downloads</h2>
+    <section class="grid">
+      <article class="card">
+        <h3>Windows</h3>
+        <p><a href="./downloads/win/3DTek.CNCSync-win-Setup.exe">Installer</a></p>
+        <p><a href="./downloads/win/3DTek.CNCSync-win-Portable.zip">Portable ZIP</a></p>
+      </article>
+      <article class="card">
+        <h3>macOS</h3>
+        <p><a href="./downloads/macos/cnc-sync-macos-arm64-latest.pkg">Apple Silicon installer</a></p>
+        <p><a href="./downloads/macos/cnc-sync-macos-x64-latest.pkg">Intel installer</a></p>
+      </article>
+      <article class="card">
+        <h3>Linux</h3>
+        <p><a href="./downloads/linux/cnc-sync-linux-x64-latest.AppImage">Linux x64 AppImage</a></p>
+      </article>
+    </section>
+
+    <h2 class="section-title">What It Does</h2>
+    <section class="grid">
+      <article class="card">
+        <h3>Watch Folders</h3>
+        <p>Monitor one or more local export folders and wait for items to become stable before processing them.</p>
+      </article>
+      <article class="card">
+        <h3>Processing Setups</h3>
+        <p>Use default upload mode or run local scripts to reorganize, filter, or rewrite CNC jobs before upload.</p>
+      </article>
+      <article class="card">
+        <h3>Destinations</h3>
+        <p>Reuse named FTP, SFTP, SCP, Local Folder, and Network Share destinations across multiple watch folders.</p>
+      </article>
+      <article class="card">
+        <h3>Manual Catch-Up</h3>
+        <p>Compare the watch folder with the target destination and upload what is missing, reusing staged output first.</p>
+      </article>
+    </section>
+
+    <h2 class="section-title">Software Updates</h2>
+    <section class="grid">
+      <article class="card">
+        <h3>Public Update Feed</h3>
+        <p>Installed builds check the public software update feed automatically.</p>
+        <p><a href="./updates/">Open update feed details</a></p>
+      </article>
+      <article class="card">
+        <h3>How It Works</h3>
+        <ul>
+          <li>Install CNC Sync from the release downloads.</li>
+          <li>Use <strong>Check for Updates</strong> inside the app.</li>
+          <li>If a newer release is available, download and restart to apply it.</li>
+        </ul>
+      </article>
+      <article class="card">
+        <h3>Current Scope</h3>
+        <p>The public Pages site hosts the download files, and installed Windows, macOS, and Linux Velopack builds use the shared Pages update feed for software updates.</p>
+      </article>
+    </section>
+
+    <h2 class="section-title">First Run Security Notes</h2>
+    <section class="grid">
+      <article class="card">
+        <h3>Windows</h3>
+        <p>
+          CNC Sync is currently distributed without Windows code signing, so browsers or SmartScreen
+          may warn that the installer is suspicious.
+        </p>
+        <ul>
+          <li>Keep the download if your browser flags it.</li>
+          <li>If Windows shows a SmartScreen prompt, use <strong>More info</strong> and then <strong>Run anyway</strong>.</li>
+        </ul>
+      </article>
+      <article class="card">
+        <h3>macOS</h3>
+        <p>
+          CNC Sync is not yet notarized, so macOS may block the installer or first launch by default.
+        </p>
+        <ul>
+          <li>Open <strong>System Settings &gt; Privacy &amp; Security</strong>.</li>
+          <li>Find the blocked CNC Sync item and choose <strong>Open Anyway</strong> or allow it there.</li>
+        </ul>
+      </article>
+      <article class="card">
+        <h3>Why This Happens</h3>
+        <p>
+          These prompts are platform trust checks, not CNC Sync detecting a problem with itself.
+          They should become smoother once the project is code signed and notarized.
+        </p>
+      </article>
+    </section>
+
+  </main>
+</body>
+</html>
