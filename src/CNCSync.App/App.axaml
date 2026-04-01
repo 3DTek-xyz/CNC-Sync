@@ -17,6 +17,7 @@
         <converters:AppThemePreferenceDisplayConverter x:Key="AppThemePreferenceDisplayConverter" />
         <converters:BlankValueDisplayConverter x:Key="BlankValueDisplayConverter" />
         <converters:DestinationTypeDisplayConverter x:Key="DestinationTypeDisplayConverter" />
+        <converters:FtpDataModeDisplayConverter x:Key="FtpDataModeDisplayConverter" />
         <converters:SshAuthenticationModeDisplayConverter x:Key="SshAuthenticationModeDisplayConverter" />
         <SolidColorBrush x:Key="AppPageBackgroundBrush" Color="#F4F7FB" />
         <SolidColorBrush x:Key="AppCardBackgroundBrush" Color="#FCFDFE" />

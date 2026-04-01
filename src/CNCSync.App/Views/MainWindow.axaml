@@ -370,13 +370,6 @@
                                     </Grid>
 
                                     <Grid ColumnDefinitions="220,*">
-                                        <TextBlock VerticalAlignment="Center" Text="Upload Behaviour" />
-                                        <CheckBox Grid.Column="1"
-                                                  Content="Replace remote folder contents before upload"
-                                                  IsChecked="{Binding SelectedProcessingSetup.ReplaceRemoteFolderOnUpload}" />
-                                    </Grid>
-
-                                    <Grid ColumnDefinitions="220,*">
                                         <TextBlock VerticalAlignment="Center" Text="Runner" />
                                         <ComboBox Grid.Column="1"
                                                   IsEnabled="{Binding SelectedProcessingSetup.UsesExternalScript}"
@@ -423,7 +416,7 @@
                                         <TextBlock Text="{}{scriptPath} - the selected script path" Opacity="0.75" TextWrapping="Wrap" />
                                         <TextBlock Text="Any other text is passed through literally, so you can add extra fixed arguments. Example: &quot;{sourcePath}&quot; &quot;{outputPath}&quot; &quot;watch1&quot; or &quot;{sourcePath}&quot; &quot;{outputPath}&quot; --update-cyc-y." Opacity="0.75" TextWrapping="Wrap" />
                                         <TextBlock Text="External scripts should exit 0 on success and can optionally print OUTPUT_PATH=/path/to/folder." Opacity="0.75" TextWrapping="Wrap" />
-                                        <TextBlock Text="Replace remote folder contents is most useful for folder-based jobs like SampleJob where each upload should replace the previous revision." Opacity="0.75" TextWrapping="Wrap" />
+
                                     </StackPanel>
                                 </StackPanel>
                             </Border>
@@ -562,6 +555,13 @@
                                                  Watermark="/uploads or blank for the destination root" />
                                     </Grid>
 
+                                    <Grid ColumnDefinitions="220,*">
+                                        <TextBlock VerticalAlignment="Center" Text="Upload Behaviour" />
+                                        <CheckBox Grid.Column="1"
+                                                  Content="Replace remote folder contents before upload"
+                                                  IsChecked="{Binding SelectedDestination.ReplaceRemoteFolderOnUpload}" />
+                                    </Grid>
+
                                     <Grid ColumnDefinitions="220,*,Auto"
                                           IsVisible="{Binding HasSelectedDestination}">
                                         <TextBlock VerticalAlignment="Center" Text="Required VPN" />
@@ -631,6 +631,26 @@
                                         <TextBlock VerticalAlignment="Center" Text="Use Anonymous FTP" />
                                         <CheckBox Grid.Column="1" IsChecked="{Binding SelectedDestination.UseAnonymousFtp}" />
                                     </Grid>
+
+                                    <Grid ColumnDefinitions="220,*"
+                                          IsVisible="{Binding SelectedDestination.UsesFtpDataMode}">
+                                        <TextBlock VerticalAlignment="Center" Text="FTP Data Mode" />
+                                        <ComboBox Grid.Column="1"
+                                                  ItemsSource="{Binding SelectedDestination.AvailableFtpDataModes}"
+                                                  SelectedItem="{Binding SelectedDestination.FtpDataMode}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate x:DataType="core:FtpDataMode">
+                                                    <TextBlock Text="{Binding ., Converter={StaticResource FtpDataModeDisplayConverter}}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </Grid>
+
+                                    <TextBlock Classes="muted"
+                                               Margin="220,0,0,0"
+                                               IsVisible="{Binding SelectedDestination.UsesFtpDataMode}"
+                                               Text="Auto Passive is the safest default. Older CNC FTP servers may work better with Passive or Active if uploads partially succeed and then stall or return 550 errors."
+                                               TextWrapping="Wrap" />
 
                                     <Grid ColumnDefinitions="220,*"
                                           IsVisible="{Binding SelectedDestination.UsesUsername}">
@@ -779,6 +799,9 @@
                                             Content="Open Update Log"
                                             Tag="{Binding ReleaseNotesUrl}"
                                             Click="OpenExternalLink_OnClick" />
+                                    <Button Classes="subtle"
+                                            Content="Open App Data Folder"
+                                            Click="OpenAppData_OnClick" />
                                 </StackPanel>
                             </StackPanel>
                         </Border>
@@ -844,6 +867,7 @@
                                 <TextBlock Text="Activity and Troubleshooting" FontSize="18" FontWeight="SemiBold" />
                                 <TextBlock Text="The Activity tab is selectable, so you can copy log text directly out of the app while testing." TextWrapping="Wrap" />
                                 <TextBlock Text="The same activity stream is also written to a text log file under your app-data folder. On macOS that file is ~/Library/Application Support/CNC Sync/activity.log." TextWrapping="Wrap" />
+                                <TextBlock Text="Unhandled exceptions and raw diagnostic details are also written beside it as diagnostics.log." TextWrapping="Wrap" />
                                 <TextBlock Text="Junk files such as .DS_Store, ._* files, Thumbs.db, desktop.ini, and ehthumbs.db are ignored throughout watching, staging, and uploading." TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>

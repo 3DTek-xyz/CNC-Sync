@@ -10,6 +10,7 @@ using Avalonia.Controls.Notifications;
 using CNCSync.App.ViewModels;
 using CNCSync.App.Views;
 using CNCSync.Infrastructure.Configuration;
+using CNCSync.Infrastructure.Logging;
 using CNCSync.Infrastructure.Monitoring;
 using CNCSync.Infrastructure.Networking;
 using CNCSync.Infrastructure.Processing;
@@ -65,6 +66,8 @@ public partial class App : Application
             var loginStartupService = new LoginStartupService();
             var themePreferenceService = new ThemePreferenceService();
             var coordinator = new SyncCoordinator(folderMonitor, projectProcessor, destinationService, validator);
+            DiagnosticLog.Initialize(settingsStore.SettingsFilePath);
+            RegisterGlobalExceptionLogging();
             var initialSettings = settingsStore.Load();
             themePreferenceService.Apply(initialSettings.ThemePreference);
             _mainWindowViewModel = new MainWindowViewModel(settingsStore, validator, coordinator, destinationService, updateService, loginStartupService, vpnService, themePreferenceService, initialSettings);
@@ -130,6 +133,32 @@ public partial class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private static void RegisterGlobalExceptionLogging()
+    {
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+        {
+            if (args.ExceptionObject is Exception exception)
+            {
+                DiagnosticLog.WriteException("Unhandled AppDomain exception.", exception);
+            }
+            else
+            {
+                DiagnosticLog.WriteInfo($"Unhandled AppDomain exception object: {args.ExceptionObject}");
+            }
+        };
+
+        TaskScheduler.UnobservedTaskException += (_, args) =>
+        {
+            DiagnosticLog.WriteException("Unobserved task exception.", args.Exception);
+            args.SetObserved();
+        };
+
+        Dispatcher.UIThread.UnhandledException += (_, args) =>
+        {
+            DiagnosticLog.WriteException("Unhandled UI thread exception.", args.Exception);
+        };
     }
 
     public bool ShouldCancelClose() => !_exitRequested;

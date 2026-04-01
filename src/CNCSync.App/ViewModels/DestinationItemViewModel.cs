@@ -27,6 +27,9 @@ public partial class DestinationItemViewModel : ObservableObject
     private bool useAnonymousFtp = true;
 
     [ObservableProperty]
+    private FtpDataMode ftpDataMode = FtpDataMode.AutoPassive;
+
+    [ObservableProperty]
     private string username = string.Empty;
 
     [ObservableProperty]
@@ -62,6 +65,9 @@ public partial class DestinationItemViewModel : ObservableObject
     [ObservableProperty]
     private bool disconnectVpnWhenFinished;
 
+    [ObservableProperty]
+    private bool replaceRemoteFolderOnUpload;
+
     public string DisplayName => string.IsNullOrWhiteSpace(Name) ? "Unnamed destination" : Name;
     public IReadOnlyList<SshAuthenticationMode> AvailableSshAuthenticationModes { get; } =
         [SshAuthenticationMode.Password, SshAuthenticationMode.PrivateKey];
@@ -77,6 +83,7 @@ public partial class DestinationItemViewModel : ObservableObject
     public bool UsesSftp => Type == DestinationType.Sftp;
     public bool UsesScp => Type == DestinationType.Scp;
     public bool UsesSshAuthentication => Type is DestinationType.Sftp or DestinationType.Scp;
+    public bool UsesFtpDataMode => Type == DestinationType.Ftp;
     public bool UsesLocalFolder => Type == DestinationType.LocalFolder;
     public bool UsesNetworkShare => Type == DestinationType.NetworkShare;
     public bool UsesRemoteHost => Type is DestinationType.Ftp or DestinationType.Sftp or DestinationType.Scp;
@@ -106,6 +113,7 @@ public partial class DestinationItemViewModel : ObservableObject
         OnPropertyChanged(nameof(UsesSftp));
         OnPropertyChanged(nameof(UsesScp));
         OnPropertyChanged(nameof(UsesSshAuthentication));
+        OnPropertyChanged(nameof(UsesFtpDataMode));
         OnPropertyChanged(nameof(UsesLocalFolder));
         OnPropertyChanged(nameof(UsesNetworkShare));
         OnPropertyChanged(nameof(UsesRemoteHost));
@@ -181,6 +189,7 @@ public partial class DestinationItemViewModel : ObservableObject
             Port = settings.Port,
             RemoteBasePath = settings.RemoteBasePath,
             UseAnonymousFtp = settings.UseAnonymousFtp,
+            FtpDataMode = settings.FtpDataMode,
             Username = settings.Username,
             Password = settings.Password,
             SshAuthenticationMode = settings.SshAuthenticationMode,
@@ -192,7 +201,8 @@ public partial class DestinationItemViewModel : ObservableObject
             NetworkDomain = settings.NetworkDomain,
             UseCurrentUserCredentials = settings.UseCurrentUserCredentials,
             RequiredVpnConnectionName = settings.RequiredVpnConnectionName,
-            DisconnectVpnWhenFinished = settings.DisconnectVpnWhenFinished
+            DisconnectVpnWhenFinished = settings.DisconnectVpnWhenFinished,
+            ReplaceRemoteFolderOnUpload = settings.ReplaceRemoteFolderOnUpload
         };
 
     public DestinationSettings ToSettings() =>
@@ -205,6 +215,7 @@ public partial class DestinationItemViewModel : ObservableObject
             Port = Port,
             RemoteBasePath = RemoteBasePath,
             UseAnonymousFtp = UseAnonymousFtp,
+            FtpDataMode = FtpDataMode,
             Username = Username,
             Password = Password,
             SshAuthenticationMode = SshAuthenticationMode,
@@ -216,6 +227,9 @@ public partial class DestinationItemViewModel : ObservableObject
             NetworkDomain = NetworkDomain,
             UseCurrentUserCredentials = UseCurrentUserCredentials,
             RequiredVpnConnectionName = RequiredVpnConnectionName,
-            DisconnectVpnWhenFinished = DisconnectVpnWhenFinished
+            DisconnectVpnWhenFinished = DisconnectVpnWhenFinished,
+            ReplaceRemoteFolderOnUpload = ReplaceRemoteFolderOnUpload
         };
+
+    public IReadOnlyList<FtpDataMode> AvailableFtpDataModes { get; } = Enum.GetValues<FtpDataMode>();
 }

@@ -262,7 +262,7 @@ public sealed class SyncCoordinator : ISyncCoordinator
             ? CombineRemoteDirectoryPath(remoteDirectoryPath, result.RemoteFolderName)
             : remoteDirectoryPath;
 
-        if (processingSetup.ReplaceRemoteFolderOnUpload &&
+        if (destination.ReplaceRemoteFolderOnUpload &&
             !string.IsNullOrWhiteSpace(effectiveRemotePath))
         {
             var deleteResult = await _destinationService.DeleteRemoteItemAsync(destination, effectiveRemotePath, isDirectory: true, cancellationToken);

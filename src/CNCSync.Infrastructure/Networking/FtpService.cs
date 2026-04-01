@@ -1,13 +1,15 @@
-using System.Net;
 using CNCSync.Core.Configuration;
 using CNCSync.Core.Services;
 using FluentFTP;
+using FluentFTP.Exceptions;
+using CNCSync.Infrastructure.Logging;
 
 namespace CNCSync.Infrastructure.Networking;
 
 public sealed class FtpService : IFtpService
 {
     private const int RequestTimeoutMilliseconds = 8000;
+    private const int RetryDelayMilliseconds = 1000;
 
     public async Task<(bool Success, string Message)> TestConnectionAsync(DestinationSettings destination, CancellationToken cancellationToken = default)
     {
@@ -18,20 +20,17 @@ public sealed class FtpService : IFtpService
 
         try
         {
-            var request = CreateRequest(destination, "/", WebRequestMethods.Ftp.ListDirectory);
-            using var response = (FtpWebResponse)await GetResponseWithTimeoutAsync(request, cancellationToken);
+            await using var client = CreateFluentClient(destination);
+            await client.AutoConnect(cancellationToken);
             return (true, $"FTP connection successful: {destination.Host}:{destination.Port}");
         }
         catch (TimeoutException)
         {
             return (false, $"No FTP server responded at {destination.Host}:{destination.Port} within {RequestTimeoutMilliseconds / 1000} seconds.");
         }
-        catch (WebException ex)
-        {
-            return (false, $"FTP connection failed: {FormatWebException(ex)}");
-        }
         catch (Exception ex)
         {
+            DiagnosticLog.WriteException("FTP connection test failed.", ex);
             return (false, $"FTP connection failed: {ex.Message}");
         }
     }
@@ -66,7 +65,10 @@ public sealed class FtpService : IFtpService
         try
         {
             var targetRoot = string.IsNullOrWhiteSpace(remoteDirectoryPath) ? string.Empty : remoteDirectoryPath;
-            await CreateDirectoryChainIfNeededAsync(destination, targetRoot, cancellationToken);
+            await using var client = CreateFluentClient(destination);
+            await client.AutoConnect(cancellationToken);
+            DiagnosticLog.WriteInfo($"FTP upload session connected to {destination.Host}:{destination.Port} using {destination.FtpDataMode} mode for local path '{localPath}' and remote root '{(string.IsNullOrWhiteSpace(targetRoot) ? "/" : targetRoot)}'.");
+            await CreateDirectoryChainIfNeededAsync(client, targetRoot, cancellationToken);
 
             if (isFile)
             {
@@ -77,31 +79,26 @@ public sealed class FtpService : IFtpService
                 }
 
                 var remoteFilePath = CombineRemotePath(targetRoot, fileName);
-                var request = CreateRequest(destination, remoteFilePath, WebRequestMethods.Ftp.UploadFile);
-                await using var fileStream = File.OpenRead(localPath);
-                await using var requestStream = await GetRequestStreamWithTimeoutAsync(request, cancellationToken);
-                await fileStream.CopyToAsync(requestStream, cancellationToken);
-                using var response = (FtpWebResponse)await GetResponseWithTimeoutAsync(request, cancellationToken);
+                await UploadSingleFileWithDiagnosticsAsync(client, localPath, remoteFilePath, fileIndex: 1, totalFiles: 1, cancellationToken);
             }
             else
             {
-                foreach (var file in FileSystemItemFilter.EnumerateIncludedFiles(localPath))
+                var files = FileSystemItemFilter.EnumerateIncludedFiles(localPath).ToList();
+                DiagnosticLog.WriteInfo($"FTP upload discovered {files.Count} file(s) under '{localPath}'.");
+                for (var index = 0; index < files.Count; index++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+                    var file = files[index];
 
                     var relativePath = Path.GetRelativePath(localPath, file).Replace('\\', '/');
                     var remoteFilePath = CombineRemotePath(targetRoot, relativePath);
                     var remoteDir = Path.GetDirectoryName(remoteFilePath)?.Replace('\\', '/');
                     if (!string.IsNullOrWhiteSpace(remoteDir))
                     {
-                        await CreateDirectoryChainIfNeededAsync(destination, remoteDir, cancellationToken);
+                        await CreateDirectoryChainIfNeededAsync(client, remoteDir, cancellationToken);
                     }
 
-                    var request = CreateRequest(destination, remoteFilePath, WebRequestMethods.Ftp.UploadFile);
-                    await using var fileStream = File.OpenRead(file);
-                    await using var requestStream = await GetRequestStreamWithTimeoutAsync(request, cancellationToken);
-                    await fileStream.CopyToAsync(requestStream, cancellationToken);
-                    using var response = (FtpWebResponse)await GetResponseWithTimeoutAsync(request, cancellationToken);
+                    await UploadSingleFileWithDiagnosticsAsync(client, file, remoteFilePath, index + 1, files.Count, cancellationToken);
                 }
             }
 
@@ -112,12 +109,9 @@ public sealed class FtpService : IFtpService
         {
             return (false, $"FTP upload timed out because no FTP server responded at {destination.Host}:{destination.Port} within {RequestTimeoutMilliseconds / 1000} seconds.");
         }
-        catch (WebException ex)
-        {
-            return (false, $"FTP upload failed: {FormatWebException(ex)}");
-        }
         catch (Exception ex)
         {
+            DiagnosticLog.WriteException($"FTP upload failed for {localPath} to {remoteDirectoryPath}.", ex);
             return (false, $"FTP upload failed: {ex.Message}");
         }
     }
@@ -173,21 +167,13 @@ public sealed class FtpService : IFtpService
             var targetDescription = string.IsNullOrWhiteSpace(remoteDirectoryPath) ? "/" : remoteDirectoryPath;
             return (true, entries, $"Listed {entries.Count} item(s) from FTP path {targetDescription}.");
         }
-        catch (WebException ex) when (ex.Response is FtpWebResponse ftpResponse &&
-                                      ftpResponse.StatusCode == FtpStatusCode.ActionNotTakenFileUnavailable)
-        {
-            return (true, [], $"FTP path does not exist yet; treating it as empty.");
-        }
         catch (TimeoutException)
         {
             return (false, [], $"No FTP server responded at {destination.Host}:{destination.Port} within {RequestTimeoutMilliseconds / 1000} seconds.");
         }
-        catch (WebException ex)
-        {
-            return (false, [], $"FTP listing failed: {FormatWebException(ex)}");
-        }
         catch (Exception ex)
         {
+            DiagnosticLog.WriteException($"FTP listing failed for {remoteDirectoryPath}.", ex);
             return (false, [], $"FTP listing failed: {ex.Message}");
         }
     }
@@ -199,18 +185,19 @@ public sealed class FtpService : IFtpService
     {
         try
         {
-            var request = CreateRequest(destination, remoteFilePath, WebRequestMethods.Ftp.GetFileSize);
-            using var response = (FtpWebResponse)await GetResponseWithTimeoutAsync(request, cancellationToken);
-            long? sizeBytes = response.ContentLength >= 0 ? response.ContentLength : null;
+            await using var client = CreateFluentClient(destination);
+            await client.AutoConnect(cancellationToken);
+            var sizeBytes = await client.GetFileSize(ToFluentBrowserPath(remoteFilePath), -1, cancellationToken);
+            if (sizeBytes < 0)
+            {
+                return (false, null, $"Remote file does not exist: {remoteFilePath}");
+            }
+
             return (true, sizeBytes, $"Remote file exists: {remoteFilePath}");
         }
-        catch (WebException ex) when (ex.Response is FtpWebResponse ftpResponse &&
-                                      ftpResponse.StatusCode == FtpStatusCode.ActionNotTakenFileUnavailable)
+        catch (Exception ex)
         {
-            return (false, null, $"Remote file does not exist: {remoteFilePath}");
-        }
-        catch (WebException)
-        {
+            DiagnosticLog.WriteException($"FTP file size lookup failed for {remoteFilePath}.", ex);
             return (false, null, $"Could not read remote file size: {remoteFilePath}");
         }
     }
@@ -247,14 +234,20 @@ public sealed class FtpService : IFtpService
         {
             return (false, $"No FTP server responded at {destination.Host}:{destination.Port} within {RequestTimeoutMilliseconds / 1000} seconds.");
         }
+        catch (Exception ex) when (IsRetryable550(ex))
+        {
+            DiagnosticLog.WriteInfo($"FTP delete intercepted 550 for {remotePath} (likely not found). Treating as success.");
+            return (true, $"Remote item was already unavailable: {remotePath}");
+        }
         catch (Exception ex)
         {
+            DiagnosticLog.WriteException($"FTP delete failed for {remotePath}.", ex);
             return (false, $"FTP delete failed: {ex.Message}");
         }
     }
 
     private static async Task CreateDirectoryChainIfNeededAsync(
-        DestinationSettings destination,
+        AsyncFtpClient client,
         string? remotePath,
         CancellationToken cancellationToken = default)
     {
@@ -271,24 +264,23 @@ public sealed class FtpService : IFtpService
         foreach (var segment in segments)
         {
             currentPath = CombineRemotePath(currentPath, segment);
-            await CreateDirectoryIfNeededAsync(destination, currentPath, cancellationToken);
+            await CreateDirectoryIfNeededAsync(client, currentPath, cancellationToken);
         }
     }
 
     private static async Task CreateDirectoryIfNeededAsync(
-        DestinationSettings destination,
+        AsyncFtpClient client,
         string remotePath,
         CancellationToken cancellationToken = default)
     {
         try
         {
-            var request = CreateRequest(destination, remotePath, WebRequestMethods.Ftp.MakeDirectory);
-            using var response = (FtpWebResponse)await GetResponseWithTimeoutAsync(request, cancellationToken);
+            await client.CreateDirectory(ToFluentBrowserPath(remotePath), cancellationToken);
+            DiagnosticLog.WriteInfo($"FTP ensured remote directory exists: {remotePath}");
         }
-        catch (WebException ex) when (ex.Response is FtpWebResponse ftpResponse &&
-                                      ftpResponse.StatusCode == FtpStatusCode.ActionNotTakenFileUnavailable)
+        catch
         {
-            // Directory already exists.
+            // Directory may already exist or the server may not support explicit create checks cleanly.
         }
     }
 
@@ -304,23 +296,6 @@ public sealed class FtpService : IFtpService
         return string.IsNullOrWhiteSpace(combined) ? string.Empty : $"/{combined}";
     }
 
-    private static FtpWebRequest CreateRequest(DestinationSettings destination, string remotePath, string method)
-    {
-#pragma warning disable SYSLIB0014
-        var request = (FtpWebRequest)WebRequest.Create(new Uri($"ftp://{destination.Host}:{destination.Port}/{remotePath.TrimStart('/')}"));
-#pragma warning restore SYSLIB0014
-        request.Method = method;
-        request.UseBinary = true;
-        request.UsePassive = true;
-        request.KeepAlive = false;
-        request.Timeout = RequestTimeoutMilliseconds;
-        request.ReadWriteTimeout = RequestTimeoutMilliseconds;
-        request.Credentials = destination.UseAnonymousFtp
-            ? new NetworkCredential("anonymous", "anonymous@example.com")
-            : new NetworkCredential(destination.Username, destination.Password);
-        return request;
-    }
-
     private static AsyncFtpClient CreateFluentClient(DestinationSettings destination)
     {
         var userName = destination.UseAnonymousFtp ? "anonymous" : destination.Username;
@@ -330,7 +305,68 @@ public sealed class FtpService : IFtpService
         client.Config.ReadTimeout = RequestTimeoutMilliseconds;
         client.Config.DataConnectionConnectTimeout = RequestTimeoutMilliseconds;
         client.Config.DataConnectionReadTimeout = RequestTimeoutMilliseconds;
+        client.Config.DataConnectionType = destination.FtpDataMode switch
+        {
+            FtpDataMode.Passive => FtpDataConnectionType.PASV,
+            FtpDataMode.Active => FtpDataConnectionType.AutoActive,
+            _ => FtpDataConnectionType.AutoPassive
+        };
         return client;
+    }
+
+    private static async Task UploadSingleFileWithDiagnosticsAsync(
+        AsyncFtpClient client,
+        string localFilePath,
+        string remoteFilePath,
+        int fileIndex,
+        int totalFiles,
+        CancellationToken cancellationToken)
+    {
+        var fluentRemotePath = ToFluentBrowserPath(remoteFilePath);
+        var fileSize = new FileInfo(localFilePath).Length;
+        DiagnosticLog.WriteInfo($"FTP upload starting file {fileIndex}/{totalFiles}: local='{localFilePath}', remote='{remoteFilePath}', size={fileSize} bytes.");
+
+        try
+        {
+            await client.UploadFile(localFilePath, fluentRemotePath, FtpRemoteExists.Overwrite, createRemoteDir: true, token: cancellationToken);
+            DiagnosticLog.WriteInfo($"FTP upload completed file {fileIndex}/{totalFiles}: remote='{remoteFilePath}'.");
+        }
+        catch (Exception ex) when (IsRetryable550(ex))
+        {
+            DiagnosticLog.WriteException($"FTP upload got retryable 550 for file {fileIndex}/{totalFiles}: local='{localFilePath}', remote='{remoteFilePath}'. Waiting {RetryDelayMilliseconds}ms before retry.", ex);
+            await Task.Delay(RetryDelayMilliseconds, cancellationToken);
+
+            try
+            {
+                await client.UploadFile(localFilePath, fluentRemotePath, FtpRemoteExists.Overwrite, createRemoteDir: true, token: cancellationToken);
+                DiagnosticLog.WriteInfo($"FTP upload retry succeeded for file {fileIndex}/{totalFiles}: remote='{remoteFilePath}'.");
+            }
+            catch (Exception retryEx)
+            {
+                DiagnosticLog.WriteException($"FTP upload retry failed for file {fileIndex}/{totalFiles}: local='{localFilePath}', remote='{remoteFilePath}'.", retryEx);
+                throw;
+            }
+        }
+        catch (Exception ex)
+        {
+            DiagnosticLog.WriteException($"FTP upload failed for file {fileIndex}/{totalFiles}: local='{localFilePath}', remote='{remoteFilePath}'.", ex);
+            throw;
+        }
+    }
+
+    private static bool IsRetryable550(Exception exception)
+    {
+        if (exception is FtpCommandException ftpCommandException)
+        {
+            return string.Equals(ftpCommandException.CompletionCode, "550", StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (exception is FtpException ftpException && ftpException.InnerException is Exception innerException)
+        {
+            return IsRetryable550(innerException);
+        }
+
+        return false;
     }
 
     private static string ToFluentBrowserPath(string? remotePath)
@@ -343,58 +379,4 @@ public sealed class FtpService : IFtpService
         return remotePath.Trim().Replace('\\', '/').TrimStart('/');
     }
 
-    private static async Task<WebResponse> GetResponseWithTimeoutAsync(FtpWebRequest request, CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await request.GetResponseAsync().WaitAsync(
-                TimeSpan.FromMilliseconds(RequestTimeoutMilliseconds),
-                cancellationToken);
-        }
-        catch (TimeoutException)
-        {
-            request.Abort();
-            throw;
-        }
-    }
-
-    private static async Task<Stream> GetRequestStreamWithTimeoutAsync(FtpWebRequest request, CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await request.GetRequestStreamAsync().WaitAsync(
-                TimeSpan.FromMilliseconds(RequestTimeoutMilliseconds),
-                cancellationToken);
-        }
-        catch (TimeoutException)
-        {
-            request.Abort();
-            throw;
-        }
-    }
-
-    private static string FormatWebException(WebException exception)
-    {
-        if (exception.Response is not FtpWebResponse ftpResponse)
-        {
-            return exception.Message;
-        }
-
-        var statusDescription = ftpResponse.StatusDescription?.Trim();
-        return ftpResponse.StatusCode switch
-        {
-            FtpStatusCode.NotLoggedIn =>
-                string.IsNullOrWhiteSpace(statusDescription)
-                    ? "authentication failed (530 NotLoggedIn). Check the username and password."
-                    : $"authentication failed (530 NotLoggedIn): {statusDescription}",
-            FtpStatusCode.ActionNotTakenFileUnavailable =>
-                string.IsNullOrWhiteSpace(statusDescription)
-                    ? "the requested file or directory is unavailable on the FTP server."
-                    : statusDescription,
-            _ =>
-                string.IsNullOrWhiteSpace(statusDescription)
-                    ? $"{ftpResponse.StatusCode} ({exception.Message})"
-                    : $"{ftpResponse.StatusCode}: {statusDescription}"
-        };
-    }
 }

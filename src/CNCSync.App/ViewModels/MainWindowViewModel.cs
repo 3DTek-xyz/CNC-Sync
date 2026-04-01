@@ -9,6 +9,7 @@ using CNCSync.Core.Configuration;
 using CNCSync.Core.Processing;
 using CNCSync.Core.Services;
 using CNCSync.App.Services;
+using CNCSync.Infrastructure.Logging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -594,7 +595,11 @@ public partial class MainWindowViewModel : ViewModelBase
         ApplyValidation(validation);
         if (!validation.IsValid)
         {
-            AddActivity("Monitoring start blocked by validation errors.");
+            var summary = validation.Errors.Count == 1
+                ? validation.Errors[0]
+                : string.Join(" | ", validation.Errors);
+            AddActivity($"Monitoring start blocked by validation errors: {summary}");
+            CurrentTask = "Monitoring could not start. Go to App Settings and click Validate to review the issues.";
             return;
         }
 
@@ -982,6 +987,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
+            DiagnosticLog.WriteException("Scheduled catch-up failed.", ex);
             var message = $"Scheduled catch-up failed: {ex.Message}";
             AddActivity(message);
             CurrentTask = message;

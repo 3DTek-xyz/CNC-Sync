@@ -9,6 +9,7 @@ public sealed class DestinationSettings
     public int Port { get; set; } = 21;
     public string RemoteBasePath { get; set; } = string.Empty;
     public bool UseAnonymousFtp { get; set; } = true;
+    public FtpDataMode FtpDataMode { get; set; } = FtpDataMode.AutoPassive;
     public string Username { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
     public SshAuthenticationMode SshAuthenticationMode { get; set; } = SshAuthenticationMode.Password;
@@ -22,6 +23,7 @@ public sealed class DestinationSettings
     public string RequiredVpnConnectionName { get; set; } = string.Empty;
     public bool DisconnectVpnWhenFinished { get; set; }
     public bool AutoUpload { get; set; } = true;
+    public bool ReplaceRemoteFolderOnUpload { get; set; }
     public bool Enabled
     {
         get => AutoUpload;
@@ -37,6 +39,7 @@ public sealed class DestinationSettings
             Port = 21,
             RemoteBasePath = string.Empty,
             UseAnonymousFtp = true,
+            FtpDataMode = FtpDataMode.AutoPassive,
             Username = string.Empty,
             Password = string.Empty,
             SshAuthenticationMode = SshAuthenticationMode.Password,
@@ -49,6 +52,7 @@ public sealed class DestinationSettings
             UseCurrentUserCredentials = true,
             RequiredVpnConnectionName = string.Empty,
             DisconnectVpnWhenFinished = false,
-            AutoUpload = true
+            AutoUpload = true,
+            ReplaceRemoteFolderOnUpload = false
         };
 }

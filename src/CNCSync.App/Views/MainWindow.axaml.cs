@@ -143,6 +143,21 @@ public partial class MainWindow : Window
         OpenFolderInShell(viewModel.ScriptsPath);
     }
 
+    private void OpenAppData_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel ||
+            string.IsNullOrWhiteSpace(viewModel.SettingsPath))
+        {
+            return;
+        }
+
+        var appDataFolder = Path.GetDirectoryName(viewModel.SettingsPath);
+        if (!string.IsNullOrWhiteSpace(appDataFolder) && Directory.Exists(appDataFolder))
+        {
+            OpenFolderInShell(appDataFolder);
+        }
+    }
+
     private void RemoteBrowserList_OnDoubleTapped(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel viewModel ||

@@ -63,6 +63,11 @@ public sealed class AppSettings
                 destination.Port = destination.Type is DestinationType.Sftp or DestinationType.Scp ? 22 : 21;
             }
 
+            if (!Enum.IsDefined(destination.FtpDataMode))
+            {
+                destination.FtpDataMode = FtpDataMode.AutoPassive;
+            }
+
             destination.Host ??= string.Empty;
             destination.Username ??= string.Empty;
             destination.Password ??= string.Empty;

@@ -13,6 +13,7 @@ public class AppSettingsTests
 
         Assert.Equal(21, ftp.Port);
         Assert.True(ftp.UseAnonymousFtp);
+        Assert.Equal(FtpDataMode.AutoPassive, ftp.FtpDataMode);
         Assert.True(settings.StartMinimized);
         Assert.Equal(AppThemePreference.Light, settings.ThemePreference);
         Assert.False(settings.ScheduledCatchUpEnabled);
@@ -141,6 +142,46 @@ public class AppSettingsTests
             Assert.False(result.IsValid);
             Assert.Contains(result.Errors, error => error.Contains("unique watch folder", StringComparison.OrdinalIgnoreCase));
             Assert.Contains(result.Errors, error => error.Contains("unique staging folder", StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            Directory.Delete(watchFolder, recursive: true);
+            Directory.Delete(stagingFolder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Validator_AllowsDisabledProfileToShareWatchOrStagingFolders()
+    {
+        var validator = new AppSettingsValidator();
+        var watchFolder = Path.Combine(Path.GetTempPath(), $"cncsync-watch-{Guid.NewGuid():N}");
+        var stagingFolder = Path.Combine(Path.GetTempPath(), $"cncsync-stage-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(watchFolder);
+        Directory.CreateDirectory(stagingFolder);
+
+        try
+        {
+            var settings = AppSettings.CreateDefault();
+            settings.WatchProfiles[0].WatchFolder = watchFolder;
+            settings.WatchProfiles[0].StagingFolder = stagingFolder;
+            settings.WatchProfiles[0].Enabled = true;
+            settings.WatchProfiles.Add(new WatchProfileSettings
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                Name = "Watch 2",
+                Enabled = false,
+                WatchFolder = watchFolder,
+                StagingFolder = stagingFolder,
+                DestinationId = settings.Destinations[0].Id,
+                ProcessingSetupId = settings.ProcessingSetups[0].Id,
+                StabilityDelaySeconds = 10,
+                StabilityPollingSeconds = 5
+            });
+
+            var result = validator.Validate(settings);
+
+            Assert.DoesNotContain(result.Errors, error => error.Contains("unique watch folder", StringComparison.OrdinalIgnoreCase));
+            Assert.DoesNotContain(result.Errors, error => error.Contains("unique staging folder", StringComparison.OrdinalIgnoreCase));
         }
         finally
         {

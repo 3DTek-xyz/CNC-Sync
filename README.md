@@ -45,3 +45,4 @@ The current app is built around reusable destinations, processing setups, and wa
 
 - Local builds are still useful for testing.
 - Tagged releases are intended to produce the official GitHub release artifacts.
+- FTP compatibility for older CNC controllers may need a destination-level data mode option: `Auto Passive`, `Passive`, or `Active`.

@@ -262,6 +262,7 @@ public sealed class AppSettingsValidator
         AppSettingsValidationResult result)
     {
         var duplicates = profiles
+            .Where(profile => profile.Enabled)
             .Select(profile => new
             {
                 ProfileName = string.IsNullOrWhiteSpace(profile.Name) ? profile.Id : profile.Name,
@@ -274,7 +275,7 @@ public sealed class AppSettingsValidator
         foreach (var duplicate in duplicates)
         {
             var profileNames = string.Join(", ", duplicate.Select(item => item.ProfileName));
-            result.Errors.Add($"Each watch profile must use a unique {fieldLabel}. Shared {fieldLabel} found for: {profileNames}.");
+            result.Errors.Add($"Enabled watch profiles must use a unique {fieldLabel}. Shared {fieldLabel} found for: {profileNames}.");
         }
     }
 
