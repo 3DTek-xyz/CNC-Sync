@@ -31,6 +31,7 @@ The current app is built around reusable destinations, processing setups, and wa
 ## Release
 
 - GitHub Actions release workflow: [`.github/workflows/release.yml`](.github/workflows/release.yml)
+- Release process guide: [`docs/releasing.md`](docs/releasing.md)
 - Packaging scripts:
   - macOS: [`packaging/macos/package-app.sh`](packaging/macos/package-app.sh)
   - Windows installer/update packaging: [`packaging/windows/package-velopack.ps1`](packaging/windows/package-velopack.ps1)
@@ -40,6 +41,23 @@ The current app is built around reusable destinations, processing setups, and wa
   - Velopack `Setup.exe` installs by default to `%LocalAppData%\\3DTek.CNCSync`
 - Windows update feed:
   - packaged Windows releases check GitHub Releases for updates
+
+### Quick Release Steps
+
+1. Bump the app version in [`Directory.Build.props`](Directory.Build.props).
+2. Keep packaging defaults in sync if needed:
+   - [`packaging/windows/package-velopack.ps1`](packaging/windows/package-velopack.ps1)
+   - [`packaging/windows/package-zip.ps1`](packaging/windows/package-zip.ps1)
+3. Build locally and confirm it passes.
+4. Commit to `main`.
+5. Create and push a release tag in the `v1.0.x` line.
+6. The tag triggers [`.github/workflows/release.yml`](.github/workflows/release.yml), which builds and publishes the release artifacts.
+
+### Current Versioning Convention
+
+- App/package version is currently on the `0.1.x` line.
+- Git tags/releases are currently on the `v1.0.x` line.
+- Pushing `main` alone does not create a release build. The release build is triggered by pushing a `v*` tag.
 
 ## Notes
 

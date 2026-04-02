@@ -76,7 +76,15 @@ Network Share notes:
 - on Linux, explicit SMB username/password access may still require mounting the share first in the desktop file manager
 - if a destination requires a VPN first, choose it in `Required VPN`
 - VPN profiles used by CNC Sync must be able to connect automatically without prompting for user interaction
+- if enabled, `Check destination before starting VPN` tries the destination directly first and only starts the VPN if direct access fails
 - if enabled, `Disconnect VPN When Finished` disconnects a VPN only when CNC Sync had to connect it itself, and only after a short idle window
+- `FTP Data Mode` can be set to:
+  - `Auto Passive`
+    - let the FTP client choose passive negotiation automatically
+  - `Passive`
+    - force classic `PASV`
+  - `Active`
+    - ask the server to connect back to this machine
 
 The effective remote path is built from:
 
@@ -106,6 +114,8 @@ Use this when no custom transformation is required.
 
 This runs a local script or executable before upload.
 
+Custom script bundles can also be imported once for the whole app from the left side of the `Processing Setups` tab. After import, each processing setup still chooses its own local `Script Path` from the imported files.
+
 Fields:
 
 - `Mode`
@@ -120,6 +130,8 @@ Fields:
     - `Direct`
 - `Script Path`
   - the local file to execute
+- `Custom Script Source URL`
+  - a shared customer script source used by `Check / Import` on the left side of the `Processing Setups` tab
 - `Arguments Template`
   - arguments passed to the script at runtime
 
@@ -165,6 +177,23 @@ OUTPUT_PATH=/path/to/final/output
 If `OUTPUT_PATH=` is printed, CNC Sync uploads that folder.
 If not, CNC Sync uploads the prepared output folder it already passed in.
 
+### Shared Custom Script Imports
+
+If you are receiving customer-specific scripts from a shared source:
+
+- paste the shared link once into `Custom Script Source URL` in the left Processing Setups panel
+- click `Check / Import`
+- CNC Sync imports the files into the local Scripts folder under `Imported/CustomSource`
+- each processing setup can then choose whichever imported local script it needs using `Script Path`
+
+Import behavior:
+
+- imported scripts stay local and are executed locally
+- repeated checks only archive/replace files that actually changed
+- unchanged files are left alone
+- old local versions are archived with a timestamp before replacement
+- junk files such as `.DS_Store`, `._*`, `Thumbs.db`, `desktop.ini`, and `ehthumbs.db` are ignored during import
+
 ## Watch Folders
 
 A folder watch ties everything together.
@@ -209,25 +238,24 @@ Changes to monitoring-related settings are applied live by reloading monitoring 
 
 `Manual Catch-Up` is for reconciling missed uploads.
 
-It does not blindly upload everything.
+It uses the local staging folder as a retry outbox.
 It:
 
 - reads the selected watch profile
-- checks the target destination directory
-- compares local items against remote items
-- processes/uploads only missing or changed items
+- looks for items still waiting in staging because a previous delivery did not complete successfully
+- retries those staged items to the selected destination
+- removes staged items after a successful upload
 
-Current comparison approach:
-
-- files: `name + size`
-- directories: name-based presence
-- ignores metadata junk like `.DS_Store`, `Thumbs.db`, and `desktop.ini`
+It does not reconstruct files that appeared while CNC Sync was not running.
 
 Use this when:
 
-- the app was not running
 - the destination was unavailable
 - monitoring was stopped
+- staged items are still waiting locally after a failed delivery
+
+Scheduled catch-up uses the same staged-outbox model.
+It can only retry items that made it into staging while CNC Sync was running.
 
 ## Activity Log
 
@@ -247,6 +275,7 @@ The `Help / About` tab includes:
 
 - setup reminders
 - destination and VPN notes
+- shared custom-script import reminders
 - a link to the project page
 - a link to the update log / GitHub releases page
 

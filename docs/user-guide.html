@@ -318,7 +318,9 @@
             <li>On Linux, explicit SMB username/password access may still require mounting the share first in the desktop file manager.</li>
             <li>If a destination requires a VPN first, choose it in <code>Required VPN</code>.</li>
             <li>VPN profiles used by CNC Sync must be able to connect automatically without prompting for user interaction.</li>
+            <li>If enabled, <code>Check destination before starting VPN</code> tries the destination directly first and only starts the VPN if direct access fails.</li>
             <li>If enabled, <code>Disconnect VPN When Finished</code> disconnects a VPN only when CNC Sync had to connect it itself, and only after a short idle window.</li>
+            <li><code>FTP Data Mode</code> can be set to <code>Auto Passive</code>, <code>Passive</code>, or <code>Active</code> depending on how fussy the destination FTP server is about data connections.</li>
           </ul>
           <p>The effective remote path is built from the destination base path plus the watch profile additional remote path.</p>
           <p>Example: destination base path <code>/uploads</code> and watch additional remote path <code>/watch1</code> becomes <code>/uploads/watch1</code>.</p>
@@ -333,10 +335,12 @@
 
           <h3>External Script</h3>
           <p>This runs a local script or executable before upload.</p>
+          <p>Custom script bundles can also be imported once for the whole app from the left side of the <code>Processing Setups</code> tab. After import, each processing setup still chooses its own local <code>Script Path</code> from the imported files.</p>
           <ul>
             <li><code>Mode</code>: choose <code>ExternalScript</code>.</li>
             <li><code>Runner</code>: choose how to launch the script: <code>Auto</code>, <code>PowerShell</code>, <code>Bash</code>, <code>Python</code>, <code>Command</code>, or <code>Direct</code>.</li>
             <li><code>Script Path</code>: the local file to execute.</li>
+            <li><code>Custom Script Source URL</code>: a shared customer script source used by the left-side <code>Check / Import</code> action.</li>
             <li><code>Arguments Template</code>: arguments passed to the script at runtime.</li>
           </ul>
 
@@ -363,6 +367,14 @@
             <li>Optional stdout line: <code>OUTPUT_PATH=/path/to/final/output</code></li>
           </ul>
           <p>If <code>OUTPUT_PATH=</code> is printed, CNC Sync uploads that folder. If not, it uploads the prepared output folder it already passed in.</p>
+          <h3>Shared Custom Script Imports</h3>
+          <ul>
+            <li>Paste the shared link once into <code>Custom Script Source URL</code> in the left Processing Setups panel.</li>
+            <li>Click <code>Check / Import</code>.</li>
+            <li>CNC Sync imports the files into the local Scripts folder under <code>Imported/CustomSource</code>.</li>
+            <li>Each processing setup can then choose whichever imported local script it needs using <code>Script Path</code>.</li>
+          </ul>
+          <p>Imported scripts stay local and are executed locally. Repeated checks only archive and replace files that actually changed. Unchanged files are left alone, and junk files such as <code>.DS_Store</code>, <code>._*</code>, <code>Thumbs.db</code>, <code>desktop.ini</code>, and <code>ehthumbs.db</code> are ignored during import.</p>
         </section>
 
         <section id="watch-folders">
@@ -398,20 +410,15 @@
         <section id="manual-catch-up">
           <h2>Manual Catch-Up</h2>
           <p><code>Manual Catch-Up</code> is for reconciling missed uploads.</p>
-          <p>It does not blindly upload everything. It:</p>
+          <p>It uses the local staging folder as a retry outbox. It:</p>
           <ul>
             <li>reads the selected watch profile</li>
-            <li>checks the target destination directory</li>
-            <li>compares local items against remote items</li>
-            <li>processes/uploads only missing or changed items</li>
+            <li>looks for items still waiting in staging because a previous delivery did not complete successfully</li>
+            <li>retries those staged items to the selected destination</li>
+            <li>removes staged items after a successful upload</li>
           </ul>
-          <p>Current comparison approach:</p>
-          <ul>
-            <li>files: <code>name + size</code></li>
-            <li>directories: name-based presence</li>
-            <li>ignores metadata junk like <code>.DS_Store</code>, <code>Thumbs.db</code>, and <code>desktop.ini</code></li>
-          </ul>
-          <p>Use this when the app was not running, the destination was unavailable, or monitoring was stopped.</p>
+          <p>Use this when the destination was unavailable, monitoring was stopped, or staged items are still waiting locally after a failed delivery.</p>
+          <p>Scheduled catch-up uses the same staged-outbox model. It can only retry items that made it into staging while CNC Sync was running, so it cannot detect and reprocess files that were created while the app was not running and never made it into staging.</p>
         </section>
 
         <section id="activity-log">
@@ -433,6 +440,7 @@
           <ul>
             <li>setup reminders</li>
             <li>destination and VPN notes</li>
+            <li>shared custom-script import reminders</li>
             <li>a link to the project page</li>
             <li>a link to the update log / GitHub releases page</li>
           </ul>

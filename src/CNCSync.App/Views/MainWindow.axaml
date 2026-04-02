@@ -876,7 +876,8 @@
                                 <TextBlock Text="Network Shares and VPNs" FontSize="18" FontWeight="SemiBold" />
                                 <TextBlock Text="Network Share currently means SMB. On macOS, explicit username/password access to a Mac server may require enabling that account under Windows File Sharing in System Settings &gt; General &gt; Sharing &gt; File Sharing &gt; Options." TextWrapping="Wrap" />
                                 <TextBlock Text="On Linux, Network Share works best with desktop-mounted SMB shares. On Windows, current-user UNC access and explicit SMB sign-in are both supported." TextWrapping="Wrap" />
-                                <TextBlock Text="If a destination needs a system-managed VPN first, choose it in Required VPN. CNC Sync will try to connect that VPN before testing, browsing, uploading, or deleting." TextWrapping="Wrap" />
+                                <TextBlock Text="If a destination needs a system-managed VPN first, choose it in Required VPN. CNC Sync will try to connect that VPN before testing, browsing, uploading, or deleting. If enabled, Check destination before starting VPN tries direct access first and only starts the VPN if needed." TextWrapping="Wrap" />
+                                <TextBlock Text="FTP Data Mode lets you choose Auto Passive, Passive, or Active if a destination&apos;s FTP server is fussy about data connections." TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 
@@ -885,6 +886,7 @@
                                 <TextBlock Text="External Script Contract" FontSize="18" FontWeight="SemiBold" />
                                 <TextBlock Text="External scripts are run locally. They should exit with code 0 on success and may optionally print OUTPUT_PATH=/path/to/folder if the final upload folder is different from the prepared output path." TextWrapping="Wrap" />
                                 <TextBlock Text="Supported argument placeholders: {sourcePath}, {outputPath}, {scriptPath}. Any other text is passed through literally, so you can add extra fixed arguments like &quot;watch1&quot; or --update-cyc-y." TextWrapping="Wrap" />
+                                <TextBlock Text="Custom customer script bundles can be imported once from the left side of Processing Setups. After import, each processing setup still chooses its own local Script Path from the imported scripts." TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 
