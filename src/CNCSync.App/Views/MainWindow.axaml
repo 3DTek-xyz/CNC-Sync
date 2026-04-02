@@ -340,6 +340,20 @@
                                         <Button Classes="subtle" Content="Remove" Command="{Binding RemoveProcessingSetupCommand}" />
                                     </StackPanel>
 
+                                    <TextBlock Text="Custom Script Source URL" FontWeight="SemiBold" />
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBox Grid.Column="0"
+                                                 Margin="0,0,8,0"
+                                                 Text="{Binding CustomScriptSourceUrl, UpdateSourceTrigger=LostFocus}"
+                                                 Watermark="Paste one shared customer script link here" />
+                                        <Button Grid.Column="1"
+                                                Content="Check / Import"
+                                                Click="ImportProcessingScriptBundle_OnClick" />
+                                    </Grid>
+                                    <TextBlock Text="{Binding ProcessingSetupImportStatus}"
+                                               TextWrapping="Wrap"
+                                               Opacity="0.8" />
+
                                     <ListBox ItemsSource="{Binding ProcessingSetups}" SelectedItem="{Binding SelectedProcessingSetup}">
                                         <ListBox.ItemTemplate>
                                             <DataTemplate x:DataType="vm:ProcessingSetupItemViewModel">
@@ -414,6 +428,7 @@
                                         <TextBlock Text="{}{sourcePath} - the detected source file or folder" Opacity="0.75" TextWrapping="Wrap" />
                                         <TextBlock Text="{}{outputPath} - the prepared output folder for processed files" Opacity="0.75" TextWrapping="Wrap" />
                                         <TextBlock Text="{}{scriptPath} - the selected script path" Opacity="0.75" TextWrapping="Wrap" />
+                                        <TextBlock Text="Custom scripts are imported once from the shared source on the left, then each processing setup chooses its own local Script Path from the imported folder." Opacity="0.75" TextWrapping="Wrap" />
                                         <TextBlock Text="Any other text is passed through literally, so you can add extra fixed arguments. Example: &quot;{sourcePath}&quot; &quot;{outputPath}&quot; &quot;watch1&quot; or &quot;{sourcePath}&quot; &quot;{outputPath}&quot; --update-cyc-y." Opacity="0.75" TextWrapping="Wrap" />
                                         <TextBlock Text="External scripts should exit 0 on success and can optionally print OUTPUT_PATH=/path/to/folder." Opacity="0.75" TextWrapping="Wrap" />
 

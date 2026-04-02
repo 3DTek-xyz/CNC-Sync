@@ -7,6 +7,7 @@ public sealed class AppSettings
     public AppThemePreference ThemePreference { get; set; } = AppThemePreference.Light;
     public bool ScheduledCatchUpEnabled { get; set; }
     public int ScheduledCatchUpIntervalMinutes { get; set; } = 10;
+    public string CustomScriptSourceUrl { get; set; } = string.Empty;
     public List<DestinationSettings> Destinations { get; set; } = [];
     public List<ProcessingSetupSettings> ProcessingSetups { get; set; } = [];
     public List<WatchProfileSettings> WatchProfiles { get; set; } = [];
@@ -24,6 +25,7 @@ public sealed class AppSettings
             ThemePreference = AppThemePreference.Light,
             ScheduledCatchUpEnabled = false,
             ScheduledCatchUpIntervalMinutes = 10,
+            CustomScriptSourceUrl = string.Empty,
             Destinations = [ftpDestination],
             ProcessingSetups = [processingSetup],
             WatchProfiles = [watchProfile]
@@ -45,6 +47,8 @@ public sealed class AppSettings
         {
             ScheduledCatchUpIntervalMinutes = 10;
         }
+
+        CustomScriptSourceUrl = (CustomScriptSourceUrl ?? string.Empty).Trim();
 
         if (Destinations.Count == 0)
         {

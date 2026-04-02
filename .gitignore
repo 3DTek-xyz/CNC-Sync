@@ -1,6 +1,10 @@
 bin/
 obj/
 .DS_Store
+._*
+Thumbs.db
+desktop.ini
+ehthumbs.db
 
 # User and IDE files
 .idea/
@@ -32,6 +36,7 @@ SampleJob/
 
 # macOS Finder and app bundle noise
 **/.DS_Store
+**/._*
 *.app/
 !src/CNCSync.App/
 !src/CNCSync.App/**

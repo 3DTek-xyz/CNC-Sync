@@ -99,6 +99,16 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void ImportProcessingScriptBundle_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        await viewModel.ImportProcessingScriptBundleAsync();
+    }
+
     private async void ImportSettings_OnClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel viewModel)
@@ -239,12 +249,6 @@ public partial class MainWindow : Window
 
     private static string? ResolveInitialScriptDirectory(MainWindowViewModel viewModel)
     {
-        var currentScriptPath = viewModel.SelectedProcessingSetup?.ScriptPath;
-        if (!string.IsNullOrWhiteSpace(currentScriptPath) && File.Exists(currentScriptPath))
-        {
-            return Path.GetDirectoryName(currentScriptPath);
-        }
-
         return viewModel.ScriptsPath;
     }
 

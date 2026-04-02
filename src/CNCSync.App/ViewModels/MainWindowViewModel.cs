@@ -24,6 +24,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IDestinationService _destinationService;
     private readonly IAppUpdateService _updateService;
     private readonly ILoginStartupService _loginStartupService;
+    private readonly IScriptBundleImportService _scriptBundleImportService;
     private readonly IVpnService _vpnService;
     private readonly IThemePreferenceService _themePreferenceService;
     private readonly SemaphoreSlim _saveLock = new(1, 1);
@@ -95,6 +96,12 @@ public partial class MainWindowViewModel : ViewModelBase
     private string lastProcessingSummary = "No processing run yet.";
 
     [ObservableProperty]
+    private string customScriptSourceUrl = string.Empty;
+
+    [ObservableProperty]
+    private string processingSetupImportStatus = "Paste a script source URL and click Check / Import.";
+
+    [ObservableProperty]
     private WatchProfileItemViewModel? selectedWatchProfile;
 
     [ObservableProperty]
@@ -125,6 +132,7 @@ public partial class MainWindowViewModel : ViewModelBase
         IDestinationService destinationService,
         IAppUpdateService updateService,
         ILoginStartupService loginStartupService,
+        IScriptBundleImportService scriptBundleImportService,
         IVpnService vpnService,
         IThemePreferenceService themePreferenceService,
         AppSettings initialSettings)
@@ -135,6 +143,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _destinationService = destinationService;
         _updateService = updateService;
         _loginStartupService = loginStartupService;
+        _scriptBundleImportService = scriptBundleImportService;
         _vpnService = vpnService;
         _themePreferenceService = themePreferenceService;
         _scheduledCatchUpTimer.Tick += OnScheduledCatchUpTimerTick;
@@ -171,6 +180,7 @@ public partial class MainWindowViewModel : ViewModelBase
             new DesignDestinationService(),
             new DesignAppUpdateService(),
             new DesignLoginStartupService(),
+            new DesignScriptBundleImportService(),
             new DesignVpnService(),
             new DesignThemePreferenceService(),
             AppSettings.CreateDefault())
@@ -541,6 +551,38 @@ public partial class MainWindowViewModel : ViewModelBase
         AddActivity($"Imported settings from {filePath}");
     }
 
+    public async Task ImportProcessingScriptBundleAsync(CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(CustomScriptSourceUrl))
+        {
+            const string message = "Enter a Script Source URL before checking for an updated script bundle.";
+            CurrentTask = message;
+            ProcessingSetupImportStatus = message;
+            return;
+        }
+
+        try
+        {
+            const string startedMessage = "Importing custom script bundle";
+            CurrentTask = startedMessage;
+            ProcessingSetupImportStatus = startedMessage;
+            var result = await _scriptBundleImportService.ImportAsync(
+                CustomScriptSourceUrl,
+                ScriptsPath,
+                cancellationToken);
+            CurrentTask = result.Message;
+            ProcessingSetupImportStatus = result.Message;
+            AddActivity(result.Message);
+        }
+        catch (Exception ex)
+        {
+            var message = $"Script bundle import failed: {ex.Message}";
+            CurrentTask = message;
+            ProcessingSetupImportStatus = message;
+            AddActivity(message);
+        }
+    }
+
     [RelayCommand]
     private void ValidateSettings()
     {
@@ -824,6 +866,7 @@ public partial class MainWindowViewModel : ViewModelBase
         ThemePreference = settings.ThemePreference;
         ScheduledCatchUpEnabled = settings.ScheduledCatchUpEnabled;
         ScheduledCatchUpIntervalMinutes = settings.ScheduledCatchUpIntervalMinutes;
+        CustomScriptSourceUrl = settings.CustomScriptSourceUrl;
 
         Destinations.Clear();
         foreach (var destination in settings.Destinations)
@@ -862,6 +905,7 @@ public partial class MainWindowViewModel : ViewModelBase
             ThemePreference = ThemePreference,
             ScheduledCatchUpEnabled = ScheduledCatchUpEnabled,
             ScheduledCatchUpIntervalMinutes = ScheduledCatchUpIntervalMinutes,
+            CustomScriptSourceUrl = CustomScriptSourceUrl,
             Destinations = Destinations.Select(destination => destination.ToSettings()).ToList(),
             ProcessingSetups = ProcessingSetups.Select(setup => setup.ToSettings()).ToList(),
             WatchProfiles = WatchProfiles.Select(profile => profile.ToSettings()).ToList()
@@ -1252,6 +1296,14 @@ public partial class MainWindowViewModel : ViewModelBase
         RequestAutoSave(restartMonitoringAfterSave: true);
     }
 
+    partial void OnSelectedProcessingSetupChanged(ProcessingSetupItemViewModel? value)
+    {
+        if (value is null)
+        {
+            ProcessingSetupImportStatus = "Add or select a processing setup.";
+        }
+    }
+
     private void RequestAutoSave(bool restartMonitoringAfterSave)
     {
         if (restartMonitoringAfterSave)
@@ -1362,6 +1414,19 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         public void Apply(AppThemePreference preference)
         {
+        }
+    }
+
+    private sealed class DesignScriptBundleImportService : IScriptBundleImportService
+    {
+        public Task<ScriptBundleImportResult> ImportAsync(
+            string sourceUrl,
+            string scriptsDirectoryPath,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(new ScriptBundleImportResult(
+                Path.Combine(scriptsDirectoryPath, "Imported", "CustomSource"),
+                $"Imported script bundle from {sourceUrl}"));
         }
     }
 

@@ -5,6 +5,11 @@ namespace CNCSync.Infrastructure.Configuration;
 
 public sealed class JsonAppSettingsStore : IAppSettingsStore
 {
+    private static readonly string[] ObsoleteBundledScriptRelativePaths =
+    [
+        Path.Combine("shared", "cbwss_mozaik_example.py")
+    ];
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true
@@ -100,7 +105,32 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
                 Directory.CreateDirectory(destinationDirectory);
             }
 
-            File.Copy(sourcePath, destinationPath, overwrite: true);
+            if (!File.Exists(destinationPath))
+            {
+                File.Copy(sourcePath, destinationPath, overwrite: false);
+            }
+        }
+
+        RemoveObsoleteBundledScripts();
+    }
+
+    private void RemoveObsoleteBundledScripts()
+    {
+        foreach (var relativePath in ObsoleteBundledScriptRelativePaths)
+        {
+            var path = Path.Combine(ScriptsDirectoryPath, relativePath);
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+
+            var directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrWhiteSpace(directory) &&
+                Directory.Exists(directory) &&
+                !Directory.EnumerateFileSystemEntries(directory).Any())
+            {
+                Directory.Delete(directory);
+            }
         }
     }
 
