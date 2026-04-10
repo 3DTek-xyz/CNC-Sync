@@ -123,8 +123,8 @@
                         <Border Classes="card" Padding="18" CornerRadius="16">
                             <StackPanel Spacing="8">
                                 <TextBlock Text="Paid Support and Custom Work" FontSize="18" FontWeight="SemiBold" />
-                                <TextBlock Text="If you need project-specific processing scripts, workflow adjustments, custom app changes, or custom G-code modification services, paid help is available." TextWrapping="Wrap" />
-                                <TextBlock Text="To request help, open an issue on the CNC Sync GitHub project and include what you need, your current setup, and any relevant logs or screenshots." TextWrapping="Wrap" />
+                                <TextBlock Text="If you need project-specific scripts, paid help is available." TextWrapping="Wrap" />
+                                <TextBlock Text="For app bugs or updates that could benefit everybody, open an issue on the CNC Sync GitHub project for consideration." TextWrapping="Wrap" />
                                 <Button Classes="subtle"
                                         HorizontalAlignment="Left"
                                         Content="Open GitHub Support Issues"
@@ -941,8 +941,8 @@
                         <Border Classes="card" Padding="18" CornerRadius="16">
                             <StackPanel Spacing="8">
                                 <TextBlock Text="Paid Support and Custom Work" FontSize="18" FontWeight="SemiBold" />
-                                <TextBlock Text="If you need project-specific processing scripts, workflow adjustments, custom app changes, or custom G-code modification services, paid help is available." TextWrapping="Wrap" />
-                                <TextBlock Text="To request help, open an issue on the CNC Sync GitHub project and include what you need, your current setup, and any relevant logs or screenshots." TextWrapping="Wrap" />
+                                <TextBlock Text="If you need project-specific scripts, paid help is available." TextWrapping="Wrap" />
+                                <TextBlock Text="For app bugs or updates that could benefit everybody, open an issue on the CNC Sync GitHub project for consideration." TextWrapping="Wrap" />
                                 <Button Classes="subtle"
                                         HorizontalAlignment="Left"
                                         Content="Open GitHub Support Issues"

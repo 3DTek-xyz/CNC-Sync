@@ -288,6 +288,7 @@
             <li><code>Validate Settings</code>: check the current configuration for missing or invalid items.</li>
           </ul>
           <p>Settings are saved automatically as you change them.</p>
+          <p>The same area also includes a short notice that anonymised usage telemetry is collected for product improvements and support planning.</p>
           <p>Imported settings replace the current profile configuration. Passwords and SSH key passphrases are stored in the local OS secret store, so after moving a settings file between machines you may need to re-enter those secrets on the new machine.</p>
         </section>
 
@@ -432,6 +433,7 @@
           <p>Timestamps include milliseconds so quick processing sequences are easier to follow.</p>
           <p>The log text is selectable for copy/paste.</p>
           <p>The same activity stream is also written to a text file in the app data folder. On Linux that is typically <code>~/.config/CNC Sync/activity.log</code>, on macOS it is <code>~/Library/Application Support/CNC Sync/activity.log</code>, and on Windows it is typically <code>%AppData%\CNC Sync\activity.log</code>.</p>
+          <p>Unhandled exceptions and lower-level troubleshooting details are also written beside it as <code>diagnostics.log</code>.</p>
         </section>
 
         <section id="help-about">
@@ -443,7 +445,11 @@
             <li>shared custom-script import reminders</li>
             <li>a link to the project page</li>
             <li>a link to the update log / GitHub releases page</li>
+            <li>a button to send sanitised recent logs for support</li>
+            <li>a link to open GitHub support issues</li>
           </ul>
+          <p>If you send logs for support, also open a GitHub issue with a clear description of the problem so the logs have useful context.</p>
+          <p>If you need project-specific scripts, paid help is available. App bugs or updates that could benefit everyone can be logged as issues for consideration.</p>
         </section>
 
         <section id="security-prompts">

@@ -6,14 +6,28 @@ repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 dotnet_root="/tmp/dotnet10"
 dotnet_home="/tmp/dotnet10-home"
 dotnet_bin="$dotnet_root/dotnet"
+dotnet_install_script="/tmp/dotnet-install.sh"
+dotnet_sdk_version="10.0.201"
 solution_path="$repo_root/CNCSync.sln"
 app_project_path="$repo_root/src/CNCSync.App/CNCSync.App.csproj"
 run_log_path="/tmp/cnc-sync-macos-local.log"
 
+restore_local_dotnet() {
+  echo "Local .NET 10 SDK was not found at $dotnet_bin."
+  echo "Restoring SDK $dotnet_sdk_version into $dotnet_root..."
+
+  mkdir -p "$dotnet_root" "$dotnet_home"
+
+  if [[ ! -f "$dotnet_install_script" ]]; then
+    curl -fsSL https://dot.net/v1/dotnet-install.sh -o "$dotnet_install_script"
+    chmod +x "$dotnet_install_script"
+  fi
+
+  "$dotnet_install_script" --version "$dotnet_sdk_version" --install-dir "$dotnet_root"
+}
+
 if [[ ! -x "$dotnet_bin" ]]; then
-  echo "Expected local .NET 10 SDK at $dotnet_bin but it was not found."
-  echo "Restore that toolchain first, then rerun this script."
-  exit 1
+  restore_local_dotnet
 fi
 
 export DOTNET_ROOT="$dotnet_root"
@@ -31,6 +45,11 @@ if (( ${#existing_pids[@]} > 0 )); then
   pkill -f "$app_project_path" || true
   sleep 1
 fi
+
+echo "Restoring CNC Sync..."
+"$dotnet_bin" restore "$solution_path" \
+  -m:1 \
+  -p:BuildInParallel=false
 
 echo "Building CNC Sync..."
 "$dotnet_bin" build "$solution_path" \

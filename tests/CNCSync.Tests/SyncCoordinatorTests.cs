@@ -379,6 +379,57 @@ public sealed class SyncCoordinatorTests
         }
     }
 
+    [Fact]
+    public async Task ProcessPathAsync_FailedProcessingKeepsMonitoringStatusRunningWhenWatcherIsActive()
+    {
+        var outputPath = Path.Combine(Path.GetTempPath(), $"cncsync-output-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(outputPath);
+
+        try
+        {
+            var destinationService = new CapturingDestinationService();
+            var processor = new StubProjectProcessor(outputPath, processingResultFactory: sourcePath => new ProcessingResult
+            {
+                Success = false,
+                Message = "External processing failed: test failure",
+                SourcePath = sourcePath,
+                OutputPath = outputPath,
+                StartedAtUtc = DateTime.UtcNow,
+                FinishedAtUtc = DateTime.UtcNow,
+                Errors = ["External processing failed: test failure"]
+            });
+            var coordinator = new SyncCoordinator(new StubFolderMonitor(isRunning: true), processor, destinationService, new AppSettingsValidator());
+            var statuses = new List<string>();
+            coordinator.StatusChanged += statuses.Add;
+
+            var result = await coordinator.ProcessPathAsync(
+                "/tmp/source-file.nc",
+                new WatchProfileSettings
+                {
+                    Name = "Watch 1",
+                    StagingFolder = outputPath
+                },
+                new DestinationSettings
+                {
+                    Name = "Destination 1",
+                    Type = DestinationType.Ftp,
+                    Host = "example.local",
+                    Port = 21
+                },
+                ProcessingSetupSettings.CreateDefault("Default"));
+
+            Assert.False(result.Success);
+            Assert.Equal("Running", statuses.Last());
+        }
+        finally
+        {
+            if (Directory.Exists(outputPath))
+            {
+                Directory.Delete(outputPath, recursive: true);
+            }
+        }
+    }
+
     [Theory]
     [InlineData("job-123", "job-123")]
     [InlineData("job-123/NC/program.nc", "job-123")]
@@ -421,10 +472,13 @@ public sealed class SyncCoordinatorTests
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
-    private sealed class StubProjectProcessor(string outputPath, string? remoteFolderName = null) : IProjectProcessor
+    private sealed class StubProjectProcessor(
+        string outputPath,
+        string? remoteFolderName = null,
+        Func<string, ProcessingResult>? processingResultFactory = null) : IProjectProcessor
     {
         public Task<ProcessingResult> ProcessAsync(string sourcePath, WatchProfileSettings profile, ProcessingSetupSettings processingSetup, CancellationToken cancellationToken = default) =>
-            Task.FromResult(new ProcessingResult
+            Task.FromResult(processingResultFactory?.Invoke(sourcePath) ?? new ProcessingResult
             {
                 Success = true,
                 Message = "Processed",

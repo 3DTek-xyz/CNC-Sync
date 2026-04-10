@@ -6,8 +6,8 @@ This is the current bump, tag, and build process used for official releases.
 
 - The app/package version is stored in [`Directory.Build.props`](../Directory.Build.props).
 - The repo currently uses Git tags on the `v1.0.x` line.
-- These two version lines are intentionally separate right now:
-  - app version: `0.1.x`
+- The app/package version uses the same `1.0.x` line:
+  - app version: `1.0.x`
   - release tag: `v1.0.x`
 
 ## Files To Check Before Releasing

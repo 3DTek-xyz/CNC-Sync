@@ -28,7 +28,7 @@ jobs:
           if [[ "$ref" == v* ]]; then
             version="${ref#v}"
           else
-            version="0.1.0"
+            version="1.0.0"
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Publish Windows build
@@ -72,7 +72,7 @@ jobs:
           if [[ "$ref" == v* ]]; then
             version="${ref#v}"
           else
-            version="0.1.0"
+            version="1.0.0"
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Publish macOS build
@@ -103,7 +103,7 @@ jobs:
           if [[ "$ref" == v* ]]; then
             version="${ref#v}"
           else
-            version="0.1.0"
+            version="1.0.0"
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Publish Linux build

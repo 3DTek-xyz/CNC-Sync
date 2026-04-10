@@ -28,6 +28,13 @@ The current app is built around reusable destinations, processing setups, and wa
 - start at login desktop behavior instead of a service-style deployment
 - clean separation between UI, core logic, and infrastructure
 
+## Support and Telemetry
+
+- The app shows an in-product notice that anonymised usage telemetry is collected for product improvements and support planning.
+- The Help / About area can send sanitised recent logs and settings snippets to PostHog when a user explicitly chooses `Send Error Logs for Support`.
+- Project-specific scripts can be offered as paid help.
+- App bugs or improvements that could benefit everyone should be logged as GitHub issues for consideration.
+
 ## Release
 
 - GitHub Actions release workflow: [`.github/workflows/release.yml`](.github/workflows/release.yml)
@@ -55,8 +62,7 @@ The current app is built around reusable destinations, processing setups, and wa
 
 ### Current Versioning Convention
 
-- App/package version is currently on the `0.1.x` line.
-- Git tags/releases are currently on the `v1.0.x` line.
+- App/package version and Git tags/releases both use the `1.0.x` line.
 - Pushing `main` alone does not create a release build. The release build is triggered by pushing a `v*` tag.
 
 ## Notes
