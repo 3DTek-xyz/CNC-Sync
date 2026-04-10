@@ -1,6 +1,7 @@
 using CNCSync.Core.Configuration;
 using CNCSync.Core.Processing;
 using CNCSync.Core.Services;
+using CNCSync.Infrastructure.Monitoring;
 
 namespace CNCSync.Tests;
 
@@ -336,10 +337,85 @@ public sealed class SyncCoordinatorTests
         }
     }
 
-    private sealed class StubFolderMonitor : IFolderMonitor
+    [Fact]
+    public async Task ProcessPathAsync_FailedUploadKeepsMonitoringStatusRunningWhenWatcherIsActive()
+    {
+        var outputPath = Path.Combine(Path.GetTempPath(), $"cncsync-output-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(outputPath);
+
+        try
+        {
+            var destinationService = new CapturingDestinationService(uploadResult: (false, "FTP upload failed: test failure"));
+            var processor = new StubProjectProcessor(outputPath);
+            var coordinator = new SyncCoordinator(new StubFolderMonitor(isRunning: true), processor, destinationService, new AppSettingsValidator());
+            var statuses = new List<string>();
+            coordinator.StatusChanged += statuses.Add;
+
+            var result = await coordinator.ProcessPathAsync(
+                "/tmp/source-file.nc",
+                new WatchProfileSettings
+                {
+                    Name = "Watch 1",
+                    StagingFolder = outputPath
+                },
+                new DestinationSettings
+                {
+                    Name = "Destination 1",
+                    Type = DestinationType.Ftp,
+                    Host = "example.local",
+                    Port = 21
+                },
+                ProcessingSetupSettings.CreateDefault("Default"));
+
+            Assert.False(result.Success);
+            Assert.Equal("Running", statuses.Last());
+        }
+        finally
+        {
+            if (Directory.Exists(outputPath))
+            {
+                Directory.Delete(outputPath, recursive: true);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData("job-123", "job-123")]
+    [InlineData("job-123/NC/program.nc", "job-123")]
+    [InlineData("job-123/AutoStickLabel/label.jpg", "job-123")]
+    [InlineData("top-level-file.nc", "top-level-file.nc")]
+    public void ResolveWorkItemPath_CollapsesNestedChangesToTopLevelWatchItem(string relativePath, string expectedRelativeWorkItem)
+    {
+        var watchFolder = Path.Combine(Path.GetTempPath(), $"cncsync-watch-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(watchFolder);
+
+        try
+        {
+            var profile = new WatchProfileSettings
+            {
+                WatchFolder = watchFolder
+            };
+
+            var fullPath = Path.Combine(watchFolder, relativePath.Replace('/', Path.DirectorySeparatorChar));
+            var resolved = FileSystemFolderMonitor.ResolveWorkItemPathForTesting(profile, fullPath);
+
+            Assert.Equal(
+                Path.Combine(watchFolder, expectedRelativeWorkItem.Replace('/', Path.DirectorySeparatorChar)),
+                resolved);
+        }
+        finally
+        {
+            if (Directory.Exists(watchFolder))
+            {
+                Directory.Delete(watchFolder, recursive: true);
+            }
+        }
+    }
+
+    private sealed class StubFolderMonitor(bool isRunning = false) : IFolderMonitor
     {
         public event Action<WorkItemReadyEvent>? WorkItemReady { add { } remove { } }
-        public bool IsRunning => false;
+        public bool IsRunning => isRunning;
         public Task StartAsync(AppSettings settings, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task StopAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
@@ -360,7 +436,7 @@ public sealed class SyncCoordinatorTests
             });
     }
 
-    private sealed class CapturingDestinationService : IDestinationService
+    private sealed class CapturingDestinationService((bool Success, string Message)? uploadResult = null) : IDestinationService
     {
         public string? LastUploadRemoteDirectoryPath { get; private set; }
         public string? LastDeletedRemotePath { get; private set; }
@@ -371,13 +447,13 @@ public sealed class SyncCoordinatorTests
         public Task<(bool Success, string Message)> UploadDirectoryAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
         {
             LastUploadRemoteDirectoryPath = remoteDirectoryPath;
-            return Task.FromResult<(bool Success, string Message)>((true, "uploaded"));
+            return Task.FromResult(uploadResult ?? (true, "uploaded"));
         }
 
         public Task<(bool Success, string Message)> UploadFileSystemItemAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
         {
             LastUploadRemoteDirectoryPath = remoteDirectoryPath;
-            return Task.FromResult<(bool Success, string Message)>((true, "uploaded"));
+            return Task.FromResult(uploadResult ?? (true, "uploaded"));
         }
 
         public Task<(bool Success, IReadOnlyList<RemoteEntryInfo> Entries, string Message)> ListRootEntriesAsync(DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>

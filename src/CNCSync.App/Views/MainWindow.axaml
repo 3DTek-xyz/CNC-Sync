@@ -119,6 +119,19 @@
                                 </StackPanel>
                             </Border>
                         </Grid>
+
+                        <Border Classes="card" Padding="18" CornerRadius="16">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Paid Support and Custom Work" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock Text="If you need project-specific processing scripts, workflow adjustments, custom app changes, or custom G-code modification services, paid help is available." TextWrapping="Wrap" />
+                                <TextBlock Text="To request help, open an issue on the CNC Sync GitHub project and include what you need, your current setup, and any relevant logs or screenshots." TextWrapping="Wrap" />
+                                <Button Classes="subtle"
+                                        HorizontalAlignment="Left"
+                                        Content="Open GitHub Support Issues"
+                                        Tag="{Binding SupportIssuesUrl}"
+                                        Click="OpenExternalLink_OnClick" />
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
@@ -172,6 +185,12 @@
                                     <TextBlock VerticalAlignment="Center" Text="Start Minimized" />
                                     <CheckBox Grid.Column="1" IsChecked="{Binding StartMinimized}" />
                                 </Grid>
+                                <Border Background="#FFF3D9" BorderBrush="#E5C06A" BorderThickness="1" CornerRadius="10" Padding="12">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="Anonymous Telemetry Notice" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding TelemetryNotice}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </Border>
 
@@ -837,7 +856,17 @@
                                     <Button Classes="subtle"
                                             Content="Open App Data Folder"
                                             Click="OpenAppData_OnClick" />
+                                    <Button Classes="subtle"
+                                            Content="Send Error Logs for Support"
+                                            Command="{Binding SendSupportDiagnosticsCommand}" />
+                                    <Button Classes="subtle"
+                                            Content="Open Support Issues"
+                                            Tag="{Binding SupportIssuesUrl}"
+                                            Click="OpenExternalLink_OnClick" />
                                 </StackPanel>
+                                <TextBlock Classes="muted"
+                                           Text="If you send error logs for support, please also open a GitHub support issue with a detailed description of the problem so we know what to investigate."
+                                           TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 
@@ -906,6 +935,19 @@
                                 <TextBlock Text="The same activity stream is also written to a text log file under your app-data folder. On macOS that file is ~/Library/Application Support/CNC Sync/activity.log." TextWrapping="Wrap" />
                                 <TextBlock Text="Unhandled exceptions and raw diagnostic details are also written beside it as diagnostics.log." TextWrapping="Wrap" />
                                 <TextBlock Text="Junk files such as .DS_Store, ._* files, Thumbs.db, desktop.ini, and ehthumbs.db are ignored throughout watching, staging, and uploading." TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Classes="card" Padding="18" CornerRadius="16">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Paid Support and Custom Work" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock Text="If you need project-specific processing scripts, workflow adjustments, custom app changes, or custom G-code modification services, paid help is available." TextWrapping="Wrap" />
+                                <TextBlock Text="To request help, open an issue on the CNC Sync GitHub project and include what you need, your current setup, and any relevant logs or screenshots." TextWrapping="Wrap" />
+                                <Button Classes="subtle"
+                                        HorizontalAlignment="Left"
+                                        Content="Open GitHub Support Issues"
+                                        Tag="{Binding SupportIssuesUrl}"
+                                        Click="OpenExternalLink_OnClick" />
                             </StackPanel>
                         </Border>
 

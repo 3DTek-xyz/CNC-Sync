@@ -27,6 +27,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IScriptBundleImportService _scriptBundleImportService;
     private readonly IVpnService _vpnService;
     private readonly IThemePreferenceService _themePreferenceService;
+    private readonly IUsageTelemetryService _usageTelemetryService;
     private readonly SemaphoreSlim _saveLock = new(1, 1);
     private readonly Lock _activityLogFileLock = new();
     private readonly DispatcherTimer _scheduledCatchUpTimer = new();
@@ -34,6 +35,11 @@ public partial class MainWindowViewModel : ViewModelBase
     private bool _restartMonitoringAfterSave;
     private bool _isApplyingSettings;
     private bool _scheduledCatchUpInProgress;
+    private string _telemetryInstallId = Guid.NewGuid().ToString("N");
+    private DateTime? _telemetryInstallReportedAtUtc;
+    private string _telemetryLastSeenVersion = string.Empty;
+    private DateTime? _telemetryLastSeenAtUtc;
+    private DateTime? _telemetryLastHeartbeatAtUtc;
 
     [ObservableProperty]
     private string appTitle = "CNC Sync";
@@ -67,6 +73,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private AppThemePreference themePreference = AppThemePreference.Light;
+
+    [ObservableProperty]
+    private string telemetryNotice = string.Empty;
 
     [ObservableProperty]
     private bool scheduledCatchUpEnabled;
@@ -135,6 +144,7 @@ public partial class MainWindowViewModel : ViewModelBase
         IScriptBundleImportService scriptBundleImportService,
         IVpnService vpnService,
         IThemePreferenceService themePreferenceService,
+        IUsageTelemetryService usageTelemetryService,
         AppSettings initialSettings)
     {
         _settingsStore = settingsStore;
@@ -146,6 +156,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _scriptBundleImportService = scriptBundleImportService;
         _vpnService = vpnService;
         _themePreferenceService = themePreferenceService;
+        _usageTelemetryService = usageTelemetryService;
         _scheduledCatchUpTimer.Tick += OnScheduledCatchUpTimerTick;
         PropertyChanged += OnViewModelPropertyChanged;
         WatchProfiles.CollectionChanged += OnWatchProfilesCollectionChanged;
@@ -159,6 +170,7 @@ public partial class MainWindowViewModel : ViewModelBase
             ? "Update checks are available for installed packaged releases from the public CNC Sync update feed."
             : "Automatic updates are only available on supported packaged desktop builds.";
         Apply(initialSettings);
+        TelemetryNotice = _usageTelemetryService.NoticeText;
         _ = SyncLaunchAtLoginStateAsync();
         ValidationSummary = "Run validation to check saved settings.";
 
@@ -183,6 +195,7 @@ public partial class MainWindowViewModel : ViewModelBase
             new DesignScriptBundleImportService(),
             new DesignVpnService(),
             new DesignThemePreferenceService(),
+            new NullUsageTelemetryService(),
             AppSettings.CreateDefault())
     {
     }
@@ -218,6 +231,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public string AppVersion => ResolvedAppVersion;
     public string ProjectSiteUrl => "https://3dtek-xyz.github.io/CNC-Sync/";
     public string ReleaseNotesUrl => "https://github.com/3DTek-xyz/CNC-Sync/releases";
+    public string SupportIssuesUrl => "https://github.com/3DTek-xyz/CNC-Sync/issues";
 
     public string ActiveMonitoringProfilesSummary
     {
@@ -595,6 +609,34 @@ public partial class MainWindowViewModel : ViewModelBase
         await RunUpdateCheckAsync(silentIfCurrent: false);
     }
 
+    [RelayCommand]
+    private Task SendSupportDiagnosticsAsync()
+    {
+        try
+        {
+            var settings = ToSettings();
+            var activityTail = ReadLogTail(ActivityLogPath, 200);
+            var diagnosticsPath = Path.Combine(Path.GetDirectoryName(SettingsPath) ?? AppContext.BaseDirectory, "diagnostics.log");
+            var diagnosticsTail = ReadLogTail(diagnosticsPath, 200);
+
+            var submitted = _usageTelemetryService.SendSupportDiagnostics(settings, activityTail, diagnosticsTail);
+            var message = submitted
+                ? "Support diagnostics were queued for delivery."
+                : "Support diagnostics could not be queued.";
+
+            AddActivity(message);
+            CurrentTask = message;
+        }
+        catch (Exception ex)
+        {
+            var message = $"Support diagnostics could not be prepared: {ex.Message}";
+            AddActivity(message);
+            CurrentTask = message;
+        }
+
+        return Task.CompletedTask;
+    }
+
     [RelayCommand(CanExecute = nameof(CanApplyUpdate))]
     private async Task DownloadAndRestartUpdateAsync()
     {
@@ -605,6 +647,10 @@ public partial class MainWindowViewModel : ViewModelBase
             UpdateStatus = result.Message;
             AddActivity(result.Message);
             CurrentTask = result.Message;
+            if (result.Success)
+            {
+                _usageTelemetryService.CaptureUpdateApplyRequested();
+            }
             OnPropertyChanged(nameof(CanApplyUpdate));
             DownloadAndRestartUpdateCommand.NotifyCanExecuteChanged();
         }
@@ -641,12 +687,14 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         await _syncCoordinator.StartAsync(settings);
+        _usageTelemetryService.CaptureMonitoringStarted(settings);
     }
 
     [RelayCommand(CanExecute = nameof(CanStopMonitoring))]
     private async Task StopMonitoringAsync()
     {
         await _syncCoordinator.StopAsync();
+        _usageTelemetryService.CaptureMonitoringStopped();
     }
 
     [RelayCommand]
@@ -815,6 +863,7 @@ public partial class MainWindowViewModel : ViewModelBase
             processingSetupSettings);
         LastProcessingSummary = result.Message;
         CurrentTask = result.Message;
+        _usageTelemetryService.CaptureManualCatchUpCompleted(result.Success, result.Message);
 
         if (result.Success &&
             SelectedDestination is not null &&
@@ -864,9 +913,16 @@ public partial class MainWindowViewModel : ViewModelBase
         LaunchAtLogin = settings.LaunchAtLogin;
         StartMinimized = settings.StartMinimized;
         ThemePreference = settings.ThemePreference;
+        _telemetryInstallId = settings.TelemetryInstallId;
+        _telemetryInstallReportedAtUtc = settings.TelemetryInstallReportedAtUtc;
+        _telemetryLastSeenVersion = settings.TelemetryLastSeenVersion;
+        _telemetryLastSeenAtUtc = settings.TelemetryLastSeenAtUtc;
+        _telemetryLastHeartbeatAtUtc = settings.TelemetryLastHeartbeatAtUtc;
         ScheduledCatchUpEnabled = settings.ScheduledCatchUpEnabled;
         ScheduledCatchUpIntervalMinutes = settings.ScheduledCatchUpIntervalMinutes;
         CustomScriptSourceUrl = settings.CustomScriptSourceUrl;
+        _usageTelemetryService.ApplySettings(settings);
+        TelemetryNotice = _usageTelemetryService.NoticeText;
 
         Destinations.Clear();
         foreach (var destination in settings.Destinations)
@@ -903,6 +959,11 @@ public partial class MainWindowViewModel : ViewModelBase
             LaunchAtLogin = LaunchAtLogin,
             StartMinimized = StartMinimized,
             ThemePreference = ThemePreference,
+            TelemetryInstallId = _telemetryInstallId,
+            TelemetryInstallReportedAtUtc = _telemetryInstallReportedAtUtc,
+            TelemetryLastSeenVersion = _telemetryLastSeenVersion,
+            TelemetryLastSeenAtUtc = _telemetryLastSeenAtUtc,
+            TelemetryLastHeartbeatAtUtc = _telemetryLastHeartbeatAtUtc,
             ScheduledCatchUpEnabled = ScheduledCatchUpEnabled,
             ScheduledCatchUpIntervalMinutes = ScheduledCatchUpIntervalMinutes,
             CustomScriptSourceUrl = CustomScriptSourceUrl,
@@ -935,7 +996,11 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OnProcessingCompleted(ProcessingResult result)
     {
-        Dispatcher.UIThread.Post(() => UpdateProcessingSummary(result));
+        Dispatcher.UIThread.Post(() =>
+        {
+            UpdateProcessingSummary(result);
+            _usageTelemetryService.CaptureProcessingCompleted(result);
+        });
     }
 
     private void UpdateProcessingSummary(ProcessingResult result)
@@ -1009,6 +1074,17 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             // Keep activity logging non-fatal during monitoring and UI updates.
         }
+    }
+
+    private static string ReadLogTail(string path, int maxLines)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+        {
+            return string.Empty;
+        }
+
+        var lines = File.ReadLines(path).TakeLast(Math.Max(1, maxLines));
+        return string.Join(Environment.NewLine, lines);
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -1329,6 +1405,7 @@ public partial class MainWindowViewModel : ViewModelBase
             var settings = ToSettings();
             await _settingsStore.SaveAsync(settings);
             await _loginStartupService.ApplyAsync(settings.LaunchAtLogin);
+            _usageTelemetryService.ApplySettings(settings);
 
             if (_restartMonitoringAfterSave &&
                 string.Equals(MonitoringStatus, "Running", StringComparison.OrdinalIgnoreCase))
@@ -1484,6 +1561,11 @@ public partial class MainWindowViewModel : ViewModelBase
             if (!silentIfCurrent || result.UpdateAvailable || !result.Success)
             {
                 AddActivity(result.Message);
+            }
+
+            if (result.UpdateAvailable)
+            {
+                _usageTelemetryService.CaptureUpdateAvailable();
             }
 
             OnPropertyChanged(nameof(CanApplyUpdate));

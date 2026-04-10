@@ -4,6 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
 using System.Linq;
+using System.Reflection;
 using Avalonia.Threading;
 using Avalonia.Markup.Xaml;
 using Avalonia.Controls.Notifications;
@@ -15,6 +16,7 @@ using CNCSync.Infrastructure.Monitoring;
 using CNCSync.Infrastructure.Networking;
 using CNCSync.Infrastructure.Processing;
 using CNCSync.Core.Configuration;
+using CNCSync.Core.Processing;
 using CNCSync.Core.Services;
 using CNCSync.App.Services;
 
@@ -70,10 +72,16 @@ public partial class App : Application
             DiagnosticLog.Initialize(settingsStore.SettingsFilePath);
             RegisterGlobalExceptionLogging();
             var initialSettings = settingsStore.Load();
+            var telemetryService = new PostHogUsageTelemetryService(ResolveAppVersion(), initialSettings);
+            if (telemetryService.CaptureStartupState(initialSettings, Program.LaunchedAtLogin))
+            {
+                settingsStore.SaveAsync(initialSettings).GetAwaiter().GetResult();
+            }
             themePreferenceService.Apply(initialSettings.ThemePreference);
-            _mainWindowViewModel = new MainWindowViewModel(settingsStore, validator, coordinator, destinationService, updateService, loginStartupService, scriptBundleImportService, vpnService, themePreferenceService, initialSettings);
+            _mainWindowViewModel = new MainWindowViewModel(settingsStore, validator, coordinator, destinationService, updateService, loginStartupService, scriptBundleImportService, vpnService, themePreferenceService, telemetryService, initialSettings);
             coordinator.StatusChanged += OnCoordinatorStatusChanged;
             coordinator.ActivityLogged += OnCoordinatorActivityLogged;
+            coordinator.ProcessingCompleted += OnCoordinatorProcessingCompleted;
             _initialTrayHidePending = Program.LaunchedAtLogin &&
                                       initialSettings.StartMinimized &&
                                       !OperatingSystem.IsMacOS();
@@ -162,6 +170,14 @@ public partial class App : Application
         };
     }
 
+    private static string ResolveAppVersion()
+    {
+        var assembly = typeof(App).Assembly;
+        return assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+               ?? assembly.GetName().Version?.ToString()
+               ?? "dev";
+    }
+
     public bool ShouldCancelClose() => !_exitRequested;
 
     public void HideMainWindow()
@@ -236,6 +252,31 @@ public partial class App : Application
             }
 
             UpdateTrayPresentation(_mainWindowViewModel?.MonitoringStatus ?? "Stopped");
+        });
+    }
+
+    private void OnCoordinatorProcessingCompleted(ProcessingResult result)
+    {
+        if (result.Success)
+        {
+            return;
+        }
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            var sourceName = Path.GetFileName(result.SourcePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            var title = result.Message.Contains("upload", StringComparison.OrdinalIgnoreCase)
+                ? "Upload Failed"
+                : "Processing Failed";
+            var body = string.IsNullOrWhiteSpace(sourceName)
+                ? result.Message
+                : $"{sourceName}: {result.Message}";
+
+            _notificationManager?.Show(new Notification(
+                title,
+                body,
+                NotificationType.Error,
+                TimeSpan.FromSeconds(15)));
         });
     }
 

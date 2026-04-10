@@ -135,24 +135,42 @@ public sealed class FileSystemFolderMonitor : IFolderMonitor
 
     private static string ResolveWorkItemPath(WatchProfileSettings profile, string path)
     {
-        if (Directory.Exists(path))
+        if (string.IsNullOrWhiteSpace(profile.WatchFolder))
         {
             return path;
         }
 
-        var fileDirectory = Path.GetDirectoryName(path);
-        if (string.IsNullOrWhiteSpace(fileDirectory))
+        var normalizedWatchFolder = Path.GetFullPath(profile.WatchFolder)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var normalizedPath = Path.GetFullPath(path)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+        if (string.Equals(normalizedPath, normalizedWatchFolder, StringComparison.OrdinalIgnoreCase))
+        {
+            return normalizedWatchFolder;
+        }
+
+        var watchFolderPrefix = normalizedWatchFolder + Path.DirectorySeparatorChar;
+        if (!normalizedPath.StartsWith(watchFolderPrefix, StringComparison.OrdinalIgnoreCase))
         {
             return path;
         }
 
-        if (string.Equals(fileDirectory, profile.WatchFolder, StringComparison.OrdinalIgnoreCase))
+        var relativePath = Path.GetRelativePath(normalizedWatchFolder, normalizedPath);
+        var firstSegment = relativePath
+            .Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries)
+            .FirstOrDefault();
+
+        if (string.IsNullOrWhiteSpace(firstSegment))
         {
-            return path;
+            return normalizedWatchFolder;
         }
 
-        return fileDirectory;
+        return Path.Combine(normalizedWatchFolder, firstSegment);
     }
+
+    internal static string ResolveWorkItemPathForTesting(WatchProfileSettings profile, string path) =>
+        ResolveWorkItemPath(profile, path);
 
     private static string BuildPendingKey(WatchProfileSettings profile, string path) => $"{profile.Id}:{path}";
 

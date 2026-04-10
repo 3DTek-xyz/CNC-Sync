@@ -135,7 +135,7 @@ public sealed class SyncCoordinator : ISyncCoordinator
         {
             var errorMessage = $"Manual catch-up failed for {profile.Name}: {ex.Message}";
             LogActivity(errorMessage, profile.Name);
-            SetStatus("Error");
+            SetStatus(IsRunning ? "Running" : "Stopped");
             return (false, errorMessage);
         }
     }
@@ -310,7 +310,7 @@ public sealed class SyncCoordinator : ISyncCoordinator
             };
 
             ProcessingCompleted?.Invoke(failedUploadResult);
-            SetStatus("Error");
+            SetStatus(IsRunning ? "Running" : "Stopped");
             return failedUploadResult;
         }
 
@@ -483,7 +483,7 @@ public sealed class SyncCoordinator : ISyncCoordinator
             catch (Exception ex)
             {
                 LogActivity($"Processing failed for {workItem.Path}: {ex.Message}", workItem.Profile.Name);
-                SetStatus("Error");
+                SetStatus(IsRunning ? "Running" : "Stopped");
             }
         });
     }

@@ -53,7 +53,9 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
 
         if (!File.Exists(SettingsFilePath))
         {
-            return AppSettings.CreateDefault();
+            var defaultSettings = AppSettings.CreateDefault();
+            RewriteSettingsFile(CreateSanitizedSettingsCopy(defaultSettings));
+            return defaultSettings;
         }
 
         AppSettings? settings;

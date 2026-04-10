@@ -42,3 +42,4 @@ SampleJob/
 !src/CNCSync.App/**
 src/CNCSync.App/bin/
 src/CNCSync.App/obj/
+CustomerDebugging/
