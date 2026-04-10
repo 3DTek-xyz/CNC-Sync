@@ -32,7 +32,7 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Publish Windows build
-        run: dotnet publish src/CNCSync.App/CNCSync.App.csproj -c Release -r win-x64 --self-contained true -p:Version=${{ steps.version.outputs.version }} -p:InformationalVersion=${{ steps.version.outputs.version }}
+        run: dotnet publish src/CNCSync.App/CNCSync.App.csproj -c Release -r win-x64 --self-contained true -p:Version=${{ steps.version.outputs.version }} -p:InformationalVersion=${{ steps.version.outputs.version }} -p:PostHogProjectApiKey="${{ secrets.POSTHOG_PROJECT_API_KEY }}" -p:PostHogHostUrl="${{ secrets.POSTHOG_HOST_URL }}"
       - name: Install Velopack CLI
         shell: pwsh
         run: dotnet tool install --global vpk --version 0.0.1298
@@ -76,7 +76,7 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Publish macOS build
-        run: dotnet publish src/CNCSync.App/CNCSync.App.csproj -c Release -r ${{ matrix.runtime }} --self-contained true -p:UseAppHost=true -p:Version=${{ steps.version.outputs.version }} -p:InformationalVersion=${{ steps.version.outputs.version }}
+        run: dotnet publish src/CNCSync.App/CNCSync.App.csproj -c Release -r ${{ matrix.runtime }} --self-contained true -p:UseAppHost=true -p:Version=${{ steps.version.outputs.version }} -p:InformationalVersion=${{ steps.version.outputs.version }} -p:PostHogProjectApiKey="${{ secrets.POSTHOG_PROJECT_API_KEY }}" -p:PostHogHostUrl="${{ secrets.POSTHOG_HOST_URL }}"
       - name: Install Velopack CLI
         run: dotnet tool install --global vpk --version 0.0.1298
       - name: Package macOS Velopack release
@@ -107,7 +107,7 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Publish Linux build
-        run: dotnet publish src/CNCSync.App/CNCSync.App.csproj -c Release -r linux-x64 --self-contained true -p:Version=${{ steps.version.outputs.version }} -p:InformationalVersion=${{ steps.version.outputs.version }}
+        run: dotnet publish src/CNCSync.App/CNCSync.App.csproj -c Release -r linux-x64 --self-contained true -p:Version=${{ steps.version.outputs.version }} -p:InformationalVersion=${{ steps.version.outputs.version }} -p:PostHogProjectApiKey="${{ secrets.POSTHOG_PROJECT_API_KEY }}" -p:PostHogHostUrl="${{ secrets.POSTHOG_HOST_URL }}"
       - name: Install Linux packaging dependency
         run: sudo apt-get update && sudo apt-get install -y squashfs-tools
       - name: Install Velopack CLI

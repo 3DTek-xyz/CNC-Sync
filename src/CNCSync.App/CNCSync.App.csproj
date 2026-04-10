@@ -12,6 +12,8 @@
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <RuntimeIdentifiers>win-x64;osx-arm64;osx-x64;linux-x64</RuntimeIdentifiers>
     <MacLoginItemBridgeName>libcncsync-login-item-bridge.dylib</MacLoginItemBridgeName>
+    <PostHogProjectApiKey Condition="'$(PostHogProjectApiKey)' == ''"></PostHogProjectApiKey>
+    <PostHogHostUrl Condition="'$(PostHogHostUrl)' == ''">https://us.i.posthog.com</PostHogHostUrl>
   </PropertyGroup>
 
   <ItemGroup>
@@ -37,6 +39,17 @@
   <ItemGroup>
     <ProjectReference Include="..\CNCSync.Core\CNCSync.Core.csproj" />
     <ProjectReference Include="..\CNCSync.Infrastructure\CNCSync.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>PostHogProjectApiKey</_Parameter1>
+      <_Parameter2>$(PostHogProjectApiKey)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>PostHogHostUrl</_Parameter1>
+      <_Parameter2>$(PostHogHostUrl)</_Parameter2>
+    </AssemblyAttribute>
   </ItemGroup>
 
   <ItemGroup>

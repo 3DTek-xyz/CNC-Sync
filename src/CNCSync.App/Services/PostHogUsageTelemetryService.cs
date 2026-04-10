@@ -2,6 +2,7 @@ using CNCSync.Core.Configuration;
 using CNCSync.Core.Processing;
 using CNCSync.Infrastructure.Logging;
 using PostHog;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -9,14 +10,17 @@ namespace CNCSync.App.Services;
 
 public sealed class PostHogUsageTelemetryService : IUsageTelemetryService
 {
-    private const string ProjectApiKey = "REMOVED_POSTHOG_PROJECT_API_KEY";
-    private const string HostUrl = "https://us.i.posthog.com";
+    private const string DefaultHostUrl = "https://us.i.posthog.com";
+    private const string ProjectApiKeyMetadataName = "PostHogProjectApiKey";
+    private const string HostUrlMetadataName = "PostHogHostUrl";
+    private const string ProjectApiKeyEnvironmentVariable = "CNCSYNC_POSTHOG_PROJECT_API_KEY";
+    private const string HostUrlEnvironmentVariable = "CNCSYNC_POSTHOG_HOST_URL";
     private const int MaxSettingsCharsPerEvent = 6000;
     private const int MaxLogCharsPerEvent = 6000;
     private const int MaxLogCharsTotal = 18000;
 
     private readonly string _appVersion;
-    private readonly PostHogClient _client;
+    private readonly PostHogClient? _client;
     private static readonly Regex IpAddressPattern = new(@"\b(?:\d{1,3}\.){3}\d{1,3}\b", RegexOptions.Compiled);
     private AppSettings _settings;
 
@@ -24,10 +28,17 @@ public sealed class PostHogUsageTelemetryService : IUsageTelemetryService
     {
         _appVersion = appVersion;
         _settings = initialSettings.Normalize();
+
+        var projectApiKey = ResolveProjectApiKey();
+        if (string.IsNullOrWhiteSpace(projectApiKey))
+        {
+            return;
+        }
+
         _client = new PostHogClient(new PostHogOptions
         {
-            ProjectApiKey = ProjectApiKey,
-            HostUrl = new Uri(HostUrl)
+            ProjectApiKey = projectApiKey,
+            HostUrl = new Uri(ResolveHostUrl())
         });
     }
 
@@ -205,7 +216,7 @@ public sealed class PostHogUsageTelemetryService : IUsageTelemetryService
 
     private void Capture(string eventName, Dictionary<string, object?>? properties = null)
     {
-        if (string.IsNullOrWhiteSpace(_settings.TelemetryInstallId))
+        if (_client is null || string.IsNullOrWhiteSpace(_settings.TelemetryInstallId))
         {
             return;
         }
@@ -306,6 +317,36 @@ public sealed class PostHogUsageTelemetryService : IUsageTelemetryService
         }
 
         return "other";
+    }
+
+    private static string? ResolveProjectApiKey()
+    {
+        var environmentValue = Environment.GetEnvironmentVariable(ProjectApiKeyEnvironmentVariable);
+        if (!string.IsNullOrWhiteSpace(environmentValue))
+        {
+            return environmentValue.Trim();
+        }
+
+        return GetAssemblyMetadataValue(ProjectApiKeyMetadataName);
+    }
+
+    private static string ResolveHostUrl()
+    {
+        var environmentValue = Environment.GetEnvironmentVariable(HostUrlEnvironmentVariable);
+        if (!string.IsNullOrWhiteSpace(environmentValue))
+        {
+            return environmentValue.Trim();
+        }
+
+        return GetAssemblyMetadataValue(HostUrlMetadataName) ?? DefaultHostUrl;
+    }
+
+    private static string? GetAssemblyMetadataValue(string key)
+    {
+        return typeof(PostHogUsageTelemetryService)
+            .Assembly
+            .GetCustomAttributes<AssemblyMetadataAttribute>()
+            .FirstOrDefault(attribute => string.Equals(attribute.Key, key, StringComparison.Ordinal))?.Value;
     }
 
     private static string BuildSanitizedSettingsJson(AppSettings settings)
