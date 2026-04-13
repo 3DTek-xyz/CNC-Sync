@@ -44,8 +44,14 @@ git push origin v1.0.72
 - Pushing a `v*` tag triggers [`.github/workflows/release.yml`](../.github/workflows/release.yml).
 - The `Release` workflow:
   - builds Windows, macOS, and Linux packages
-  - uploads artifacts
-  - creates the GitHub release
+  - creates a GitHub release that only shows the human-facing installers
+  - publishes the Velopack update feed separately for the Pages site
+
+### Release Asset Split
+
+- GitHub Releases should stay focused on the files people install manually.
+- The Pages update feed keeps the Velopack metadata and package files needed for auto-update.
+- If you need to change the release shape, update both workflows together so the release page and update feed stay in sync.
 
 ## Important Notes
 
