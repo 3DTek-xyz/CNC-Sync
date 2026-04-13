@@ -1,6 +1,6 @@
 param(
     [string]$Root = (Resolve-Path (Join-Path $PSScriptRoot "..\\..")).Path,
-    [string]$Version = "1.0.77",
+    [string]$Version = "1.0.78",
     [string]$BuildDir = "",
     [string]$DistDir = "",
     [string]$PackId = "3DTek.CNCSync",
