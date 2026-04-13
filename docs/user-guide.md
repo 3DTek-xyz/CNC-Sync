@@ -114,14 +114,14 @@ Use this when no custom transformation is required.
 
 This runs a local script or executable before upload.
 
-Custom script bundles can also be imported once for the whole app from the left side of the `Processing Setups` tab. After import, each processing setup still chooses its own local `Script Path` from the imported files.
+You can import a shared script bundle from the left side of the `Processing Setups` tab. CNC Sync copies it to your local Scripts folder.
 
 Fields:
 
 - `Mode`
   - choose `ExternalScript`
 - `Runner`
-  - choose how to launch the script:
+  - use Auto unless your script needs a specific way to run
     - `Auto`
     - `PowerShell`
     - `Bash`
@@ -129,11 +129,11 @@ Fields:
     - `Command`
     - `Direct`
 - `Script Path`
-  - the local file to execute
+  - the local file CNC Sync should run
 - `Custom Script Source URL`
   - a shared customer script source used by `Check / Import` on the left side of the `Processing Setups` tab
 - `Arguments Template`
-  - arguments passed to the script at runtime
+  - extra arguments passed to the script at runtime
 
 Supported placeholders:
 
@@ -144,7 +144,7 @@ Supported placeholders:
 - `{scriptPath}`
   - the selected script path
 
-Any other text is passed through literally, which means you can add extra fixed arguments if your script expects them.
+Any other text is passed through literally, so you can add extra fixed arguments.
 
 Example:
 
@@ -211,7 +211,7 @@ Fields:
 - `Additional Remote Path`
   - optional path appended under the selected destination base path
 - `Work Item Mode`
-  - controls what the watcher treats as one item of work
+  - choose whether CNC Sync should process each change on its own, or group changes by the main project folder
 - `Processing Setup`
   - which processing rule to run
 - `Destination`
@@ -221,9 +221,9 @@ Fields:
 - `Stability Check Interval`
   - how often CNC Sync checks pending items to see if they are ready
 
-`Individual files and folders` is the general-purpose mode and reacts to the exact file or folder that changed.
+`Individual files and folders` is the general-purpose mode and reacts to each change on its own.
 
-`Grouped project folders` is for job-folder workflows such as Mozaik exports. Use this to tell CNC Sync whether changes should be handled one at a time as individual files and folders, or grouped by the top folder or project folder in which they were made. It is the safer choice when a destination replaces remote folder contents before upload.
+`Grouped project folders` is for job-folder workflows such as Mozaik exports. It is the safer choice when a destination replaces remote folder contents before upload.
 
 ## Monitoring
 

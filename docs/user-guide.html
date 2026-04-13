@@ -336,13 +336,13 @@
 
           <h3>External Script</h3>
           <p>This runs a local script or executable before upload.</p>
-          <p>Custom script bundles can also be imported once for the whole app from the left side of the <code>Processing Setups</code> tab. After import, each processing setup still chooses its own local <code>Script Path</code> from the imported files.</p>
+          <p>You can import a shared script bundle from the left side of the <code>Processing Setups</code> tab. CNC Sync copies it to your local Scripts folder.</p>
           <ul>
             <li><code>Mode</code>: choose <code>ExternalScript</code>.</li>
-            <li><code>Runner</code>: choose how to launch the script: <code>Auto</code>, <code>PowerShell</code>, <code>Bash</code>, <code>Python</code>, <code>Command</code>, or <code>Direct</code>.</li>
-            <li><code>Script Path</code>: the local file to execute.</li>
+            <li><code>Runner</code>: use Auto unless your script needs a specific way to run: <code>Auto</code>, <code>PowerShell</code>, <code>Bash</code>, <code>Python</code>, <code>Command</code>, or <code>Direct</code>.</li>
+            <li><code>Script Path</code>: the local file CNC Sync should run.</li>
             <li><code>Custom Script Source URL</code>: a shared customer script source used by the left-side <code>Check / Import</code> action.</li>
-            <li><code>Arguments Template</code>: arguments passed to the script at runtime.</li>
+            <li><code>Arguments Template</code>: extra arguments passed to the script at runtime.</li>
           </ul>
 
           <p>Supported placeholders:</p>
@@ -387,14 +387,14 @@
             <li><code>Watch Folder</code>: local folder being watched.</li>
             <li><code>Staging Folder</code>: local folder used for prepared output.</li>
             <li><code>Additional Remote Path</code>: optional path appended under the selected destination base path.</li>
-            <li><code>Work Item Mode</code>: controls what the watcher treats as one item of work.</li>
+            <li><code>Work Item Mode</code>: choose whether CNC Sync should process each change on its own, or group changes by the main project folder.</li>
             <li><code>Processing Setup</code>: which processing rule to run.</li>
             <li><code>Destination</code>: which destination to upload to.</li>
             <li><code>Required Quiet Time</code>: how long files or folders must stay unchanged before processing starts.</li>
             <li><code>Stability Check Interval</code>: how often CNC Sync checks pending items to see if they are ready.</li>
           </ul>
-          <p><code>Individual files and folders</code> is the general-purpose mode and reacts to the exact file or folder that changed.</p>
-          <p><code>Grouped project folders</code> is for job-folder workflows such as Mozaik exports. Use this to tell CNC Sync whether changes should be handled one at a time as individual files and folders, or grouped by the top folder or project folder in which they were made. It is the safer choice when a destination replaces remote folder contents before upload.</p>
+          <p><code>Individual files and folders</code> is the general-purpose mode and reacts to each change on its own.</p>
+          <p><code>Grouped project folders</code> is for job-folder workflows such as Mozaik exports. It is the safer choice when a destination replaces remote folder contents before upload.</p>
         </section>
 
         <section id="monitoring">

@@ -1,6 +1,6 @@
 param(
     [string]$Root = (Resolve-Path (Join-Path $PSScriptRoot "..\\..")).Path,
-    [string]$Version = "1.0.75",
+    [string]$Version = "1.0.76",
     [string]$BuildDir = "",
     [string]$DistDir = ""
 )

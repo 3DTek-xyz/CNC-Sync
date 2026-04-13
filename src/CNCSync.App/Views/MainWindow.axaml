@@ -302,7 +302,7 @@
                                             <TextBlock Grid.Column="1"
                                                        Classes="muted"
                                                        VerticalAlignment="Center"
-                                                       Text="Use this to tell CNC Sync whether changes should be handled one at a time as individual files and folders, or grouped by the top folder or project folder in which they were made."
+                                                       Text="Choose whether CNC Sync should process each change on its own, or group changes by the main project folder."
                                                        TextWrapping="Wrap" />
                                         </Grid>
                                     </Grid>
@@ -356,7 +356,7 @@
                                             <TextBlock Grid.Column="1"
                                                        Classes="muted"
                                                        VerticalAlignment="Center"
-                                                       Text="How long a file or folder must stay unchanged before CNC Sync treats it as ready to process."
+                                                       Text="How long CNC Sync waits for changes to settle before it processes them."
                                                        TextWrapping="Wrap" />
                                         </Grid>
                                     </Grid>
@@ -374,7 +374,7 @@
                                             <TextBlock Grid.Column="1"
                                                        Classes="muted"
                                                        VerticalAlignment="Center"
-                                                       Text="How often CNC Sync rechecks pending changes to see whether they have been quiet for long enough."
+                                                       Text="How often CNC Sync checks whether pending changes have settled."
                                                        TextWrapping="Wrap" />
                                         </Grid>
                                     </Grid>
@@ -462,14 +462,14 @@
                                             <TextBlock Grid.Column="1"
                                                        Classes="muted"
                                                        VerticalAlignment="Center"
-                                                       Text="Use Auto unless the script needs a specific runner such as PowerShell, Bash, Python, or Command."
+                                                       Text="Use Auto unless your script needs a specific way to run."
                                                        TextWrapping="Wrap" />
                                         </Grid>
                                     </Grid>
 
                                     <Grid ColumnDefinitions="220,*">
                                         <TextBlock VerticalAlignment="Center" Text="Script Path" />
-                                        <Grid Grid.Column="1" ColumnDefinitions="*,Auto,Auto">
+                                        <Grid Grid.Column="1" ColumnDefinitions="*,Auto,Auto,*" ColumnSpacing="12">
                                             <TextBox Grid.Column="0"
                                                      Margin="0,0,8,0"
                                                      IsEnabled="{Binding SelectedProcessingSetup.UsesExternalScript}"
@@ -485,16 +485,28 @@
                                                     Classes="subtle"
                                                     Content="Open Scripts Folder"
                                                     Click="OpenScriptsFolder_OnClick" />
+                                            <TextBlock Grid.Column="3"
+                                                       Classes="muted"
+                                                       VerticalAlignment="Center"
+                                                       Text="Choose the script CNC Sync should run."
+                                                       TextWrapping="Wrap" />
                                         </Grid>
                                     </Grid>
 
                                     <Grid ColumnDefinitions="220,*">
                                         <TextBlock VerticalAlignment="Center" Text="Arguments Template" />
-                                        <TextBox Grid.Column="1"
-                                                 IsEnabled="{Binding SelectedProcessingSetup.UsesExternalScript}"
-                                                 Foreground="{StaticResource AppPrimaryTextBrush}"
-                                                 Text="{Binding SelectedProcessingSetup.ArgumentsTemplate, UpdateSourceTrigger=LostFocus}"
-                                                 Watermark="&quot;{sourcePath}&quot; &quot;{outputPath}&quot;" />
+                                        <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                            <TextBox Grid.Column="0"
+                                                     IsEnabled="{Binding SelectedProcessingSetup.UsesExternalScript}"
+                                                     Foreground="{StaticResource AppPrimaryTextBrush}"
+                                                     Text="{Binding SelectedProcessingSetup.ArgumentsTemplate, UpdateSourceTrigger=LostFocus}"
+                                                     Watermark="&quot;{sourcePath}&quot; &quot;{outputPath}&quot;" />
+                                            <TextBlock Grid.Column="1"
+                                                       Classes="muted"
+                                                       VerticalAlignment="Center"
+                                                       Text="Extra arguments to pass to the script."
+                                                       TextWrapping="Wrap" />
+                                        </Grid>
                                     </Grid>
 
                                     <StackPanel Spacing="4">
@@ -502,9 +514,7 @@
                                         <TextBlock Text="{}{sourcePath} - the detected source file or folder" Opacity="0.9" TextWrapping="Wrap" />
                                         <TextBlock Text="{}{outputPath} - the prepared output folder for processed files" Opacity="0.9" TextWrapping="Wrap" />
                                         <TextBlock Text="{}{scriptPath} - the selected script path" Opacity="0.9" TextWrapping="Wrap" />
-                                        <TextBlock Text="Custom scripts are imported once from the shared source on the left, then each processing setup chooses its own local Script Path from the imported folder." Opacity="0.9" TextWrapping="Wrap" />
-                                        <TextBlock Text="Any other text is passed through literally, so you can add extra fixed arguments. Example: &quot;{sourcePath}&quot; &quot;{outputPath}&quot; &quot;watch1&quot; or &quot;{sourcePath}&quot; &quot;{outputPath}&quot; --update-cyc-y." Opacity="0.9" TextWrapping="Wrap" />
-                                        <TextBlock Text="External scripts should exit 0 on success and can optionally print OUTPUT_PATH=/path/to/folder." Opacity="0.9" TextWrapping="Wrap" />
+                                        <TextBlock Text="Any other text is passed through literally, so you can add extra fixed arguments." Opacity="0.9" TextWrapping="Wrap" />
 
                                     </StackPanel>
                                 </StackPanel>
@@ -653,7 +663,7 @@
                                                    Margin="12,0,0,0"
                                                    VerticalAlignment="Center"
                                                    Classes="muted"
-                                                   Text="Only removes the item-specific child folder created for this upload. It never removes the destination base path itself. If this is off, CNC Sync appends into the remote folder and overwrites files only where the same file already exists."
+                                                   Text="When this is on, CNC Sync clears out the matching remote folder before upload. When it&apos;s off, it updates files in place."
                                                    TextWrapping="Wrap" />
                                     </Grid>
                                     <Border Background="#FFF3D9"
@@ -788,7 +798,7 @@
                                                    Margin="12,0,0,0"
                                                    VerticalAlignment="Center"
                                                    Classes="muted"
-                                                   Text="Auto Passive is the safest default. Try Passive if uploads start but stall. Try Active only if the server specifically needs to connect back to this machine."
+                                                   Text="Choose how CNC Sync connects to the FTP server. Auto Passive is the usual choice."
                                                    TextWrapping="Wrap" />
                                     </Grid>
 
@@ -979,7 +989,7 @@
                             <StackPanel Spacing="8">
                                 <TextBlock Text="External Script Contract" FontSize="18" FontWeight="SemiBold" />
                                 <TextBlock Text="External scripts are run locally. They should exit with code 0 on success and may optionally print OUTPUT_PATH=/path/to/folder if the final upload folder is different from the prepared output path." TextWrapping="Wrap" />
-                                <TextBlock Text="Supported argument placeholders: {sourcePath}, {outputPath}, {scriptPath}. Any other text is passed through literally, so you can add extra fixed arguments like &quot;watch1&quot; or --update-cyc-y." TextWrapping="Wrap" />
+                                <TextBlock Text="Supported argument placeholders: {sourcePath}, {outputPath}, {scriptPath}. Any other text is passed through literally, so you can add extra fixed arguments." TextWrapping="Wrap" />
                                 <TextBlock Text="Custom customer script bundles can be imported once from the left side of Processing Setups. After import, each processing setup still chooses its own local Script Path from the imported scripts." TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
