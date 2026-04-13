@@ -940,6 +940,9 @@
                                             Click="OpenExternalLink_OnClick" />
                                 </StackPanel>
                                 <TextBlock Classes="muted"
+                                           Text="{Binding SupportDiagnosticsStatus}"
+                                           TextWrapping="Wrap" />
+                                <TextBlock Classes="muted"
                                            Text="If you send error logs for support, please also open a GitHub support issue with a detailed description of the problem so we know what to investigate."
                                            TextWrapping="Wrap" />
                             </StackPanel>

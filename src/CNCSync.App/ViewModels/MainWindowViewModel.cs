@@ -111,6 +111,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private string processingSetupImportStatus = "Paste a script source URL and click Check / Import.";
 
     [ObservableProperty]
+    private string supportDiagnosticsStatus = "No support logs have been sent yet.";
+
+    [ObservableProperty]
     private WatchProfileItemViewModel? selectedWatchProfile;
 
     [ObservableProperty]
@@ -667,31 +670,33 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private Task SendSupportDiagnosticsAsync()
+    private async Task SendSupportDiagnosticsAsync()
     {
         try
         {
+            SupportDiagnosticsStatus = "Sending support logs...";
+            CurrentTask = SupportDiagnosticsStatus;
             var settings = ToSettings();
             var activityTail = ReadLogTail(ActivityLogPath, 200);
             var diagnosticsPath = Path.Combine(Path.GetDirectoryName(SettingsPath) ?? AppContext.BaseDirectory, "diagnostics.log");
             var diagnosticsTail = ReadLogTail(diagnosticsPath, 200);
 
-            var submitted = _usageTelemetryService.SendSupportDiagnostics(settings, activityTail, diagnosticsTail);
+            var submitted = await Task.Run(() => _usageTelemetryService.SendSupportDiagnostics(settings, activityTail, diagnosticsTail));
             var message = submitted
-                ? "Support diagnostics were queued for delivery."
-                : "Support diagnostics could not be queued.";
+                ? "Support logs sent successfully."
+                : "Support logs failed to send.";
 
+            SupportDiagnosticsStatus = message;
             AddActivity(message);
             CurrentTask = message;
         }
         catch (Exception ex)
         {
-            var message = $"Support diagnostics could not be prepared: {ex.Message}";
+            var message = $"Support logs failed to send: {ex.Message}";
+            SupportDiagnosticsStatus = message;
             AddActivity(message);
             CurrentTask = message;
         }
-
-        return Task.CompletedTask;
     }
 
     [RelayCommand(CanExecute = nameof(CanApplyUpdate))]
