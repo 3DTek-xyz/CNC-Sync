@@ -78,10 +78,20 @@ public partial class App : Application
                 $"ProcessingSetups={initialSettings.ProcessingSetups.Count}, WatchProfiles={initialSettings.WatchProfiles.Count}, " +
                 $"LaunchedAtLogin={Program.LaunchedAtLogin}");
             var telemetryService = new PostHogUsageTelemetryService(ResolveAppVersion(), initialSettings);
-            if (telemetryService.CaptureStartupState(initialSettings, Program.LaunchedAtLogin))
+            _ = Task.Run(async () =>
             {
-                settingsStore.SaveAsync(initialSettings).GetAwaiter().GetResult();
-            }
+                try
+                {
+                    if (telemetryService.CaptureStartupState(initialSettings, Program.LaunchedAtLogin))
+                    {
+                        await settingsStore.SaveAsync(initialSettings);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    DiagnosticLog.WriteException("Startup telemetry capture failed.", ex);
+                }
+            });
             themePreferenceService.Apply(initialSettings.ThemePreference);
             _mainWindowViewModel = new MainWindowViewModel(settingsStore, validator, coordinator, destinationService, updateService, loginStartupService, scriptBundleImportService, vpnService, themePreferenceService, telemetryService, initialSettings);
             DiagnosticLog.WriteInfo("Main window view model created.");
