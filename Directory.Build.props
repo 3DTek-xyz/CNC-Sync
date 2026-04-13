@@ -3,10 +3,10 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
-    <Version>1.0.76</Version>
-    <AssemblyVersion>1.0.76.0</AssemblyVersion>
-    <FileVersion>1.0.76.0</FileVersion>
-    <InformationalVersion>1.0.76</InformationalVersion>
+    <Version>1.0.77</Version>
+    <AssemblyVersion>1.0.77.0</AssemblyVersion>
+    <FileVersion>1.0.77.0</FileVersion>
+    <InformationalVersion>1.0.77</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Company>CNC Sync</Company>
     <Product>CNC Sync</Product>

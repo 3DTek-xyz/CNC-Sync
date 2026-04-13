@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using CNCSync.App.ViewModels;
+using CNCSync.Infrastructure.Logging;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -19,6 +20,7 @@ public partial class MainWindow : Window
 
     protected override void OnClosing(WindowClosingEventArgs e)
     {
+        DiagnosticLog.WriteInfo("Main window closing requested.");
         if (Avalonia.Application.Current is CNCSync.App.App app && app.ShouldCancelClose())
         {
             e.Cancel = true;
@@ -137,6 +139,7 @@ public partial class MainWindow : Window
     {
         if (sender is Button { Tag: string url } && !string.IsNullOrWhiteSpace(url))
         {
+            DiagnosticLog.WriteInfo($"Opening external link: {url}");
             OpenUrlInShell(url);
         }
     }
@@ -150,6 +153,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        DiagnosticLog.WriteInfo($"Opening scripts folder: {viewModel.ScriptsPath}");
         OpenFolderInShell(viewModel.ScriptsPath);
     }
 
@@ -164,6 +168,7 @@ public partial class MainWindow : Window
         var appDataFolder = Path.GetDirectoryName(viewModel.SettingsPath);
         if (!string.IsNullOrWhiteSpace(appDataFolder) && Directory.Exists(appDataFolder))
         {
+            DiagnosticLog.WriteInfo($"Opening app data folder: {appDataFolder}");
             OpenFolderInShell(appDataFolder);
         }
     }

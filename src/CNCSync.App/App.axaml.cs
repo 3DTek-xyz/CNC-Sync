@@ -71,7 +71,12 @@ public partial class App : Application
             var coordinator = new SyncCoordinator(folderMonitor, projectProcessor, destinationService, validator);
             DiagnosticLog.Initialize(settingsStore.SettingsFilePath);
             RegisterGlobalExceptionLogging();
+            DiagnosticLog.WriteInfo($"Startup begin. Settings file: {settingsStore.SettingsFilePath}");
             var initialSettings = settingsStore.Load();
+            DiagnosticLog.WriteInfo(
+                $"Startup settings loaded. Destinations={initialSettings.Destinations.Count}, " +
+                $"ProcessingSetups={initialSettings.ProcessingSetups.Count}, WatchProfiles={initialSettings.WatchProfiles.Count}, " +
+                $"LaunchedAtLogin={Program.LaunchedAtLogin}");
             var telemetryService = new PostHogUsageTelemetryService(ResolveAppVersion(), initialSettings);
             if (telemetryService.CaptureStartupState(initialSettings, Program.LaunchedAtLogin))
             {
@@ -79,6 +84,7 @@ public partial class App : Application
             }
             themePreferenceService.Apply(initialSettings.ThemePreference);
             _mainWindowViewModel = new MainWindowViewModel(settingsStore, validator, coordinator, destinationService, updateService, loginStartupService, scriptBundleImportService, vpnService, themePreferenceService, telemetryService, initialSettings);
+            DiagnosticLog.WriteInfo("Main window view model created.");
             coordinator.StatusChanged += OnCoordinatorStatusChanged;
             coordinator.ActivityLogged += OnCoordinatorActivityLogged;
             coordinator.ProcessingCompleted += OnCoordinatorProcessingCompleted;
@@ -90,6 +96,7 @@ public partial class App : Application
             {
                 DataContext = _mainWindowViewModel,
             };
+            DiagnosticLog.WriteInfo("Main window created.");
             _notificationManager = new WindowNotificationManager(desktop.MainWindow)
             {
                 Position = NotificationPosition.TopRight,
@@ -131,6 +138,7 @@ public partial class App : Application
             if (initialSettings.WatchProfiles.Any(profile => profile.Enabled) &&
                 validator.Validate(initialSettings).IsValid)
             {
+                DiagnosticLog.WriteInfo("Queueing automatic monitoring start from startup settings.");
                 Dispatcher.UIThread.Post(() =>
                 {
                     _mainWindowViewModel?.StartMonitoringCommand.Execute(null);
@@ -197,6 +205,7 @@ public partial class App : Application
             return;
         }
 
+        DiagnosticLog.WriteInfo("ShowMainWindow requested from tray or single-instance activation.");
         _desktop.MainWindow.ShowInTaskbar = true;
         _desktop.MainWindow.Show();
         if (_desktop.MainWindow.WindowState == WindowState.Minimized)
@@ -209,6 +218,7 @@ public partial class App : Application
 
     private void OpenMenuItem_OnClick(object? sender, EventArgs e)
     {
+        DiagnosticLog.WriteInfo("Tray menu Open clicked.");
         ShowMainWindow();
     }
 
@@ -230,6 +240,7 @@ public partial class App : Application
 
     private void TrayIcon_OnClicked(object? sender, EventArgs e)
     {
+        DiagnosticLog.WriteInfo("Tray icon clicked.");
         ShowMainWindow();
     }
 
@@ -329,7 +340,9 @@ public partial class App : Application
             return;
         }
 
+        DiagnosticLog.WriteInfo("Startup update check started.");
         var result = await _mainWindowViewModel.CheckForUpdatesOnStartupAsync();
+        DiagnosticLog.WriteInfo($"Startup update check finished. Success={result.Success}, UpdateAvailable={result.UpdateAvailable}");
         if (result.UpdateAvailable)
         {
             _notificationManager?.Show(new Notification(
