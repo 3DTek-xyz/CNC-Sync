@@ -20,6 +20,7 @@ public class AppSettingsTests
         Assert.Equal(10, settings.ScheduledCatchUpIntervalMinutes);
         Assert.Equal(10, profile.StabilityDelaySeconds);
         Assert.Equal(5, profile.StabilityPollingSeconds);
+        Assert.Equal(WatchProfileWorkItemMode.ChangedFilesAndFolders, profile.WorkItemMode);
         Assert.Equal(ftp.Id, profile.DestinationId);
     }
 
@@ -182,6 +183,38 @@ public class AppSettingsTests
 
             Assert.DoesNotContain(result.Errors, error => error.Contains("unique watch folder", StringComparison.OrdinalIgnoreCase));
             Assert.DoesNotContain(result.Errors, error => error.Contains("unique staging folder", StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            Directory.Delete(watchFolder, recursive: true);
+            Directory.Delete(stagingFolder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Validator_WarnsWhenChangedFilesAndFoldersIsCombinedWithReplaceRemoteFolderOnUpload()
+    {
+        var validator = new AppSettingsValidator();
+        var watchFolder = Path.Combine(Path.GetTempPath(), $"cncsync-watch-{Guid.NewGuid():N}");
+        var stagingFolder = Path.Combine(Path.GetTempPath(), $"cncsync-stage-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(watchFolder);
+        Directory.CreateDirectory(stagingFolder);
+
+        try
+        {
+            var settings = AppSettings.CreateDefault();
+            settings.WatchProfiles[0].WatchFolder = watchFolder;
+            settings.WatchProfiles[0].StagingFolder = stagingFolder;
+            settings.WatchProfiles[0].WorkItemMode = WatchProfileWorkItemMode.ChangedFilesAndFolders;
+            settings.Destinations[0].Host = "example.local";
+            settings.Destinations[0].ReplaceRemoteFolderOnUpload = true;
+
+            var result = validator.Validate(settings);
+
+            Assert.True(result.IsValid);
+            Assert.True(result.HasWarnings);
+            Assert.Contains(result.Warnings, warning => warning.Contains("Individual files and folders", StringComparison.OrdinalIgnoreCase));
+            Assert.Contains(result.Warnings, warning => warning.Contains("Grouped project folders", StringComparison.OrdinalIgnoreCase));
         }
         finally
         {

@@ -223,6 +223,7 @@ public partial class MainWindowViewModel : ViewModelBase
     ];
 
     public IReadOnlyList<ProcessingMode> AvailableProcessingModes { get; } = Enum.GetValues<ProcessingMode>();
+    public IReadOnlyList<WatchProfileWorkItemMode> AvailableWatchProfileWorkItemModes { get; } = Enum.GetValues<WatchProfileWorkItemMode>();
 
     public IReadOnlyList<ScriptRunnerMode> AvailableRunnerModes { get; } = Enum.GetValues<ScriptRunnerMode>();
     public IReadOnlyList<DestinationType> AvailableDestinationTypes { get; } = Enum.GetValues<DestinationType>();
@@ -344,6 +345,56 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public bool HasSelectedDestination => SelectedDestination is not null;
 
+    public string SelectedWatchProfileReplaceRemoteWarning
+    {
+        get
+        {
+            if (SelectedWatchProfile is null || SelectedProfileDestination is null)
+            {
+                return string.Empty;
+            }
+
+            if (SelectedWatchProfile.WorkItemMode != WatchProfileWorkItemMode.ChangedFilesAndFolders ||
+                !SelectedProfileDestination.ReplaceRemoteFolderOnUpload)
+            {
+                return string.Empty;
+            }
+
+            return "Warning: This watch profile uses Individual files and folders together with Remove remote folder contents before upload. In a job-folder workflow, a nested child folder may be treated as its own upload target and replace the matching top-level remote folder. Use Grouped project folders when each first-level folder under the watch root should be treated as one job.";
+        }
+    }
+
+    public bool HasSelectedWatchProfileReplaceRemoteWarning => !string.IsNullOrWhiteSpace(SelectedWatchProfileReplaceRemoteWarning);
+
+    public string SelectedDestinationReplaceRemoteWarning
+    {
+        get
+        {
+            if (SelectedDestination is null || !SelectedDestination.ReplaceRemoteFolderOnUpload)
+            {
+                return string.Empty;
+            }
+
+            var matchingProfiles = WatchProfiles
+                .Where(profile =>
+                    profile.Enabled &&
+                    profile.WorkItemMode == WatchProfileWorkItemMode.ChangedFilesAndFolders &&
+                    string.Equals(profile.DestinationId, SelectedDestination.Id, StringComparison.OrdinalIgnoreCase))
+                .Select(profile => profile.DisplayName)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (matchingProfiles.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            return $"Warning: Remove remote folder contents before upload is enabled for this destination, and it is currently used by Individual files and folders watch profile(s): {string.Join(", ", matchingProfiles)}. In a job-folder workflow, nested child folders may be treated as standalone upload targets and replace matching top-level remote folders.";
+        }
+    }
+
+    public bool HasSelectedDestinationReplaceRemoteWarning => !string.IsNullOrWhiteSpace(SelectedDestinationReplaceRemoteWarning);
+
     public bool HasSelectedRemoteBrowserItem => SelectedRemoteBrowserItem is not null;
 
     public bool CanStartMonitoring => !string.Equals(MonitoringStatus, "Running", StringComparison.OrdinalIgnoreCase);
@@ -371,12 +422,18 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(HasSelectedWatchProfile));
         OnPropertyChanged(nameof(SelectedProfileDestination));
         OnPropertyChanged(nameof(SelectedProfileProcessingSetup));
+        OnPropertyChanged(nameof(SelectedWatchProfileReplaceRemoteWarning));
+        OnPropertyChanged(nameof(HasSelectedWatchProfileReplaceRemoteWarning));
     }
 
     partial void OnSelectedDestinationChanged(DestinationItemViewModel? value)
     {
         OnPropertyChanged(nameof(HasSelectedDestination));
         OnPropertyChanged(nameof(SelectedDestinationVpnOption));
+        OnPropertyChanged(nameof(SelectedWatchProfileReplaceRemoteWarning));
+        OnPropertyChanged(nameof(HasSelectedWatchProfileReplaceRemoteWarning));
+        OnPropertyChanged(nameof(SelectedDestinationReplaceRemoteWarning));
+        OnPropertyChanged(nameof(HasSelectedDestinationReplaceRemoteWarning));
         ResetRemoteBrowserState(value);
         DestinationTestStatus = value is null
             ? "Test the selected destination to verify access."
@@ -887,9 +944,18 @@ public partial class MainWindowViewModel : ViewModelBase
             ValidationErrors.Add(error);
         }
 
+        foreach (var warning in validation.Warnings)
+        {
+            ValidationErrors.Add($"Warning: {warning}");
+        }
+
         ValidationSummary = validation.IsValid
-            ? "Settings look valid for monitoring."
-            : $"{validation.Errors.Count} validation issue(s) need attention.";
+            ? validation.HasWarnings
+                ? $"Settings look valid for monitoring, with {validation.Warnings.Count} warning(s)."
+                : "Settings look valid for monitoring."
+            : validation.HasWarnings
+                ? $"{validation.Errors.Count} validation issue(s) need attention, plus {validation.Warnings.Count} warning(s)."
+                : $"{validation.Errors.Count} validation issue(s) need attention.";
     }
 
     private void Apply(AppSettings settings)
@@ -1343,6 +1409,14 @@ public partial class MainWindowViewModel : ViewModelBase
             OnPropertyChanged(nameof(ManualActionSummary));
         }
 
+        if (e.PropertyName is nameof(WatchProfileItemViewModel.WorkItemMode) or nameof(WatchProfileItemViewModel.DestinationId) or nameof(WatchProfileItemViewModel.Enabled) or nameof(WatchProfileItemViewModel.Name))
+        {
+            OnPropertyChanged(nameof(SelectedWatchProfileReplaceRemoteWarning));
+            OnPropertyChanged(nameof(HasSelectedWatchProfileReplaceRemoteWarning));
+            OnPropertyChanged(nameof(SelectedDestinationReplaceRemoteWarning));
+            OnPropertyChanged(nameof(HasSelectedDestinationReplaceRemoteWarning));
+        }
+
         RequestAutoSave(restartMonitoringAfterSave: true);
     }
 
@@ -1351,6 +1425,14 @@ public partial class MainWindowViewModel : ViewModelBase
         if (_isApplyingSettings || e.PropertyName == nameof(DestinationItemViewModel.DisplayName))
         {
             return;
+        }
+
+        if (e.PropertyName is nameof(DestinationItemViewModel.ReplaceRemoteFolderOnUpload) or nameof(DestinationItemViewModel.Id))
+        {
+            OnPropertyChanged(nameof(SelectedWatchProfileReplaceRemoteWarning));
+            OnPropertyChanged(nameof(HasSelectedWatchProfileReplaceRemoteWarning));
+            OnPropertyChanged(nameof(SelectedDestinationReplaceRemoteWarning));
+            OnPropertyChanged(nameof(HasSelectedDestinationReplaceRemoteWarning));
         }
 
         if (ReferenceEquals(sender, SelectedDestination) &&

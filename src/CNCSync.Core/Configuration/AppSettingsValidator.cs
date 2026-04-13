@@ -238,6 +238,20 @@ public sealed class AppSettingsValidator
             {
                 result.Errors.Add($"{label} references a processing setup that does not exist.");
             }
+
+            if (!string.IsNullOrWhiteSpace(profile.DestinationId) &&
+                destinationsById.TryGetValue(profile.DestinationId, out var destination) &&
+                profile.WorkItemMode == WatchProfileWorkItemMode.ChangedFilesAndFolders &&
+                destination.ReplaceRemoteFolderOnUpload)
+            {
+                var destinationName = string.IsNullOrWhiteSpace(destination.Name)
+                    ? "the selected destination"
+                    : $"destination '{destination.Name}'";
+                result.Warnings.Add(
+                    $"{label} uses Work Item Mode 'Individual files and folders' together with Replace Remote Folder On Upload on {destinationName}. " +
+                    "This can be dangerous for job-folder workflows because a nested child folder may be treated as its own upload target and replace the matching top-level remote folder. " +
+                    "Use 'Grouped project folders' when each first-level folder under the watch root should be treated as one job.");
+            }
         }
 
         AddUniqueFolderValidationErrors(

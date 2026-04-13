@@ -80,11 +80,11 @@ Network Share notes:
 - if enabled, `Disconnect VPN When Finished` disconnects a VPN only when CNC Sync had to connect it itself, and only after a short idle window
 - `FTP Data Mode` can be set to:
   - `Auto Passive`
-    - let the FTP client choose passive negotiation automatically
+    - the usual choice
   - `Passive`
-    - force classic `PASV`
+    - useful if uploads start but stall
   - `Active`
-    - ask the server to connect back to this machine
+    - only for servers that need to connect back to your machine
 
 The effective remote path is built from:
 
@@ -203,13 +203,15 @@ Fields:
 - `Profile Name`
   - friendly label for this watch profile
 - `Enabled`
-  - whether this profile participates in monitoring
+  - turns this watch folder on for live monitoring and manual catch-up
 - `Watch Folder`
   - local folder being watched
 - `Staging Folder`
   - local folder used for prepared output
 - `Additional Remote Path`
   - optional path appended under the selected destination base path
+- `Work Item Mode`
+  - controls what the watcher treats as one item of work
 - `Processing Setup`
   - which processing rule to run
 - `Destination`
@@ -218,6 +220,10 @@ Fields:
   - how long files/folders must stay unchanged before processing starts
 - `Stability Check Interval`
   - how often CNC Sync checks pending items to see if they are ready
+
+`Individual files and folders` is the general-purpose mode and reacts to the exact file or folder that changed.
+
+`Grouped project folders` is for job-folder workflows such as Mozaik exports. Use this to tell CNC Sync whether changes should be handled one at a time as individual files and folders, or grouped by the top folder or project folder in which they were made. It is the safer choice when a destination replaces remote folder contents before upload.
 
 ## Monitoring
 

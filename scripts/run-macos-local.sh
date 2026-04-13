@@ -10,6 +10,7 @@ dotnet_install_script="/tmp/dotnet-install.sh"
 dotnet_sdk_version="10.0.201"
 solution_path="$repo_root/CNCSync.sln"
 app_project_path="$repo_root/src/CNCSync.App/CNCSync.App.csproj"
+app_binary_path="$repo_root/src/CNCSync.App/bin/Debug/net10.0/CNCSync"
 run_log_path="/tmp/cnc-sync-macos-local.log"
 
 restore_local_dotnet() {
@@ -39,10 +40,16 @@ export AVALONIA_TELEMETRY_OPTOUT=1
 
 mkdir -p "$dotnet_home"
 
-existing_pids=($(pgrep -f "$app_project_path" || true))
+existing_pids=(
+  $(pgrep -f "$app_project_path" || true)
+  $(pgrep -f "$app_binary_path" || true)
+)
+
 if (( ${#existing_pids[@]} > 0 )); then
-  echo "Stopping existing CNC Sync instance(s): ${existing_pids[*]}"
+  unique_existing_pids=($(printf "%s\n" "${existing_pids[@]}" | awk 'NF && !seen[$0]++'))
+  echo "Stopping existing CNC Sync instance(s): ${unique_existing_pids[*]}"
   pkill -f "$app_project_path" || true
+  pkill -f "$app_binary_path" || true
   sleep 1
 fi
 
@@ -60,8 +67,13 @@ echo "Building CNC Sync..."
   -p:BuildInParallel=false \
   -v q
 
+if [[ ! -x "$app_binary_path" ]]; then
+  echo "Expected built app at $app_binary_path but it was not found."
+  exit 1
+fi
+
 echo "Starting CNC Sync..."
-"$dotnet_bin" run --project "$app_project_path" --no-build >"$run_log_path" 2>&1 &
+"$app_binary_path" >"$run_log_path" 2>&1 &
 app_pid=$!
 
 echo "CNC Sync started in the background."

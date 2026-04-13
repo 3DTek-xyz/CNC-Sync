@@ -149,6 +149,11 @@ public sealed class AppSettings
                 profile.ProcessingSetupId = ProcessingSetups[0].Id;
             }
 
+            if (!Enum.IsDefined(profile.WorkItemMode))
+            {
+                profile.WorkItemMode = WatchProfileWorkItemMode.ChangedFilesAndFolders;
+            }
+
             profile.RemoteSubfolder = NormalizeRemotePath(profile.RemoteSubfolder);
         }
 

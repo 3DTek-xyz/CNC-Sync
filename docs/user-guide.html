@@ -321,7 +321,7 @@
             <li>VPN profiles used by CNC Sync must be able to connect automatically without prompting for user interaction.</li>
             <li>If enabled, <code>Check destination before starting VPN</code> tries the destination directly first and only starts the VPN if direct access fails.</li>
             <li>If enabled, <code>Disconnect VPN When Finished</code> disconnects a VPN only when CNC Sync had to connect it itself, and only after a short idle window.</li>
-            <li><code>FTP Data Mode</code> can be set to <code>Auto Passive</code>, <code>Passive</code>, or <code>Active</code> depending on how fussy the destination FTP server is about data connections.</li>
+            <li><code>FTP Data Mode</code> can be set to <code>Auto Passive</code>, <code>Passive</code>, or <code>Active</code>. Auto Passive is the usual choice, Passive can help if uploads start but stall, and Active is only for servers that need to connect back to your machine.</li>
           </ul>
           <p>The effective remote path is built from the destination base path plus the watch profile additional remote path.</p>
           <p>Example: destination base path <code>/uploads</code> and watch additional remote path <code>/watch1</code> becomes <code>/uploads/watch1</code>.</p>
@@ -383,15 +383,18 @@
           <p>A watch folder ties everything together.</p>
           <ul>
             <li><code>Profile Name</code>: friendly label for this watch profile.</li>
-            <li><code>Enabled</code>: whether this profile participates in monitoring.</li>
+            <li><code>Enabled</code>: turns this watch folder on for live monitoring and manual catch-up.</li>
             <li><code>Watch Folder</code>: local folder being watched.</li>
             <li><code>Staging Folder</code>: local folder used for prepared output.</li>
             <li><code>Additional Remote Path</code>: optional path appended under the selected destination base path.</li>
+            <li><code>Work Item Mode</code>: controls what the watcher treats as one item of work.</li>
             <li><code>Processing Setup</code>: which processing rule to run.</li>
             <li><code>Destination</code>: which destination to upload to.</li>
             <li><code>Required Quiet Time</code>: how long files or folders must stay unchanged before processing starts.</li>
             <li><code>Stability Check Interval</code>: how often CNC Sync checks pending items to see if they are ready.</li>
           </ul>
+          <p><code>Individual files and folders</code> is the general-purpose mode and reacts to the exact file or folder that changed.</p>
+          <p><code>Grouped project folders</code> is for job-folder workflows such as Mozaik exports. Use this to tell CNC Sync whether changes should be handled one at a time as individual files and folders, or grouped by the top folder or project folder in which they were made. It is the safer choice when a destination replaces remote folder contents before upload.</p>
         </section>
 
         <section id="monitoring">
@@ -449,7 +452,7 @@
             <li>a link to open GitHub support issues</li>
           </ul>
           <p>If you send logs for support, also open a GitHub issue with a clear description of the problem so the logs have useful context.</p>
-          <p>If you need project-specific scripts, paid help is available. App bugs or updates that could benefit everyone can be logged as issues for consideration.</p>
+          <p>If you need project-specific scripts, paid help is available. Please open a support issue to request it. App bugs or updates that could benefit everyone can be logged as issues for consideration.</p>
         </section>
 
         <section id="security-prompts">

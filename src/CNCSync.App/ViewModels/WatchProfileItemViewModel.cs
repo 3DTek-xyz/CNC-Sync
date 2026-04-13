@@ -24,6 +24,9 @@ public partial class WatchProfileItemViewModel : ObservableObject
     private string remoteSubfolder = string.Empty;
 
     [ObservableProperty]
+    private WatchProfileWorkItemMode workItemMode = WatchProfileWorkItemMode.ChangedFilesAndFolders;
+
+    [ObservableProperty]
     private string processingSetupId = string.Empty;
 
     [ObservableProperty]
@@ -48,6 +51,7 @@ public partial class WatchProfileItemViewModel : ObservableObject
             WatchFolder = settings.WatchFolder,
             StagingFolder = settings.StagingFolder,
             RemoteSubfolder = settings.RemoteSubfolder,
+            WorkItemMode = settings.WorkItemMode,
             ProcessingSetupId = settings.ProcessingSetupId,
             DestinationId = settings.DestinationId,
             StabilityDelaySeconds = settings.StabilityDelaySeconds,
@@ -63,6 +67,7 @@ public partial class WatchProfileItemViewModel : ObservableObject
             WatchFolder = WatchFolder,
             StagingFolder = StagingFolder,
             RemoteSubfolder = RemoteSubfolder,
+            WorkItemMode = WorkItemMode,
             ProcessingSetupId = ProcessingSetupId,
             DestinationId = DestinationId,
             StabilityDelaySeconds = StabilityDelaySeconds,

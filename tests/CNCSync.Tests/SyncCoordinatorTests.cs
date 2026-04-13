@@ -432,10 +432,10 @@ public sealed class SyncCoordinatorTests
 
     [Theory]
     [InlineData("job-123", "job-123")]
-    [InlineData("job-123/NC/program.nc", "job-123")]
-    [InlineData("job-123/AutoStickLabel/label.jpg", "job-123")]
+    [InlineData("job-123/NC/program.nc", "job-123/NC/program.nc")]
+    [InlineData("job-123/AutoStickLabel/label.jpg", "job-123/AutoStickLabel/label.jpg")]
     [InlineData("top-level-file.nc", "top-level-file.nc")]
-    public void ResolveWorkItemPath_CollapsesNestedChangesToTopLevelWatchItem(string relativePath, string expectedRelativeWorkItem)
+    public void ResolveWorkItemPath_LeavesNestedChangesUntouchedInChangedFilesAndFoldersMode(string relativePath, string expectedRelativeWorkItem)
     {
         var watchFolder = Path.Combine(Path.GetTempPath(), $"cncsync-watch-{Guid.NewGuid():N}");
         Directory.CreateDirectory(watchFolder);
@@ -444,7 +444,42 @@ public sealed class SyncCoordinatorTests
         {
             var profile = new WatchProfileSettings
             {
-                WatchFolder = watchFolder
+                WatchFolder = watchFolder,
+                WorkItemMode = WatchProfileWorkItemMode.ChangedFilesAndFolders
+            };
+
+            var fullPath = Path.Combine(watchFolder, relativePath.Replace('/', Path.DirectorySeparatorChar));
+            var resolved = FileSystemFolderMonitor.ResolveWorkItemPathForTesting(profile, fullPath);
+
+            Assert.Equal(
+                Path.Combine(watchFolder, expectedRelativeWorkItem.Replace('/', Path.DirectorySeparatorChar)),
+                resolved);
+        }
+        finally
+        {
+            if (Directory.Exists(watchFolder))
+            {
+                Directory.Delete(watchFolder, recursive: true);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData("job-123", "job-123")]
+    [InlineData("job-123/NC/program.nc", "job-123")]
+    [InlineData("job-123/AutoStickLabel/label.jpg", "job-123")]
+    [InlineData("top-level-file.nc", "top-level-file.nc")]
+    public void ResolveWorkItemPath_CollapsesNestedChangesToTopLevelWatchItemInTopLevelChildFoldersMode(string relativePath, string expectedRelativeWorkItem)
+    {
+        var watchFolder = Path.Combine(Path.GetTempPath(), $"cncsync-watch-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(watchFolder);
+
+        try
+        {
+            var profile = new WatchProfileSettings
+            {
+                WatchFolder = watchFolder,
+                WorkItemMode = WatchProfileWorkItemMode.TopLevelChildFolders
             };
 
             var fullPath = Path.Combine(watchFolder, relativePath.Replace('/', Path.DirectorySeparatorChar));

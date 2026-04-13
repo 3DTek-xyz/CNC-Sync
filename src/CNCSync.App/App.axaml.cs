@@ -102,8 +102,7 @@ public partial class App : Application
                 {
                     Dispatcher.UIThread.Post(() =>
                     {
-                        _exitRequested = true;
-                        _desktop?.Shutdown();
+                        ShowMainWindow();
                     });
                     return Task.CompletedTask;
                 },

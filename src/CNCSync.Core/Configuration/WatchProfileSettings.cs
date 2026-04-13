@@ -8,6 +8,7 @@ public sealed class WatchProfileSettings
     public string WatchFolder { get; set; } = string.Empty;
     public string StagingFolder { get; set; } = string.Empty;
     public string RemoteSubfolder { get; set; } = string.Empty;
+    public WatchProfileWorkItemMode WorkItemMode { get; set; } = WatchProfileWorkItemMode.ChangedFilesAndFolders;
     public string ProcessingSetupId { get; set; } = string.Empty;
     public string DestinationId { get; set; } = string.Empty;
     public int StabilityDelaySeconds { get; set; } = 10;
@@ -21,6 +22,7 @@ public sealed class WatchProfileSettings
             WatchFolder = string.Empty,
             StagingFolder = string.Empty,
             RemoteSubfolder = string.Empty,
+            WorkItemMode = WatchProfileWorkItemMode.ChangedFilesAndFolders,
             ProcessingSetupId = processingSetupId,
             DestinationId = destinationId,
             StabilityDelaySeconds = 10,

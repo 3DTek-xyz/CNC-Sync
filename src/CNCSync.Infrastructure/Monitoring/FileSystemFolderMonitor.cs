@@ -135,6 +135,11 @@ public sealed class FileSystemFolderMonitor : IFolderMonitor
 
     private static string ResolveWorkItemPath(WatchProfileSettings profile, string path)
     {
+        if (profile.WorkItemMode != WatchProfileWorkItemMode.TopLevelChildFolders)
+        {
+            return path;
+        }
+
         if (string.IsNullOrWhiteSpace(profile.WatchFolder))
         {
             return path;

@@ -19,6 +19,7 @@
         <converters:DestinationTypeDisplayConverter x:Key="DestinationTypeDisplayConverter" />
         <converters:FtpDataModeDisplayConverter x:Key="FtpDataModeDisplayConverter" />
         <converters:SshAuthenticationModeDisplayConverter x:Key="SshAuthenticationModeDisplayConverter" />
+        <converters:WatchProfileWorkItemModeDisplayConverter x:Key="WatchProfileWorkItemModeDisplayConverter" />
         <SolidColorBrush x:Key="AppPageBackgroundBrush" Color="#F4F7FB" />
         <SolidColorBrush x:Key="AppCardBackgroundBrush" Color="#FCFDFE" />
         <SolidColorBrush x:Key="AppCardBorderBrush" Color="#D7E0EA" />
