@@ -34,7 +34,7 @@ $cycFiles = $allFiles | Where-Object {
 
 $latestRevision = $cycFiles |
     ForEach-Object {
-        if ($_.Name -match 'R(\d{2})\.cyc$') {
+        if ($_.Name -match 'R(\d{2})(?:F)?\.cyc$') {
             [int]$matches[1]
         }
     } |
@@ -51,13 +51,13 @@ $revisionTag = "R{0:D2}" -f $latestRevision
 foreach ($file in $allFiles) {
     $extension = $file.Extension.ToLowerInvariant()
 
-    if ($extension -eq ".nc" -and $file.Name -match ([regex]::Escape($revisionTag) + '\.nc$')) {
+    if ($extension -eq ".nc" -and $file.Name -match ([regex]::Escape($revisionTag) + '(?:F)?\.nc$')) {
         Copy-Item -LiteralPath $file.FullName -Destination (Join-Path $ncPath $file.Name) -Force
         continue
     }
 
     if ($extension -eq ".cyc" -and
-        $file.Name -match ([regex]::Escape($revisionTag) + '\.cyc$') -and
+        $file.Name -match ([regex]::Escape($revisionTag) + '(?:F)?\.cyc$') -and
         -not $file.Name.StartsWith("ORIGINAL_", [System.StringComparison]::OrdinalIgnoreCase)) {
         $destination = Join-Path $labelPath $file.Name
         Copy-Item -LiteralPath $file.FullName -Destination $destination -Force

@@ -21,7 +21,7 @@ mkdir -p "$OUTPUT_PATH/NC" "$OUTPUT_PATH/AutoStickLabel"
 latest_revision="$(
   find "$SOURCE_PATH" -type f -iname '*.cyc' ! -iname 'ORIGINAL_*' -print0 |
     perl -0ne '
-      while (/([^\/]+R(\d{2})\.cyc)\0/ig) {
+      while (/([^\/]+R(\d{2})(?:F)?\.cyc)\0/ig) {
         print "$2\n";
       }
     ' |
@@ -43,12 +43,12 @@ while IFS= read -r -d '' file; do
 
   case "$lower_name" in
     *.nc)
-      if [[ "$lower_name" =~ ${lower_revision_tag}\.nc$ ]]; then
+      if [[ "$lower_name" =~ ${lower_revision_tag}(f)?\.nc$ ]]; then
         cp "$file" "$OUTPUT_PATH/NC/$name"
       fi
       ;;
     *.cyc)
-      if [[ "$lower_name" =~ ${lower_revision_tag}\.cyc$ && "$name" != ORIGINAL_* ]]; then
+      if [[ "$lower_name" =~ ${lower_revision_tag}(f)?\.cyc$ && "$name" != ORIGINAL_* ]]; then
         destination="$OUTPUT_PATH/AutoStickLabel/$name"
         cp "$file" "$destination"
         if [[ "$UPDATE_CYC_Y" == "--update-cyc-y" ]]; then

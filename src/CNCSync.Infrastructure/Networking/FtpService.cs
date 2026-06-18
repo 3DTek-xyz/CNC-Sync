@@ -3,13 +3,13 @@ using CNCSync.Core.Services;
 using FluentFTP;
 using FluentFTP.Exceptions;
 using CNCSync.Infrastructure.Logging;
+using System.Net.Sockets;
 
 namespace CNCSync.Infrastructure.Networking;
 
 public sealed class FtpService : IFtpService
 {
     private const int RequestTimeoutMilliseconds = 8000;
-    private const int RetryDelayMilliseconds = 1000;
 
     public async Task<(bool Success, string Message)> TestConnectionAsync(DestinationSettings destination, CancellationToken cancellationToken = default)
     {
@@ -67,47 +67,82 @@ public sealed class FtpService : IFtpService
         try
         {
             var targetRoot = string.IsNullOrWhiteSpace(remoteDirectoryPath) ? string.Empty : remoteDirectoryPath;
-            await using var client = CreateFluentClient(destination);
-            await client.AutoConnect(cancellationToken);
-            DiagnosticLog.WriteInfo($"FTP upload session connected to {destination.Host}:{destination.Port} using {destination.FtpDataMode} mode for local path '{localPath}' and remote root '{(string.IsNullOrWhiteSpace(targetRoot) ? "/" : targetRoot)}'.");
-            await CreateDirectoryChainIfNeededAsync(client, targetRoot, cancellationToken);
-
-            if (isFile)
+            AsyncFtpClient? client = null;
+            async Task DisposeClientAsync()
             {
-                var fileName = Path.GetFileName(localPath);
-                if (FileSystemItemFilter.ShouldIgnoreFileSystemItem(fileName))
+                if (client is null)
                 {
-                    return (true, $"Skipped ignored file: {fileName}");
+                    return;
                 }
 
-                var remoteFilePath = CombineRemotePath(targetRoot, fileName);
-                progress?.Report($"Uploading {fileName}...");
-                await UploadSingleFileWithDiagnosticsAsync(client, localPath, remoteFilePath, fileIndex: 1, totalFiles: 1, cancellationToken);
+                await client.DisposeAsync();
+                client = null;
             }
-            else
-            {
-                var files = FileSystemItemFilter.EnumerateIncludedFiles(localPath).ToList();
-                DiagnosticLog.WriteInfo($"FTP upload discovered {files.Count} file(s) under '{localPath}'.");
-                for (var index = 0; index < files.Count; index++)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var file = files[index];
 
-                    var relativePath = Path.GetRelativePath(localPath, file).Replace('\\', '/');
-                    var remoteFilePath = CombineRemotePath(targetRoot, relativePath);
-                    var remoteDir = Path.GetDirectoryName(remoteFilePath)?.Replace('\\', '/');
-                    if (!string.IsNullOrWhiteSpace(remoteDir))
+            async Task<AsyncFtpClient> GetClientForUploadAttemptAsync(int attemptNumber, CancellationToken token)
+            {
+                if (attemptNumber == 1 && client is not null)
+                {
+                    return client;
+                }
+
+                await DisposeClientAsync();
+                client = await ConnectClientAsync(destination, token);
+                if (attemptNumber > 1)
+                {
+                    DiagnosticLog.WriteInfo($"FTP upload reconnected to {destination.Host}:{destination.Port} for retry attempt {attemptNumber - 1}/{FtpUploadRetryPolicy.MaxRetries}.");
+                }
+
+                return client;
+            }
+
+            try
+            {
+                client = await ConnectClientAsync(destination, cancellationToken);
+                DiagnosticLog.WriteInfo($"FTP upload session connected to {destination.Host}:{destination.Port} using {destination.FtpDataMode} mode for local path '{localPath}' and remote root '{(string.IsNullOrWhiteSpace(targetRoot) ? "/" : targetRoot)}'.");
+                await CreateDirectoryChainIfNeededAsync(client, targetRoot, cancellationToken);
+
+                if (isFile)
+                {
+                    var fileName = Path.GetFileName(localPath);
+                    if (FileSystemItemFilter.ShouldIgnoreFileSystemItem(fileName))
                     {
-                        await CreateDirectoryChainIfNeededAsync(client, remoteDir, cancellationToken);
+                        return (true, $"Skipped ignored file: {fileName}");
                     }
 
-                    progress?.Report($"Uploading {index + 1}/{files.Count}: {relativePath}");
-                    await UploadSingleFileWithDiagnosticsAsync(client, file, remoteFilePath, index + 1, files.Count, cancellationToken);
+                    var remoteFilePath = CombineRemotePath(targetRoot, fileName);
+                    progress?.Report($"Uploading {fileName}...");
+                    await UploadSingleFileWithDiagnosticsAsync(GetClientForUploadAttemptAsync, DisposeClientAsync, localPath, remoteFilePath, fileIndex: 1, totalFiles: 1, cancellationToken);
                 }
-            }
+                else
+                {
+                    var files = FileSystemItemFilter.EnumerateIncludedFiles(localPath).ToList();
+                    DiagnosticLog.WriteInfo($"FTP upload discovered {files.Count} file(s) under '{localPath}'.");
+                    for (var index = 0; index < files.Count; index++)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var file = files[index];
 
-            var targetDescription = string.IsNullOrWhiteSpace(targetRoot) ? "/" : targetRoot;
-            return (true, $"FTP upload completed to {targetDescription}: {localPath}");
+                        var relativePath = Path.GetRelativePath(localPath, file).Replace('\\', '/');
+                        var remoteFilePath = CombineRemotePath(targetRoot, relativePath);
+                        var remoteDir = Path.GetDirectoryName(remoteFilePath)?.Replace('\\', '/');
+                        if (!string.IsNullOrWhiteSpace(remoteDir))
+                        {
+                            await CreateDirectoryChainIfNeededAsync(client, remoteDir, cancellationToken);
+                        }
+
+                        progress?.Report($"Uploading {index + 1}/{files.Count}: {relativePath}");
+                        await UploadSingleFileWithDiagnosticsAsync(GetClientForUploadAttemptAsync, DisposeClientAsync, file, remoteFilePath, index + 1, files.Count, cancellationToken);
+                    }
+                }
+
+                var targetDescription = string.IsNullOrWhiteSpace(targetRoot) ? "/" : targetRoot;
+                return (true, $"FTP upload completed to {targetDescription}: {localPath}");
+            }
+            finally
+            {
+                await DisposeClientAsync();
+            }
         }
         catch (TimeoutException)
         {
@@ -318,8 +353,24 @@ public sealed class FtpService : IFtpService
         return client;
     }
 
+    private static async Task<AsyncFtpClient> ConnectClientAsync(DestinationSettings destination, CancellationToken cancellationToken)
+    {
+        var client = CreateFluentClient(destination);
+        try
+        {
+            await client.AutoConnect(cancellationToken);
+            return client;
+        }
+        catch
+        {
+            await client.DisposeAsync();
+            throw;
+        }
+    }
+
     private static async Task UploadSingleFileWithDiagnosticsAsync(
-        AsyncFtpClient client,
+        Func<int, CancellationToken, Task<AsyncFtpClient>> getClientForAttemptAsync,
+        Func<Task> discardClientAsync,
         string localFilePath,
         string remoteFilePath,
         int fileIndex,
@@ -330,35 +381,128 @@ public sealed class FtpService : IFtpService
         var fileSize = new FileInfo(localFilePath).Length;
         DiagnosticLog.WriteInfo($"FTP upload starting file {fileIndex}/{totalFiles}: local='{localFilePath}', remote='{remoteFilePath}', size={fileSize} bytes.");
 
-        try
+        await FtpUploadRetryPolicy.ExecuteAsync(
+            async (attemptNumber, token) =>
+            {
+                var client = await getClientForAttemptAsync(attemptNumber, token);
+                await client.UploadFile(localFilePath, fluentRemotePath, FtpRemoteExists.Overwrite, createRemoteDir: true, token: token);
+                var retryDescription = attemptNumber == 1 ? string.Empty : $" after retry {attemptNumber - 1}/{FtpUploadRetryPolicy.MaxRetries}";
+                DiagnosticLog.WriteInfo($"FTP upload completed file {fileIndex}/{totalFiles}{retryDescription}: remote='{remoteFilePath}'.");
+            },
+            onRetryAsync: async (retryAttempt, ex, delay, _) =>
+            {
+                DiagnosticLog.WriteException($"FTP upload failed for file {fileIndex}/{totalFiles}: local='{localFilePath}', remote='{remoteFilePath}'. Retrying {retryAttempt}/{FtpUploadRetryPolicy.MaxRetries} in {delay.TotalSeconds:0.#}s.", ex);
+                await discardClientAsync();
+            },
+            cancellationToken: cancellationToken);
+    }
+
+    private static bool IsRetryable550(Exception exception) => FtpUploadRetryPolicy.IsRetryable550(exception);
+
+    private static string ToFluentBrowserPath(string? remotePath)
+    {
+        if (string.IsNullOrWhiteSpace(remotePath) || remotePath == "/")
         {
-            await client.UploadFile(localFilePath, fluentRemotePath, FtpRemoteExists.Overwrite, createRemoteDir: true, token: cancellationToken);
-            DiagnosticLog.WriteInfo($"FTP upload completed file {fileIndex}/{totalFiles}: remote='{remoteFilePath}'.");
+            return ".";
         }
-        catch (Exception ex) when (IsRetryable550(ex))
+
+        return remotePath.Trim().Replace('\\', '/').TrimStart('/');
+    }
+
+}
+
+internal static class FtpUploadRetryPolicy
+{
+    internal const int MaxRetries = 5;
+
+    private static readonly TimeSpan[] RetryDelays =
+    [
+        TimeSpan.FromSeconds(1),
+        TimeSpan.FromSeconds(2),
+        TimeSpan.FromSeconds(4),
+        TimeSpan.FromSeconds(8),
+        TimeSpan.FromSeconds(15)
+    ];
+
+    internal static async Task ExecuteAsync(
+        Func<int, CancellationToken, Task> attemptAsync,
+        CancellationToken cancellationToken = default,
+        Func<int, Exception, TimeSpan, CancellationToken, Task>? onRetryAsync = null,
+        Func<TimeSpan, CancellationToken, Task>? delayAsync = null)
+    {
+        ArgumentNullException.ThrowIfNull(attemptAsync);
+
+        delayAsync ??= Task.Delay;
+
+        for (var attemptNumber = 1; ; attemptNumber++)
         {
-            DiagnosticLog.WriteException($"FTP upload got retryable 550 for file {fileIndex}/{totalFiles}: local='{localFilePath}', remote='{remoteFilePath}'. Waiting {RetryDelayMilliseconds}ms before retry.", ex);
-            await Task.Delay(RetryDelayMilliseconds, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
 
             try
             {
-                await client.UploadFile(localFilePath, fluentRemotePath, FtpRemoteExists.Overwrite, createRemoteDir: true, token: cancellationToken);
-                DiagnosticLog.WriteInfo($"FTP upload retry succeeded for file {fileIndex}/{totalFiles}: remote='{remoteFilePath}'.");
+                await attemptAsync(attemptNumber, cancellationToken);
+                return;
             }
-            catch (Exception retryEx)
+            catch (Exception ex) when (ShouldRetry(ex, attemptNumber))
             {
-                DiagnosticLog.WriteException($"FTP upload retry failed for file {fileIndex}/{totalFiles}: local='{localFilePath}', remote='{remoteFilePath}'.", retryEx);
-                throw;
+                var retryAttempt = attemptNumber;
+                var delay = GetDelay(retryAttempt);
+                if (onRetryAsync is not null)
+                {
+                    await onRetryAsync(retryAttempt, ex, delay, cancellationToken);
+                }
+
+                await delayAsync(delay, cancellationToken);
             }
-        }
-        catch (Exception ex)
-        {
-            DiagnosticLog.WriteException($"FTP upload failed for file {fileIndex}/{totalFiles}: local='{localFilePath}', remote='{remoteFilePath}'.", ex);
-            throw;
         }
     }
 
-    private static bool IsRetryable550(Exception exception)
+    internal static bool IsRetryable(Exception exception)
+    {
+        if (exception is OperationCanceledException)
+        {
+            return false;
+        }
+
+        if (exception is FtpAuthenticationException
+            or FtpHashUnsupportedException
+            or FtpInvalidCertificateException
+            or FtpProtocolUnsupportedException
+            or FtpSecurityNotAvailableException)
+        {
+            return false;
+        }
+
+        if (exception is TimeoutException or IOException or SocketException)
+        {
+            return true;
+        }
+
+        if (exception is FtpCommandException ftpCommandException)
+        {
+            return IsRetryableFtpCommand(ftpCommandException);
+        }
+
+        if (exception is FtpException ftpException)
+        {
+            return ftpException.InnerException is null || IsRetryable(ftpException.InnerException);
+        }
+
+        return false;
+    }
+
+    private static bool IsRetryableFtpCommand(FtpCommandException exception)
+    {
+        if (string.Equals(exception.CompletionCode, "550", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return !string.IsNullOrWhiteSpace(exception.CompletionCode) &&
+            exception.CompletionCode.StartsWith('4');
+    }
+
+    internal static bool IsRetryable550(Exception exception)
     {
         if (exception is FtpCommandException ftpCommandException)
         {
@@ -373,14 +517,12 @@ public sealed class FtpService : IFtpService
         return false;
     }
 
-    private static string ToFluentBrowserPath(string? remotePath)
+    private static TimeSpan GetDelay(int retryAttempt)
     {
-        if (string.IsNullOrWhiteSpace(remotePath) || remotePath == "/")
-        {
-            return ".";
-        }
-
-        return remotePath.Trim().Replace('\\', '/').TrimStart('/');
+        var delayIndex = Math.Clamp(retryAttempt - 1, 0, RetryDelays.Length - 1);
+        return RetryDelays[delayIndex];
     }
 
+    private static bool ShouldRetry(Exception exception, int failedAttemptNumber) =>
+        failedAttemptNumber <= MaxRetries && IsRetryable(exception);
 }
