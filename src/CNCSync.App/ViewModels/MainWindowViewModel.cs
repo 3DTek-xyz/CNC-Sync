@@ -281,9 +281,10 @@ public partial class MainWindowViewModel : ViewModelBase
     public IReadOnlyList<AppThemePreference> AvailableThemePreferences { get; } = Enum.GetValues<AppThemePreference>();
 
     public string AppVersion => ResolvedAppVersion;
-    public string ProjectSiteUrl => "https://procutsuite.com";
-    public string ReleaseNotesUrl => "https://github.com/3DTek-xyz/CNC-Sync/releases";
-    public string SupportIssuesUrl => "https://github.com/3DTek-xyz/CNC-Sync/issues";
+    public string ProjectSiteUrl => DesktopAppLinks.ProjectSiteUrl;
+    public string ProCutSuiteDashboardUrl => DesktopAppLinks.ProCutSuiteDashboardUrl;
+    public string ReleaseNotesUrl => DesktopAppLinks.ReleaseNotesUrl;
+    public string SupportIssuesUrl => DesktopAppLinks.SupportIssuesUrl;
     public string ProCutApiKeyStatus => string.IsNullOrWhiteSpace(ProCutApiKey)
         ? "No ProCut Suite API key is saved."
         : "ProCut Suite API key is saved securely.";
@@ -726,7 +727,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         await using var stream = File.OpenRead(filePath);
         var imported = await JsonSerializer.DeserializeAsync<AppSettings>(stream);
-        var normalized = (imported ?? AppSettings.CreateDefault()).Normalize();
+        var normalized = AppSettings.PrepareImported(imported, ProCutApiKey);
         Apply(normalized);
         await SaveCurrentSettingsAsync(CancellationToken.None);
         SaveMessage = $"Settings imported from {filePath}.";

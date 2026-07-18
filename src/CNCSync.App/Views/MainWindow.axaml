@@ -1159,6 +1159,10 @@
                                             Tag="{Binding ProjectSiteUrl}"
                                             Click="OpenExternalLink_OnClick" />
                                     <Button Classes="subtle"
+                                            Content="Open ProCut Suite"
+                                            Tag="{Binding ProCutSuiteDashboardUrl}"
+                                            Click="OpenExternalLink_OnClick" />
+                                    <Button Classes="subtle"
                                             Content="Open Update Log"
                                             Tag="{Binding ReleaseNotesUrl}"
                                             Click="OpenExternalLink_OnClick" />

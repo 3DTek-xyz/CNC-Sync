@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="${ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
-VERSION="${VERSION:-1.0.83}"
+VERSION="${VERSION:-1.0.84}"
 BUILD_DIR="${BUILD_DIR:-$ROOT/src/CNCSync.App/bin/Release/net10.0/linux-x64/publish}"
 DIST_DIR="${DIST_DIR:-$ROOT/dist/linux}"
 PACKAGE_DIR="$DIST_DIR/procut-suite-desktop-linux-x64-v$VERSION"

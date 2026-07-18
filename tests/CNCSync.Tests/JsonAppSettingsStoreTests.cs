@@ -51,6 +51,42 @@ public sealed class JsonAppSettingsStoreTests
     }
 
     [Fact]
+    public async Task LoadAsync_SeedsProCutApiImportTemplateBesideSettingsFile()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"cncsync-store-{Guid.NewGuid():N}");
+        var settingsDirectory = Path.Combine(root, "current");
+        var legacyDirectory = Path.Combine(root, "legacy");
+        var bundledScriptsDirectory = Path.Combine(root, "bundled");
+
+        try
+        {
+            var store = new JsonAppSettingsStore(settingsDirectory, legacyDirectory, bundledScriptsDirectory, new InMemorySecretStore());
+            await store.LoadAsync();
+
+            var templatePath = Path.Combine(settingsDirectory, JsonAppSettingsStore.ProCutApiImportTemplateFileName);
+            Assert.True(File.Exists(templatePath));
+
+            var json = await File.ReadAllTextAsync(templatePath);
+            var template = JsonSerializer.Deserialize<AppSettings>(json);
+            Assert.NotNull(template);
+            template.Normalize();
+
+            Assert.Equal(ProcessingMode.ProCutApi, template.ProcessingSetups[0].Mode);
+            Assert.Equal(DestinationType.LocalFolder, template.Destinations[0].Type);
+            Assert.Equal(template.Destinations[0].Id, template.WatchProfiles[0].DestinationId);
+            Assert.Equal(template.ProcessingSetups[0].Id, template.WatchProfiles[0].ProcessingSetupId);
+            Assert.DoesNotContain(TestSecrets.ProCutApiSecret, json, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task LoadAsync_DoesNotLetLegacySettingsOverwriteExistingCurrentSettings()
     {
         var root = Path.Combine(Path.GetTempPath(), $"cncsync-store-{Guid.NewGuid():N}");

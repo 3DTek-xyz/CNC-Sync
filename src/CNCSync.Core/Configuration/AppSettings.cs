@@ -40,6 +40,89 @@ public sealed class AppSettings
         };
     }
 
+    public static AppSettings CreateProCutApiImportTemplate()
+    {
+        const string destinationId = "procut-suite-api-output-folder";
+        const string processingSetupId = "procut-suite-api-gcode-processing";
+
+        return new AppSettings
+        {
+            LaunchAtLogin = false,
+            StartMinimized = true,
+            ThemePreference = AppThemePreference.Light,
+            TelemetryInstallId = string.Empty,
+            ScheduledCatchUpEnabled = false,
+            ScheduledCatchUpIntervalMinutes = 10,
+            CustomScriptSourceUrl = string.Empty,
+            ProCutApi = new ProCutApiSettings
+            {
+                BaseUrl = "https://procutsuite.com",
+                ApiKey = string.Empty
+            },
+            Destinations =
+            [
+                new DestinationSettings
+                {
+                    Id = destinationId,
+                    Name = "ProCut Suite API Output Folder",
+                    Type = DestinationType.LocalFolder,
+                    Host = string.Empty,
+                    Port = 21,
+                    LocalRootPath = "/CHANGE-ME/ProCutSuite/Output",
+                    AutoUpload = true,
+                    ReplaceRemoteFolderOnUpload = false
+                }
+            ],
+            ProcessingSetups =
+            [
+                new ProcessingSetupSettings
+                {
+                    Id = processingSetupId,
+                    Name = "ProCut Suite API G-code Processing",
+                    Mode = ProcessingMode.ProCutApi,
+                    ScriptPath = string.Empty,
+                    RunnerMode = ScriptRunnerMode.Auto,
+                    ArgumentsTemplate = "\"{sourcePath}\" \"{outputPath}\"",
+                    ProCutServiceId = "gcode_processing",
+                    ProCutApiEndpoint = "/api/external/gcode/process",
+                    ProCutArcFittingEnabled = false,
+                    ProCutLineJoinerEnabled = true,
+                    ProCutArcJoinerEnabled = false,
+                    ProCutCornerSmoothEnabled = true
+                }
+            ],
+            WatchProfiles =
+            [
+                new WatchProfileSettings
+                {
+                    Id = "procut-suite-api-watch-folder",
+                    Name = "ProCut Suite API Input",
+                    Enabled = true,
+                    WatchFolder = "/CHANGE-ME/ProCutSuite/Input",
+                    StagingFolder = "/CHANGE-ME/ProCutSuite/Staging",
+                    RemoteSubfolder = string.Empty,
+                    WorkItemMode = WatchProfileWorkItemMode.ChangedFilesAndFolders,
+                    ProcessingSetupId = processingSetupId,
+                    DestinationId = destinationId,
+                    StabilityDelaySeconds = 10,
+                    StabilityPollingSeconds = 5
+                }
+            ]
+        };
+    }
+
+    public static AppSettings PrepareImported(AppSettings? imported, string existingProCutApiKey)
+    {
+        var normalized = (imported ?? CreateDefault()).Normalize();
+        if (string.IsNullOrWhiteSpace(normalized.ProCutApi.ApiKey) &&
+            !string.IsNullOrWhiteSpace(existingProCutApiKey))
+        {
+            normalized.ProCutApi.ApiKey = existingProCutApiKey.Trim();
+        }
+
+        return normalized;
+    }
+
     public AppSettings Normalize()
     {
         Destinations ??= [];

@@ -5,6 +5,8 @@ namespace CNCSync.Infrastructure.Configuration;
 
 public sealed class JsonAppSettingsStore : IAppSettingsStore
 {
+    public const string ProCutApiImportTemplateFileName = "Settings for ProCut Suite API.json";
+
     private static readonly string[] ObsoleteBundledScriptRelativePaths =
     [
         Path.Combine("shared", "cbwss_mozaik_example.py")
@@ -54,6 +56,7 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
         Directory.CreateDirectory(_settingsDirectory);
         Directory.CreateDirectory(ScriptsDirectoryPath);
         SeedBundledScripts();
+        SeedSettingsTemplates();
 
         if (!File.Exists(SettingsFilePath))
         {
@@ -89,6 +92,7 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
         Directory.CreateDirectory(_settingsDirectory);
         Directory.CreateDirectory(ScriptsDirectoryPath);
         SeedBundledScripts();
+        SeedSettingsTemplates();
         PersistDestinationPasswords(settings);
         PersistProCutApiKey(settings);
 
@@ -120,6 +124,14 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
         }
 
         RemoveObsoleteBundledScripts();
+    }
+
+    private void SeedSettingsTemplates()
+    {
+        Directory.CreateDirectory(_settingsDirectory);
+        var templatePath = Path.Combine(_settingsDirectory, ProCutApiImportTemplateFileName);
+        var template = AppSettings.CreateProCutApiImportTemplate();
+        RewriteSettingsTemplate(templatePath, template);
     }
 
     private void RemoveObsoleteBundledScripts()
@@ -317,7 +329,7 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
             JsonSerializer.Serialize(stream, settings, JsonOptions);
         }
 
-        MoveTempSettingsIntoPlace(tempPath);
+        MoveTempFileIntoPlace(tempPath, SettingsFilePath);
     }
 
     private async Task RewriteSettingsFileAsync(AppSettings settings, CancellationToken cancellationToken)
@@ -329,18 +341,30 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
             await JsonSerializer.SerializeAsync(stream, settings, JsonOptions, cancellationToken);
         }
 
-        MoveTempSettingsIntoPlace(tempPath);
+        MoveTempFileIntoPlace(tempPath, SettingsFilePath);
     }
 
-    private void MoveTempSettingsIntoPlace(string tempPath)
+    private void RewriteSettingsTemplate(string templatePath, AppSettings settings)
     {
-        if (File.Exists(SettingsFilePath))
+        var sanitizedSettings = CreateSanitizedSettingsCopy(settings);
+        var tempPath = templatePath + ".tmp";
+        using (var stream = File.Create(tempPath))
         {
-            File.Move(tempPath, SettingsFilePath, overwrite: true);
+            JsonSerializer.Serialize(stream, sanitizedSettings, JsonOptions);
+        }
+
+        MoveTempFileIntoPlace(tempPath, templatePath);
+    }
+
+    private static void MoveTempFileIntoPlace(string tempPath, string destinationPath)
+    {
+        if (File.Exists(destinationPath))
+        {
+            File.Move(tempPath, destinationPath, overwrite: true);
         }
         else
         {
-            File.Move(tempPath, SettingsFilePath);
+            File.Move(tempPath, destinationPath);
         }
     }
 }

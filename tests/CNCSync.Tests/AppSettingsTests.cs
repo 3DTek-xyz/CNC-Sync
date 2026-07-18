@@ -53,6 +53,51 @@ public class AppSettingsTests
     }
 
     [Fact]
+    public void DesktopAppLinks_SeparateDesktopProjectDocsFromProCutSuiteDashboard()
+    {
+        Assert.Equal("https://3dtek-xyz.github.io/CNC-Sync/", DesktopAppLinks.ProjectSiteUrl);
+        Assert.Equal("https://procutsuite.com", DesktopAppLinks.ProCutSuiteDashboardUrl);
+        Assert.NotEqual(DesktopAppLinks.ProjectSiteUrl, DesktopAppLinks.ProCutSuiteDashboardUrl);
+    }
+
+    [Fact]
+    public void ProCutApiImportTemplate_ConfiguresLinkedWatchProcessingAndDestination()
+    {
+        var settings = AppSettings.CreateProCutApiImportTemplate();
+        var destination = Assert.Single(settings.Destinations);
+        var processingSetup = Assert.Single(settings.ProcessingSetups);
+        var profile = Assert.Single(settings.WatchProfiles);
+
+        Assert.Equal("https://procutsuite.com", settings.ProCutApi.BaseUrl);
+        Assert.Equal(string.Empty, settings.ProCutApi.ApiKey);
+        Assert.Equal(string.Empty, settings.TelemetryInstallId);
+        Assert.Equal(DestinationType.LocalFolder, destination.Type);
+        Assert.Equal("ProCut Suite API Output Folder", destination.Name);
+        Assert.Equal(ProcessingMode.ProCutApi, processingSetup.Mode);
+        Assert.Equal("gcode_processing", processingSetup.ProCutServiceId);
+        Assert.Equal("/api/external/gcode/process", processingSetup.ProCutApiEndpoint);
+        Assert.True(processingSetup.ProCutCornerSmoothEnabled);
+        Assert.True(processingSetup.ProCutLineJoinerEnabled);
+        Assert.False(processingSetup.ProCutArcFittingEnabled);
+        Assert.False(processingSetup.ProCutArcJoinerEnabled);
+        Assert.Equal(destination.Id, profile.DestinationId);
+        Assert.Equal(processingSetup.Id, profile.ProcessingSetupId);
+        Assert.Contains("CHANGE-ME", profile.WatchFolder, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("CHANGE-ME", profile.StagingFolder, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("CHANGE-ME", destination.LocalRootPath, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void PrepareImportedSettings_PreservesExistingProCutApiKeyWhenImportDoesNotContainOne()
+    {
+        var imported = AppSettings.CreateProCutApiImportTemplate();
+
+        var prepared = AppSettings.PrepareImported(imported, TestSecrets.ProCutApiSecret);
+
+        Assert.Equal(TestSecrets.ProCutApiSecret, prepared.ProCutApi.ApiKey);
+    }
+
+    [Fact]
     public void Validator_RejectsProCutApiProcessingWithoutApiKey()
     {
         var validator = new AppSettingsValidator();

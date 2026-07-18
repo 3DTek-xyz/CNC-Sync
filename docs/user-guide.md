@@ -33,6 +33,7 @@ Use `App Settings` for behaviour that applies to the whole app:
   - start hidden/minimized when supported on the current platform
 - `Import Settings...`
   - browse for a `settings.json` file from another machine or previous installation and import it into the current app profile
+  - the app also seeds `Settings for ProCut Suite API.json` beside the live settings file as a starting template
 - `Validate Settings`
   - check the current configuration for missing or invalid items
 - `ProCut Suite API`
@@ -207,6 +208,7 @@ Before using it:
 - set `Base URL` to `https://procutsuite.com` unless testing another server
 - paste the API key into `API Key`
 - save settings
+- optionally import `Settings for ProCut Suite API.json` from the app settings folder, then update the watch, staging, and output folders
 
 In a processing setup:
 
