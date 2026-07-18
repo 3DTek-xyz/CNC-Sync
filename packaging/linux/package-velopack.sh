@@ -3,15 +3,15 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="${ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
-VERSION="${VERSION:-0.1.11}"
+VERSION="${VERSION:-1.0.83}"
 RUNTIME="${RUNTIME:-linux-x64}"
 BUILD_DIR="${BUILD_DIR:-$ROOT/src/CNCSync.App/bin/Release/net10.0/$RUNTIME/publish}"
 DIST_DIR="${DIST_DIR:-$ROOT/dist/linux/velopack-$RUNTIME}"
-PACK_ID="${PACK_ID:-3DTek.CNCSync}"
+PACK_ID="${PACK_ID:-3DTek.ProCutSuiteDesktop}"
 MAIN_EXE="${MAIN_EXE:-CNCSync}"
-PACK_TITLE="${PACK_TITLE:-CNC Sync}"
+PACK_TITLE="${PACK_TITLE:-ProCut Suite Desktop}"
 PACK_AUTHORS="${PACK_AUTHORS:-3DTek}"
-ICON_PATH="${ICON_PATH:-$ROOT/src/CNCSync.App/Assets/cnc-sync-tray.png}"
+ICON_PATH="${ICON_PATH:-$ROOT/src/CNCSync.App/Assets/procut-suite-tray.png}"
 VPK_BIN="${VPK_BIN:-vpk}"
 
 rm -rf "$DIST_DIR"
@@ -31,7 +31,7 @@ mkdir -p "$DIST_DIR"
 
 appimage_file="$(find "$DIST_DIR" -maxdepth 1 -name '*.AppImage' | head -n 1)"
 if [[ -n "$appimage_file" ]]; then
-  cp "$appimage_file" "$DIST_DIR/cnc-sync-linux-x64-latest.AppImage"
+  cp "$appimage_file" "$DIST_DIR/procut-suite-desktop-linux-x64-latest.AppImage"
 fi
 
 echo "Packaged Velopack Linux release at:"

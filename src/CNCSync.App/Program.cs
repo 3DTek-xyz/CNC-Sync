@@ -83,7 +83,7 @@ sealed class Program
     private static bool TryAcquireMutex()
     {
         _singleInstanceMutex?.Dispose();
-        _singleInstanceMutex = new Mutex(true, @"Global\3DTek.CNCSync", out var createdNew);
+        _singleInstanceMutex = new Mutex(true, @"Global\3DTek.ProCutSuiteDesktop", out var createdNew);
         if (createdNew)
         {
             return true;

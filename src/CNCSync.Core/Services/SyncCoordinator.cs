@@ -58,6 +58,7 @@ public sealed class SyncCoordinator : ISyncCoordinator
         WatchProfileSettings profile,
         DestinationSettings? destination,
         ProcessingSetupSettings processingSetup,
+        ProCutApiSettings? proCutApi = null,
         CancellationToken cancellationToken = default)
     {
         return await ExecuteProcessAsync(
@@ -65,6 +66,7 @@ public sealed class SyncCoordinator : ISyncCoordinator
             profile,
             destination,
             processingSetup,
+            proCutApi ?? _currentSettings?.ProCutApi,
             destination is not null,
             cancellationToken);
     }
@@ -73,6 +75,7 @@ public sealed class SyncCoordinator : ISyncCoordinator
         WatchProfileSettings profile,
         DestinationSettings destination,
         ProcessingSetupSettings processingSetup,
+        ProCutApiSettings? proCutApi = null,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(profile.WatchFolder))
@@ -111,7 +114,7 @@ public sealed class SyncCoordinator : ISyncCoordinator
             foreach (var pendingItem in pendingItems)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var result = await UploadPendingItemAsync(pendingItem, profile, destination, processingSetup, cancellationToken);
+                var result = await UploadPendingItemAsync(pendingItem, profile, destination, processingSetup, proCutApi, cancellationToken);
                 
                 if (result.Success)
                 {
@@ -145,6 +148,7 @@ public sealed class SyncCoordinator : ISyncCoordinator
         WatchProfileSettings profile,
         DestinationSettings destination,
         ProcessingSetupSettings processingSetup,
+        ProCutApiSettings? proCutApi,
         CancellationToken cancellationToken)
     {
         var sourceDisplayName = Path.GetFileName(stagedPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
@@ -198,6 +202,7 @@ public sealed class SyncCoordinator : ISyncCoordinator
         WatchProfileSettings profile,
         DestinationSettings? destination,
         ProcessingSetupSettings? processingSetup,
+        ProCutApiSettings? proCutApi,
         bool shouldUpload,
         CancellationToken cancellationToken)
     {
@@ -228,7 +233,12 @@ public sealed class SyncCoordinator : ISyncCoordinator
                 Mode = ProcessingMode.DefaultUpload
             };
 
-            var result = await _projectProcessor.ProcessAsync(path, profile, effectiveProcessingSetup, cancellationToken);
+            var result = await _projectProcessor.ProcessAsync(path, profile, effectiveProcessingSetup, proCutApi, cancellationToken);
+            foreach (var activityMessage in result.ActivityMessages)
+            {
+                LogActivity(activityMessage, profile.Name);
+            }
+
             LogActivity(result.Message, profile.Name);
 
             if (result.Success && shouldUpload && destination is not null)
@@ -306,6 +316,7 @@ public sealed class SyncCoordinator : ISyncCoordinator
                 StartedAtUtc = result.StartedAtUtc,
                 FinishedAtUtc = DateTime.UtcNow,
                 ProcessedFiles = result.ProcessedFiles,
+                ActivityMessages = result.ActivityMessages,
                 Errors = result.Errors.Concat([uploadResult.Message]).ToList()
             };
 
@@ -478,7 +489,12 @@ public sealed class SyncCoordinator : ISyncCoordinator
         {
             try
             {
-                await ProcessPathAsync(workItem.Path, workItem.Profile, destination, processingSetup ?? ProcessingSetupSettings.CreateDefault("Default Processing"));
+                await ProcessPathAsync(
+                    workItem.Path,
+                    workItem.Profile,
+                    destination,
+                    processingSetup ?? ProcessingSetupSettings.CreateDefault("Default Processing"),
+                    settings.ProCutApi);
             }
             catch (Exception ex)
             {

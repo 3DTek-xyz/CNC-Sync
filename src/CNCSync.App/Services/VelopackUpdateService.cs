@@ -39,7 +39,7 @@ public sealed class VelopackUpdateService : IAppUpdateService
 
         if (update is null)
         {
-            return new AppUpdateResult(true, "CNC Sync is up to date.");
+            return new AppUpdateResult(true, "ProCut Suite Desktop is up to date.");
         }
 
         var version = update.TargetFullRelease.Version.ToString();

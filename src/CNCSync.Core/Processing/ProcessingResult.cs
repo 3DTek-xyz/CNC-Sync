@@ -10,5 +10,6 @@ public sealed class ProcessingResult
     public DateTime StartedAtUtc { get; init; }
     public DateTime FinishedAtUtc { get; init; }
     public IReadOnlyList<string> ProcessedFiles { get; init; } = [];
+    public IReadOnlyList<string> ActivityMessages { get; init; } = [];
     public IReadOnlyList<string> Errors { get; init; } = [];
 }

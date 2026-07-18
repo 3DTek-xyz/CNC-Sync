@@ -512,7 +512,12 @@ public sealed class SyncCoordinatorTests
         string? remoteFolderName = null,
         Func<string, ProcessingResult>? processingResultFactory = null) : IProjectProcessor
     {
-        public Task<ProcessingResult> ProcessAsync(string sourcePath, WatchProfileSettings profile, ProcessingSetupSettings processingSetup, CancellationToken cancellationToken = default) =>
+        public Task<ProcessingResult> ProcessAsync(
+            string sourcePath,
+            WatchProfileSettings profile,
+            ProcessingSetupSettings processingSetup,
+            ProCutApiSettings? proCutApi = null,
+            CancellationToken cancellationToken = default) =>
             Task.FromResult(processingResultFactory?.Invoke(sourcePath) ?? new ProcessingResult
             {
                 Success = true,

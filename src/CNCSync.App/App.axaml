@@ -20,6 +20,7 @@
         <converters:FtpDataModeDisplayConverter x:Key="FtpDataModeDisplayConverter" />
         <converters:SshAuthenticationModeDisplayConverter x:Key="SshAuthenticationModeDisplayConverter" />
         <converters:WatchProfileWorkItemModeDisplayConverter x:Key="WatchProfileWorkItemModeDisplayConverter" />
+        <converters:ProcessingModeDisplayConverter x:Key="ProcessingModeDisplayConverter" />
         <SolidColorBrush x:Key="AppPageBackgroundBrush" Color="#F4F7FB" />
         <SolidColorBrush x:Key="AppCardBackgroundBrush" Color="#FCFDFE" />
         <SolidColorBrush x:Key="AppCardBorderBrush" Color="#D7E0EA" />
@@ -117,14 +118,14 @@
 
     <TrayIcon.Icons>
         <TrayIcons>
-            <TrayIcon Icon="/Assets/cnc-sync-tray.png"
+            <TrayIcon Icon="/Assets/procut-suite-tray.png"
                       controls:MacOSProperties.IsTemplateIcon="False"
-                      ToolTipText="CNC Sync"
+                      ToolTipText="ProCut Suite Desktop"
                       IsVisible="True"
                       Clicked="TrayIcon_OnClicked">
                 <TrayIcon.Menu>
                     <NativeMenu>
-                        <NativeMenuItem Header="Open CNC Sync" Click="OpenMenuItem_OnClick" />
+                        <NativeMenuItem Header="Open ProCut Suite Desktop" Click="OpenMenuItem_OnClick" />
                         <NativeMenuItemSeparator />
                         <NativeMenuItem Header="Start Monitoring" Click="StartMonitoringMenuItem_OnClick" />
                         <NativeMenuItem Header="Stop Monitoring" Click="StopMonitoringMenuItem_OnClick" />

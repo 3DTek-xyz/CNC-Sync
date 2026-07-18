@@ -49,8 +49,10 @@ jobs:
           $feedDir = Join-Path $env:GITHUB_WORKSPACE "dist\windows\update-feed"
           New-Item -ItemType Directory -Force -Path $releaseDir, $feedDir | Out-Null
 
-          Copy-Item (Join-Path $env:GITHUB_WORKSPACE "dist\windows\velopack\3DTek.CNCSync-win-Setup.exe") $releaseDir
-          Copy-Item (Join-Path $env:GITHUB_WORKSPACE "dist\windows\velopack\3DTek.CNCSync-win-Portable.zip") $releaseDir
+          Get-ChildItem (Join-Path $env:GITHUB_WORKSPACE "dist\windows\velopack") -Filter "*Setup.exe" |
+            Copy-Item -Destination $releaseDir
+          Get-ChildItem (Join-Path $env:GITHUB_WORKSPACE "dist\windows\velopack") -Filter "*Portable.zip" |
+            Copy-Item -Destination $releaseDir
 
           Copy-Item (Join-Path $env:GITHUB_WORKSPACE "dist\windows\velopack\RELEASES") $feedDir
           Copy-Item (Join-Path $env:GITHUB_WORKSPACE "dist\windows\velopack\releases.win.json") $feedDir

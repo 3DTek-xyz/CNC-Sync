@@ -9,8 +9,8 @@ namespace CNCSync.App.Services;
 public sealed class LoginStartupService : ILoginStartupService
 {
     private const string WindowsRunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private const string WindowsRunValueName = "CNC Sync";
-    private const string LinuxDesktopFileName = "cnc-sync.desktop";
+    private const string WindowsRunValueName = "ProCut Suite Desktop";
+    private const string LinuxDesktopFileName = "procut-suite-desktop.desktop";
     private const string MacLoginItemBridgeName = "libcncsync-login-item-bridge.dylib";
 
     public Task<bool> IsEnabledAsync(CancellationToken cancellationToken = default)
@@ -125,8 +125,8 @@ public sealed class LoginStartupService : ILoginStartupService
 [Desktop Entry]
 Type=Application
 Version=1.0
-Name=CNC Sync
-Comment=Launch CNC Sync when you log in
+Name=ProCut Suite Desktop
+Comment=Launch ProCut Suite Desktop when you log in
 Exec={{command}}
 Terminal=false
 X-GNOME-Autostart-enabled=true
@@ -260,7 +260,7 @@ X-GNOME-Autostart-enabled=true
             -2 => string.IsNullOrWhiteSpace(detail)
                 ? "macOS login items require macOS 13 or later."
                 : detail,
-            2 => "macOS requires approval before CNC Sync can be enabled as a login item.",
+            2 => "macOS requires approval before ProCut Suite Desktop can be enabled as a login item.",
             _ => string.IsNullOrWhiteSpace(detail)
                 ? "macOS login item registration failed."
                 : $"macOS login item registration failed: {detail}"

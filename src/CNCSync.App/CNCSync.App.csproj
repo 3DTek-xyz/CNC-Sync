@@ -4,8 +4,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <AssemblyName>CNCSync</AssemblyName>
-    <ApplicationTitle>CNC Sync</ApplicationTitle>
-    <ApplicationIcon>Assets\cnc-sync.ico</ApplicationIcon>
+    <ApplicationTitle>ProCut Suite Desktop</ApplicationTitle>
+    <ApplicationIcon>Assets\procut-suite.ico</ApplicationIcon>
     <RootNamespace>CNCSync.App</RootNamespace>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>

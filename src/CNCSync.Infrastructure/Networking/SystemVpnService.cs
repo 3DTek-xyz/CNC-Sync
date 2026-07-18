@@ -72,7 +72,7 @@ public sealed partial class SystemVpnService : IVpnService
             {
                 Success = false,
                 ConnectedNow = false,
-                Message = $"Could not connect required VPN '{connection.Name}': {error.Trim()} VPN profiles used by CNC Sync must be able to connect automatically without prompting for user interaction."
+                Message = $"Could not connect required VPN '{connection.Name}': {error.Trim()} VPN profiles used by ProCut Suite Desktop must be able to connect automatically without prompting for user interaction."
             };
         }
 
@@ -98,7 +98,7 @@ public sealed partial class SystemVpnService : IVpnService
         {
             Success = false,
             ConnectedNow = false,
-            Message = $"VPN '{connection.Name}' did not report as connected within {ConnectPollAttempts * ConnectPollInterval.TotalSeconds:0} seconds of the connect request. VPN profiles used by CNC Sync must be able to connect automatically without prompting for user interaction."
+            Message = $"VPN '{connection.Name}' did not report as connected within {ConnectPollAttempts * ConnectPollInterval.TotalSeconds:0} seconds of the connect request. VPN profiles used by ProCut Suite Desktop must be able to connect automatically without prompting for user interaction."
         };
     }
 

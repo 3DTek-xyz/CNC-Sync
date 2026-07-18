@@ -7,13 +7,13 @@
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="CNCSync.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Icon="/Assets/cnc-sync.ico"
+        Icon="/Assets/procut-suite.ico"
         Width="1180"
         Height="820"
         WindowState="Maximized"
         MinWidth="980"
         MinHeight="720"
-        Title="CNC Sync">
+        Title="ProCut Suite Desktop">
 
     <Design.DataContext>
         <vm:MainWindowViewModel/>
@@ -34,7 +34,7 @@
                                     <TextBlock Classes="muted"
                                                Text="{Binding AppVersion, StringFormat=Version {0}}" />
                                     <TextBlock Classes="muted"
-                                               Text="Monitor local export folders, optionally process them, and deliver the result to reusable destinations."
+                                               Text="Monitor local CNC export folders, process them locally or through ProCut Suite, and deliver the result to reusable destinations."
                                                TextWrapping="Wrap" />
                                 </StackPanel>
 
@@ -114,7 +114,7 @@
                                     </Grid>
                                     <TextBlock Classes="muted" Text="{Binding ScheduledCatchUpSummary}" TextWrapping="Wrap" />
                                     <TextBlock Classes="muted"
-                                               Text="Catch-up retries only files that are still staged locally. It cannot detect and reprocess files that were created while CNC Sync was not running and never made it into staging."
+                                               Text="Catch-up retries only files that are still staged locally. It cannot detect and reprocess files that were created while ProCut Suite Desktop was not running and never made it into staging."
                                                TextWrapping="Wrap" />
                                 </StackPanel>
                             </Border>
@@ -124,7 +124,7 @@
                             <StackPanel Spacing="8">
                                 <TextBlock Text="Paid Support and Custom Work" FontSize="18" FontWeight="SemiBold" />
                                 <TextBlock Text="If you need project-specific scripts, paid help is available. Please open a support issue to request it." TextWrapping="Wrap" />
-                                <TextBlock Text="For app bugs or updates that could benefit everybody, open an issue on the CNC Sync GitHub project for consideration." TextWrapping="Wrap" />
+                                <TextBlock Text="For app bugs or updates that could benefit everybody, open an issue on the ProCut Suite Desktop project for consideration." TextWrapping="Wrap" />
                                 <Button Classes="subtle"
                                         HorizontalAlignment="Left"
                                         Content="Open GitHub Support Issues"
@@ -159,6 +159,32 @@
                                 <TextBlock Classes="muted" Text="{Binding SaveMessage}" TextWrapping="Wrap" />
                                 <TextBlock Classes="muted" Text="{Binding UpdateStatus}" TextWrapping="Wrap" />
                                 <TextBlock Classes="muted" Text="{Binding AppVersion, StringFormat=Installed version: {0}}" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Classes="card" Padding="18" CornerRadius="16">
+                            <StackPanel Spacing="12">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="ProCut Suite API" FontSize="18" FontWeight="SemiBold" />
+                                    <TextBlock Classes="muted" Text="Save the ProCut Suite API connection once, then use it from ProCut Suite API processing setups." TextWrapping="Wrap" />
+                                </StackPanel>
+
+                                <Grid ColumnDefinitions="220,*">
+                                    <TextBlock VerticalAlignment="Center" Text="Base URL" />
+                                    <TextBox Grid.Column="1"
+                                             Text="{Binding ProCutApiBaseUrl, UpdateSourceTrigger=LostFocus}"
+                                             Watermark="https://procutsuite.com" />
+                                </Grid>
+
+                                <Grid ColumnDefinitions="220,*">
+                                    <TextBlock VerticalAlignment="Center" Text="API Key" />
+                                    <TextBox Grid.Column="1"
+                                             PasswordChar="*"
+                                             Text="{Binding ProCutApiKey, UpdateSourceTrigger=LostFocus}"
+                                             Watermark="Paste a ProCut Suite API key" />
+                                </Grid>
+
+                                <TextBlock Classes="muted" Text="{Binding ProCutApiKeyStatus}" TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 
@@ -302,7 +328,7 @@
                                             <TextBlock Grid.Column="1"
                                                        Classes="muted"
                                                        VerticalAlignment="Center"
-                                                       Text="Choose whether CNC Sync should process each change on its own, or group changes by the main project folder."
+                                                       Text="Choose whether ProCut Suite Desktop should process each change on its own, or group changes by the main project folder."
                                                        TextWrapping="Wrap" />
                                         </Grid>
                                     </Grid>
@@ -356,7 +382,7 @@
                                             <TextBlock Grid.Column="1"
                                                        Classes="muted"
                                                        VerticalAlignment="Center"
-                                                       Text="How long CNC Sync waits for changes to settle before it processes them."
+                                                       Text="How long ProCut Suite Desktop waits for changes to settle before it processes them."
                                                        TextWrapping="Wrap" />
                                         </Grid>
                                     </Grid>
@@ -374,7 +400,7 @@
                                             <TextBlock Grid.Column="1"
                                                        Classes="muted"
                                                        VerticalAlignment="Center"
-                                                       Text="How often CNC Sync checks whether pending changes have settled."
+                                                       Text="How often ProCut Suite Desktop checks whether pending changes have settled."
                                                        TextWrapping="Wrap" />
                                         </Grid>
                                     </Grid>
@@ -448,74 +474,282 @@
                                         <TextBlock VerticalAlignment="Center" Text="Mode" />
                                         <ComboBox Grid.Column="1"
                                                   ItemsSource="{Binding AvailableProcessingModes}"
-                                                  SelectedItem="{Binding SelectedProcessingSetup.Mode}" />
+                                                  SelectedItem="{Binding SelectedProcessingSetup.Mode}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate x:DataType="core:ProcessingMode">
+                                                    <TextBlock Text="{Binding ., Converter={StaticResource ProcessingModeDisplayConverter}}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
                                     </Grid>
 
-                                    <Grid ColumnDefinitions="220,*">
-                                        <TextBlock VerticalAlignment="Center" Text="Runner" />
-                                        <Grid Grid.Column="1" ColumnDefinitions="260,*" ColumnSpacing="12">
-                                            <ComboBox Grid.Column="0"
-                                                      IsEnabled="{Binding SelectedProcessingSetup.UsesExternalScript}"
-                                                      Foreground="{StaticResource AppPrimaryTextBrush}"
-                                                      ItemsSource="{Binding AvailableRunnerModes}"
-                                                      SelectedItem="{Binding SelectedProcessingSetup.RunnerMode}" />
-                                            <TextBlock Grid.Column="1"
-                                                       Classes="muted"
-                                                       VerticalAlignment="Center"
-                                                       Text="Use Auto unless your script needs a specific way to run."
+                                    <Border Background="#EAF3FF"
+                                            BorderBrush="#B9D1F3"
+                                            BorderThickness="1"
+                                            CornerRadius="10"
+                                            Padding="12"
+                                            IsVisible="{Binding SelectedProcessingSetup.UsesProCutApi}">
+                                        <StackPanel Spacing="10">
+                                            <TextBlock Text="ProCut Suite API Processing" FontWeight="SemiBold" />
+                                            <TextBlock Classes="muted"
+                                                       Text="{Binding ProCutApiKeyStatus}"
                                                        TextWrapping="Wrap" />
-                                        </Grid>
-                                    </Grid>
-
-                                    <Grid ColumnDefinitions="220,*">
-                                        <TextBlock VerticalAlignment="Center" Text="Script Path" />
-                                        <Grid Grid.Column="1" ColumnDefinitions="*,Auto,Auto,*" ColumnSpacing="12">
-                                            <TextBox Grid.Column="0"
-                                                     Margin="0,0,8,0"
-                                                     IsEnabled="{Binding SelectedProcessingSetup.UsesExternalScript}"
-                                                     Foreground="{StaticResource AppPrimaryTextBrush}"
-                                                     Text="{Binding SelectedProcessingSetup.ScriptPath, UpdateSourceTrigger=LostFocus}"
-                                                     Watermark="/path/to/script.ps1 or script.sh" />
-                                            <Button Grid.Column="1"
-                                                    Margin="0,0,8,0"
-                                                    Content="Browse..."
-                                                    IsEnabled="{Binding SelectedProcessingSetup.UsesExternalScript}"
-                                                    Click="BrowseProcessingScript_OnClick" />
-                                            <Button Grid.Column="2"
-                                                    Classes="subtle"
-                                                    Content="Open Scripts Folder"
-                                                    Click="OpenScriptsFolder_OnClick" />
-                                            <TextBlock Grid.Column="3"
-                                                       Classes="muted"
-                                                       VerticalAlignment="Center"
-                                                       Text="Choose the script CNC Sync should run."
+                                            <Grid ColumnDefinitions="220,*">
+                                                <TextBlock VerticalAlignment="Center" Text="Service" />
+                                                <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                                    <ComboBox Grid.Column="0"
+                                                              ItemsSource="{Binding AvailableProCutApiServices}"
+                                                              SelectedItem="{Binding SelectedProcessingSetupProCutApiService}">
+                                                        <ComboBox.ItemTemplate>
+                                                            <DataTemplate x:DataType="vm:ProCutApiServiceOptionViewModel">
+                                                                <StackPanel>
+                                                                    <TextBlock Text="{Binding DisplayName}" />
+                                                                    <TextBlock Classes="muted"
+                                                                               FontSize="11"
+                                                                               Text="{Binding Endpoint}"
+                                                                               TextWrapping="Wrap" />
+                                                                </StackPanel>
+                                                            </DataTemplate>
+                                                        </ComboBox.ItemTemplate>
+                                                    </ComboBox>
+                                                    <Button Grid.Column="1"
+                                                            Classes="subtle"
+                                                            Content="Refresh"
+                                                            Command="{Binding RefreshProCutApiServicesCommand}" />
+                                                </Grid>
+                                            </Grid>
+                                            <Grid ColumnDefinitions="220,*">
+                                                <TextBlock VerticalAlignment="Center" Text="Endpoint" />
+                                                <TextBlock Grid.Column="1"
+                                                           Classes="muted"
+                                                           Text="{Binding SelectedProcessingSetup.ProCutApiEndpoint}"
+                                                           TextWrapping="Wrap" />
+                                            </Grid>
+                                            <TextBlock Classes="muted"
+                                                       Text="{Binding ProCutApiServicesStatus}"
                                                        TextWrapping="Wrap" />
-                                        </Grid>
-                                    </Grid>
-
-                                    <Grid ColumnDefinitions="220,*">
-                                        <TextBlock VerticalAlignment="Center" Text="Arguments Template" />
-                                        <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                                            <TextBox Grid.Column="0"
-                                                     IsEnabled="{Binding SelectedProcessingSetup.UsesExternalScript}"
-                                                     Foreground="{StaticResource AppPrimaryTextBrush}"
-                                                     Text="{Binding SelectedProcessingSetup.ArgumentsTemplate, UpdateSourceTrigger=LostFocus}"
-                                                     Watermark="&quot;{sourcePath}&quot; &quot;{outputPath}&quot;" />
-                                            <TextBlock Grid.Column="1"
-                                                       Classes="muted"
-                                                       VerticalAlignment="Center"
-                                                       Text="Extra arguments to pass to the script."
+                                            <TextBlock Classes="muted"
+                                                       Text="{Binding SelectedProCutApiServiceDescription}"
                                                        TextWrapping="Wrap" />
+                                            <TextBlock Classes="muted"
+                                                       Text="{Binding SelectedProCutApiServiceMetadataSummary}"
+                                                       TextWrapping="Wrap" />
+
+                                            <StackPanel Spacing="8"
+                                                        IsVisible="{Binding SelectedProCutApiServiceHasTools}">
+                                                <TextBlock Text="Endpoint Tool Metadata" FontWeight="SemiBold" Opacity="0.9" />
+                                                <ItemsControl ItemsSource="{Binding SelectedProCutApiServiceTools}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="vm:ProCutApiToolOptionViewModel">
+                                                            <Border Background="#FFFFFF"
+                                                                    BorderBrush="#D2E1F7"
+                                                                    BorderThickness="1"
+                                                                    CornerRadius="8"
+                                                                    Padding="10"
+                                                                    Margin="0,0,0,8">
+                                                                <StackPanel Spacing="4">
+                                                                    <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
+                                                                    <TextBlock Classes="muted"
+                                                                               Text="{Binding AvailabilityText}"
+                                                                               TextWrapping="Wrap" />
+                                                                    <TextBlock Classes="muted"
+                                                                               Text="{Binding Description}"
+                                                                               TextWrapping="Wrap" />
+                                                                    <ItemsControl ItemsSource="{Binding Options}"
+                                                                                  IsVisible="{Binding HasOptions}">
+                                                                        <ItemsControl.ItemTemplate>
+                                                                            <DataTemplate x:DataType="vm:ProCutApiParameterOptionViewModel">
+                                                                                <Grid ColumnDefinitions="220,110,110,*" ColumnSpacing="8" Margin="0,2,0,0">
+                                                                                    <TextBlock Text="{Binding Label}" />
+                                                                                    <TextBlock Grid.Column="1" Classes="muted" Text="{Binding Type}" />
+                                                                                    <TextBlock Grid.Column="2" Classes="muted" Text="{Binding DefaultText}" />
+                                                                                    <TextBlock Grid.Column="3"
+                                                                                               Classes="muted"
+                                                                                               Text="{Binding Help}"
+                                                                                               TextWrapping="Wrap" />
+                                                                                </Grid>
+                                                                            </DataTemplate>
+                                                                        </ItemsControl.ItemTemplate>
+                                                                    </ItemsControl>
+                                                                </StackPanel>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
+
+                                            <StackPanel Spacing="8"
+                                                        IsVisible="{Binding SelectedProCutApiServiceHasOptions}">
+                                                <TextBlock Text="Endpoint Options" FontWeight="SemiBold" Opacity="0.9" />
+                                                <ItemsControl ItemsSource="{Binding SelectedProCutApiServiceOptions}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="vm:ProCutApiParameterOptionViewModel">
+                                                            <Grid ColumnDefinitions="220,110,110,*" ColumnSpacing="8" Margin="0,2,0,0">
+                                                                <TextBlock Text="{Binding Label}" />
+                                                                <TextBlock Grid.Column="1" Classes="muted" Text="{Binding Type}" />
+                                                                <TextBlock Grid.Column="2" Classes="muted" Text="{Binding RequirementText}" />
+                                                                <TextBlock Grid.Column="3"
+                                                                           Classes="muted"
+                                                                           Text="{Binding Help}"
+                                                                           TextWrapping="Wrap" />
+                                                            </Grid>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
+
+                                            <TextBlock Classes="muted"
+                                                       IsVisible="{Binding SelectedProCutApiServiceHasNoParameterMetadata}"
+                                                       Text="This endpoint did not expose parameter metadata in the schema."
+                                                       TextWrapping="Wrap" />
+
+                                            <StackPanel Spacing="8"
+                                                        IsVisible="{Binding SelectedProCutApiServiceSupportsGcodeTools}">
+                                                <TextBlock Text="G-code Tools" FontWeight="SemiBold" Opacity="0.9" />
+
+                                                <CheckBox Content="Arc fitting"
+                                                          IsEnabled="{Binding SelectedProCutArcFittingAvailable}"
+                                                          IsChecked="{Binding SelectedProcessingSetup.ProCutArcFittingEnabled}" />
+                                                <TextBlock Classes="muted"
+                                                           Margin="24,0,0,0"
+                                                           IsVisible="{Binding SelectedProCutArcFittingUnavailable}"
+                                                           Text="{Binding SelectedProCutArcFittingUnavailableReason}"
+                                                           TextWrapping="Wrap" />
+                                                <Grid ColumnDefinitions="220,*" IsEnabled="{Binding SelectedProcessingSetup.ProCutArcFittingEnabled}">
+                                                    <TextBlock VerticalAlignment="Center" Text="Tolerance (mm)" />
+                                                    <TextBox Grid.Column="1"
+                                                             Text="{Binding SelectedProcessingSetup.ProCutArcFittingToleranceMm, UpdateSourceTrigger=LostFocus}" />
+                                                </Grid>
+                                                <Grid ColumnDefinitions="220,*" IsEnabled="{Binding SelectedProcessingSetup.ProCutArcFittingEnabled}">
+                                                    <TextBlock VerticalAlignment="Center" Text="Min / Max segments" />
+                                                    <Grid Grid.Column="1" ColumnDefinitions="*,*" ColumnSpacing="8">
+                                                        <TextBox Grid.Column="0"
+                                                                 Text="{Binding SelectedProcessingSetup.ProCutArcFittingMinSegments, UpdateSourceTrigger=LostFocus}" />
+                                                        <TextBox Grid.Column="1"
+                                                                 Text="{Binding SelectedProcessingSetup.ProCutArcFittingMaxSegments, UpdateSourceTrigger=LostFocus}" />
+                                                    </Grid>
+                                                </Grid>
+
+                                                <CheckBox Content="Line joiner"
+                                                          IsEnabled="{Binding SelectedProCutLineJoinerAvailable}"
+                                                          IsChecked="{Binding SelectedProcessingSetup.ProCutLineJoinerEnabled}" />
+                                                <CheckBox Margin="24,0,0,0"
+                                                          Content="Preserve feed boundaries"
+                                                          IsEnabled="{Binding SelectedProcessingSetup.ProCutLineJoinerEnabled}"
+                                                          IsChecked="{Binding SelectedProcessingSetup.ProCutLineJoinerPreserveFeedBoundaries}" />
+
+                                                <CheckBox Content="Arc joiner"
+                                                          IsEnabled="{Binding SelectedProCutArcJoinerAvailable}"
+                                                          IsChecked="{Binding SelectedProcessingSetup.ProCutArcJoinerEnabled}" />
+                                                <TextBlock Classes="muted"
+                                                           Margin="24,0,0,0"
+                                                           IsVisible="{Binding SelectedProCutArcJoinerUnavailable}"
+                                                           Text="{Binding SelectedProCutArcJoinerUnavailableReason}"
+                                                           TextWrapping="Wrap" />
+                                                <Grid ColumnDefinitions="220,*" IsEnabled="{Binding SelectedProcessingSetup.ProCutArcJoinerEnabled}">
+                                                    <TextBlock VerticalAlignment="Center" Text="Max combined angle" />
+                                                    <TextBox Grid.Column="1"
+                                                             Text="{Binding SelectedProcessingSetup.ProCutArcJoinerMaxCombinedAngleDeg, UpdateSourceTrigger=LostFocus}" />
+                                                </Grid>
+
+                                                <CheckBox Content="Corner smoothing"
+                                                          IsEnabled="{Binding SelectedProCutCornerSmoothAvailable}"
+                                                          IsChecked="{Binding SelectedProcessingSetup.ProCutCornerSmoothEnabled}" />
+                                                <Grid ColumnDefinitions="220,*" IsEnabled="{Binding SelectedProcessingSetup.ProCutCornerSmoothEnabled}">
+                                                    <TextBlock VerticalAlignment="Center" Text="Angle threshold" />
+                                                    <TextBox Grid.Column="1"
+                                                             Text="{Binding SelectedProcessingSetup.ProCutCornerSmoothAngleThresholdDeg, UpdateSourceTrigger=LostFocus}" />
+                                                </Grid>
+                                                <Grid ColumnDefinitions="220,*" IsEnabled="{Binding SelectedProcessingSetup.ProCutCornerSmoothEnabled}">
+                                                    <TextBlock VerticalAlignment="Center" Text="Slowdown distance" />
+                                                    <TextBox Grid.Column="1"
+                                                             Text="{Binding SelectedProcessingSetup.ProCutCornerSmoothSlowdownDistanceMm, UpdateSourceTrigger=LostFocus}" />
+                                                </Grid>
+                                                <Grid ColumnDefinitions="220,*" IsEnabled="{Binding SelectedProcessingSetup.ProCutCornerSmoothEnabled}">
+                                                    <TextBlock VerticalAlignment="Center" Text="Slowdown feedrate" />
+                                                    <TextBox Grid.Column="1"
+                                                             Text="{Binding SelectedProcessingSetup.ProCutCornerSmoothSlowdownFeedrateMmMin, UpdateSourceTrigger=LostFocus}" />
+                                                </Grid>
+                                                <Grid ColumnDefinitions="220,*" IsEnabled="{Binding SelectedProcessingSetup.ProCutCornerSmoothEnabled}">
+                                                    <TextBlock VerticalAlignment="Center" Text="Small arc threshold" />
+                                                    <TextBox Grid.Column="1"
+                                                             Text="{Binding SelectedProcessingSetup.ProCutCornerSmoothSmallArcThresholdMm, UpdateSourceTrigger=LostFocus}" />
+                                                </Grid>
+                                                <CheckBox Margin="24,0,0,0"
+                                                          Content="Include circular ramps"
+                                                          IsEnabled="{Binding SelectedProcessingSetup.ProCutCornerSmoothEnabled}"
+                                                          IsChecked="{Binding SelectedProcessingSetup.ProCutCornerSmoothIncludeCircularRamps}" />
+                                            </StackPanel>
+                                            <TextBlock Classes="muted"
+                                                       IsVisible="{Binding SelectedProCutApiServiceDoesNotSupportGcodeTools}"
+                                                       Text="This service is not available for G-code tool-chain processing in this desktop workflow yet."
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <StackPanel Spacing="12"
+                                                IsVisible="{Binding SelectedProcessingSetup.UsesExternalScript}">
+                                        <Grid ColumnDefinitions="220,*">
+                                            <TextBlock VerticalAlignment="Center" Text="Runner" />
+                                            <Grid Grid.Column="1" ColumnDefinitions="260,*" ColumnSpacing="12">
+                                                <ComboBox Grid.Column="0"
+                                                          Foreground="{StaticResource AppPrimaryTextBrush}"
+                                                          ItemsSource="{Binding AvailableRunnerModes}"
+                                                          SelectedItem="{Binding SelectedProcessingSetup.RunnerMode}" />
+                                                <TextBlock Grid.Column="1"
+                                                           Classes="muted"
+                                                           VerticalAlignment="Center"
+                                                           Text="Use Auto unless your script needs a specific way to run."
+                                                           TextWrapping="Wrap" />
+                                            </Grid>
                                         </Grid>
-                                    </Grid>
 
-                                    <StackPanel Spacing="4">
-                                        <TextBlock Text="Available placeholders" FontWeight="SemiBold" Opacity="0.9" />
-                                        <TextBlock Text="{}{sourcePath} - the detected source file or folder" Opacity="0.9" TextWrapping="Wrap" />
-                                        <TextBlock Text="{}{outputPath} - the prepared output folder for processed files" Opacity="0.9" TextWrapping="Wrap" />
-                                        <TextBlock Text="{}{scriptPath} - the selected script path" Opacity="0.9" TextWrapping="Wrap" />
-                                        <TextBlock Text="Any other text is passed through literally, so you can add extra fixed arguments." Opacity="0.9" TextWrapping="Wrap" />
+                                        <Grid ColumnDefinitions="220,*">
+                                            <TextBlock VerticalAlignment="Center" Text="Script Path" />
+                                            <Grid Grid.Column="1" ColumnDefinitions="*,Auto,Auto,*" ColumnSpacing="12">
+                                                <TextBox Grid.Column="0"
+                                                         Margin="0,0,8,0"
+                                                         Foreground="{StaticResource AppPrimaryTextBrush}"
+                                                         Text="{Binding SelectedProcessingSetup.ScriptPath, UpdateSourceTrigger=LostFocus}"
+                                                         Watermark="/path/to/script.ps1 or script.sh" />
+                                                <Button Grid.Column="1"
+                                                        Margin="0,0,8,0"
+                                                        Content="Browse..."
+                                                        Click="BrowseProcessingScript_OnClick" />
+                                                <Button Grid.Column="2"
+                                                        Classes="subtle"
+                                                        Content="Open Scripts Folder"
+                                                        Click="OpenScriptsFolder_OnClick" />
+                                                <TextBlock Grid.Column="3"
+                                                           Classes="muted"
+                                                           VerticalAlignment="Center"
+                                                           Text="Choose the script ProCut Suite Desktop should run."
+                                                           TextWrapping="Wrap" />
+                                            </Grid>
+                                        </Grid>
 
+                                        <Grid ColumnDefinitions="220,*">
+                                            <TextBlock VerticalAlignment="Center" Text="Arguments Template" />
+                                            <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                                <TextBox Grid.Column="0"
+                                                         Foreground="{StaticResource AppPrimaryTextBrush}"
+                                                         Text="{Binding SelectedProcessingSetup.ArgumentsTemplate, UpdateSourceTrigger=LostFocus}"
+                                                         Watermark="&quot;{sourcePath}&quot; &quot;{outputPath}&quot;" />
+                                                <TextBlock Grid.Column="1"
+                                                           Classes="muted"
+                                                           VerticalAlignment="Center"
+                                                           Text="Extra arguments to pass to the script."
+                                                           TextWrapping="Wrap" />
+                                            </Grid>
+                                        </Grid>
+
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Text="Available placeholders" FontWeight="SemiBold" Opacity="0.9" />
+                                            <TextBlock Text="{}{sourcePath} - the detected source file or folder" Opacity="0.9" TextWrapping="Wrap" />
+                                            <TextBlock Text="{}{outputPath} - the prepared output folder for processed files" Opacity="0.9" TextWrapping="Wrap" />
+                                            <TextBlock Text="{}{scriptPath} - the selected script path" Opacity="0.9" TextWrapping="Wrap" />
+                                            <TextBlock Text="Any other text is passed through literally, so you can add extra fixed arguments." Opacity="0.9" TextWrapping="Wrap" />
+                                        </StackPanel>
                                     </StackPanel>
                                 </StackPanel>
                             </Border>
@@ -663,7 +897,7 @@
                                                    Margin="12,0,0,0"
                                                    VerticalAlignment="Center"
                                                    Classes="muted"
-                                                   Text="When this is on, CNC Sync clears out the matching remote folder before upload. When it&apos;s off, it updates files in place."
+                                                   Text="When this is on, ProCut Suite Desktop clears out the matching remote folder before upload. When it&apos;s off, it updates files in place."
                                                    TextWrapping="Wrap" />
                                     </Grid>
                                     <Border Background="#FFF3D9"
@@ -725,7 +959,7 @@
                                                    Margin="12,0,0,0"
                                                    VerticalAlignment="Center"
                                                    Classes="muted"
-                                                   Text="If CNC Sync had to connect the required VPN for this destination, disconnect it when the operation finishes." 
+                                                   Text="If ProCut Suite Desktop had to connect the required VPN for this destination, disconnect it when the operation finishes."
                                                    TextWrapping="Wrap" />
                                     </Grid>
 
@@ -798,7 +1032,7 @@
                                                    Margin="12,0,0,0"
                                                    VerticalAlignment="Center"
                                                    Classes="muted"
-                                                   Text="Choose how CNC Sync connects to the FTP server. Auto Passive is the usual choice."
+                                                   Text="Choose how ProCut Suite Desktop connects to the FTP server. Auto Passive is the usual choice."
                                                    TextWrapping="Wrap" />
                                     </Grid>
 
@@ -917,7 +1151,7 @@
                             <StackPanel Spacing="8">
                                 <TextBlock Classes="sectionEyebrow" Text="Support" />
                                 <TextBlock Text="Help / About" FontSize="20" FontWeight="SemiBold" />
-                                <TextBlock Text="CNC Sync works best when you set things up in this order: destination, processing setup, watch folder, validation, then monitoring." TextWrapping="Wrap" />
+                                <TextBlock Text="ProCut Suite Desktop works best when you set things up in this order: destination, processing setup, watch folder, validation, then monitoring." TextWrapping="Wrap" />
                                 <TextBlock Classes="muted" Text="Made with love by Ben Harper, 3DTek.com.au." TextWrapping="Wrap" />
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <Button Classes="subtle"
@@ -983,7 +1217,7 @@
                                 <TextBlock Text="Network Shares and VPNs" FontSize="18" FontWeight="SemiBold" />
                                 <TextBlock Text="Network Share currently means SMB. On macOS, explicit username/password access to a Mac server may require enabling that account under Windows File Sharing in System Settings &gt; General &gt; Sharing &gt; File Sharing &gt; Options." TextWrapping="Wrap" />
                                 <TextBlock Text="On Linux, Network Share works best with desktop-mounted SMB shares. On Windows, current-user UNC access and explicit SMB sign-in are both supported." TextWrapping="Wrap" />
-                                <TextBlock Text="If a destination needs a system-managed VPN first, choose it in Required VPN. CNC Sync will try to connect that VPN before testing, browsing, uploading, or deleting. If enabled, Check destination before starting VPN tries direct access first and only starts the VPN if needed." TextWrapping="Wrap" />
+                                <TextBlock Text="If a destination needs a system-managed VPN first, choose it in Required VPN. ProCut Suite Desktop will try to connect that VPN before testing, browsing, uploading, or deleting. If enabled, Check destination before starting VPN tries direct access first and only starts the VPN if needed." TextWrapping="Wrap" />
                                 <TextBlock Text="FTP Data Mode lets you pick the upload style that works best for the destination. Auto Passive is the usual choice, Passive can help with uploads that stall, and Active is only for servers that need to call back to your machine." TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
@@ -1002,7 +1236,7 @@
                                 <TextBlock Text="Manual Catch-Up" FontSize="18" FontWeight="SemiBold" />
                                 <TextBlock Text="Manual catch-up retries items that are still sitting in the local staging folder because a previous upload did not complete successfully." TextWrapping="Wrap" />
                                 <TextBlock Text="Scheduled catch-up uses the same staged outbox model. It can only retry items that made it into staging while the app was running, so Launch At Login is recommended if you want fewer missed files." TextWrapping="Wrap" />
-                                <TextBlock Text="It cannot detect and reprocess files that were created while CNC Sync was not running and never made it into staging." TextWrapping="Wrap" />
+                                <TextBlock Text="It cannot detect and reprocess files that were created while ProCut Suite Desktop was not running and never made it into staging." TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 
@@ -1010,7 +1244,7 @@
                             <StackPanel Spacing="8">
                                 <TextBlock Text="Activity and Troubleshooting" FontSize="18" FontWeight="SemiBold" />
                                 <TextBlock Text="The Activity tab is selectable, so you can copy log text directly out of the app while testing." TextWrapping="Wrap" />
-                                <TextBlock Text="The same activity stream is also written to a text log file under your app-data folder. On macOS that file is ~/Library/Application Support/CNC Sync/activity.log." TextWrapping="Wrap" />
+                                <TextBlock Text="The same activity stream is also written to a text log file under your app-data folder. On macOS that file is ~/Library/Application Support/ProCut Suite Desktop/activity.log." TextWrapping="Wrap" />
                                 <TextBlock Text="Unhandled exceptions and raw diagnostic details are also written beside it as diagnostics.log." TextWrapping="Wrap" />
                                 <TextBlock Text="Junk files such as .DS_Store, ._* files, Thumbs.db, desktop.ini, and ehthumbs.db are ignored throughout watching, staging, and uploading." TextWrapping="Wrap" />
                             </StackPanel>
@@ -1020,7 +1254,7 @@
                             <StackPanel Spacing="8">
                                 <TextBlock Text="Paid Support and Custom Work" FontSize="18" FontWeight="SemiBold" />
                                 <TextBlock Text="If you need project-specific scripts, paid help is available. Please open a support issue to request it." TextWrapping="Wrap" />
-                                <TextBlock Text="For app bugs or updates that could benefit everybody, open an issue on the CNC Sync GitHub project for consideration." TextWrapping="Wrap" />
+                                <TextBlock Text="For app bugs or updates that could benefit everybody, open an issue for ProCut Suite Desktop for consideration." TextWrapping="Wrap" />
                                 <Button Classes="subtle"
                                         HorizontalAlignment="Left"
                                         Content="Open GitHub Support Issues"

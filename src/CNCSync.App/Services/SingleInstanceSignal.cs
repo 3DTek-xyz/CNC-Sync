@@ -4,7 +4,7 @@ namespace CNCSync.App.Services;
 
 public static class SingleInstanceSignal
 {
-    private const string PipeName = "cnc-sync-activate";
+    private const string PipeName = "procut-suite-desktop-activate";
 
     public static async Task<bool> TrySignalExistingInstanceAsync(CancellationToken cancellationToken = default)
     {

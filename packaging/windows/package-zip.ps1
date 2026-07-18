@@ -1,6 +1,6 @@
 param(
     [string]$Root = (Resolve-Path (Join-Path $PSScriptRoot "..\\..")).Path,
-    [string]$Version = "1.0.82",
+    [string]$Version = "1.0.83",
     [string]$BuildDir = "",
     [string]$DistDir = ""
 )
@@ -15,7 +15,7 @@ if ([string]::IsNullOrWhiteSpace($DistDir)) {
     $DistDir = Join-Path $Root "dist\\windows"
 }
 
-$ZipPath = Join-Path $DistDir "cnc-sync-windows-x64-v$Version.zip"
+$ZipPath = Join-Path $DistDir "procut-suite-desktop-windows-x64-v$Version.zip"
 
 New-Item -ItemType Directory -Force -Path $DistDir | Out-Null
 if (Test-Path $ZipPath) {

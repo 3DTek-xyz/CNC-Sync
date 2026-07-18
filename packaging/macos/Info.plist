@@ -5,21 +5,21 @@
   <key>CFBundleDevelopmentRegion</key>
   <string>en</string>
   <key>CFBundleDisplayName</key>
-  <string>CNC Sync</string>
+  <string>ProCut Suite Desktop</string>
   <key>CFBundleExecutable</key>
   <string>CNCSync</string>
   <key>CFBundleIdentifier</key>
-  <string>com.3dtek.cncsync</string>
+  <string>com.3dtek.procutsuitedesktop</string>
   <key>CFBundleIconFile</key>
-  <string>cnc-sync.icns</string>
+  <string>procut-suite.icns</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundleName</key>
-  <string>CNC Sync</string>
+  <string>ProCut Suite Desktop</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
-  <string>0.1.11</string>
+  <string>1.0.83</string>
   <key>CFBundleVersion</key>
   <string>1</string>
   <key>LSMinimumSystemVersion</key>

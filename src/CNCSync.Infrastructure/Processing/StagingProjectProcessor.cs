@@ -2,16 +2,29 @@ using CNCSync.Core.Configuration;
 using CNCSync.Core.Processing;
 using CNCSync.Core.Services;
 using System.Diagnostics;
+using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json;
 
 namespace CNCSync.Infrastructure.Processing;
 
 public sealed class StagingProjectProcessor : IProjectProcessor
 {
+    private readonly HttpClient _httpClient;
+
+    public StagingProjectProcessor(HttpClient? httpClient = null)
+    {
+        _httpClient = httpClient ?? new HttpClient
+        {
+            Timeout = TimeSpan.FromMinutes(5)
+        };
+    }
+
     public async Task<ProcessingResult> ProcessAsync(
         string sourcePath,
         WatchProfileSettings profile,
         ProcessingSetupSettings processingSetup,
+        ProCutApiSettings? proCutApi = null,
         CancellationToken cancellationToken = default)
     {
         var startedAt = DateTime.UtcNow;
@@ -38,6 +51,21 @@ public sealed class StagingProjectProcessor : IProjectProcessor
             {
                 Directory.CreateDirectory(preparedOutputPath);
                 return await RunExternalScriptAsync(sourcePath, preparedOutputPath, processingSetup, startedAt, remoteFolderName, cancellationToken);
+            }
+
+            if (processingSetup.Mode == ProcessingMode.ProCutApi)
+            {
+                return await RunProCutApiAsync(
+                    sourcePath,
+                    preparedOutputPath,
+                    profile,
+                    processingSetup,
+                    proCutApi,
+                    startedAt,
+                    remoteFolderName,
+                    sourceIsDirectory,
+                    sourceIsFile,
+                    cancellationToken);
             }
 
             List<string> processedFiles;
@@ -104,6 +132,366 @@ public sealed class StagingProjectProcessor : IProjectProcessor
                 Errors = [ex.ToString()]
             };
         }
+    }
+
+    private async Task<ProcessingResult> RunProCutApiAsync(
+        string sourcePath,
+        string defaultOutputPath,
+        WatchProfileSettings profile,
+        ProcessingSetupSettings processingSetup,
+        ProCutApiSettings? proCutApi,
+        DateTime startedAt,
+        string? remoteFolderName,
+        bool sourceIsDirectory,
+        bool sourceIsFile,
+        CancellationToken cancellationToken)
+    {
+        if (proCutApi is null || string.IsNullOrWhiteSpace(proCutApi.ApiKey))
+        {
+            return new ProcessingResult
+            {
+                Success = false,
+                Message = "ProCut Suite API processing failed because no API key is saved.",
+                SourcePath = sourcePath,
+                OutputPath = defaultOutputPath,
+                RemoteFolderName = remoteFolderName,
+                StartedAtUtc = startedAt,
+                FinishedAtUtc = DateTime.UtcNow,
+                Errors = ["No ProCut Suite API key is saved."]
+            };
+        }
+
+        if (!TryBuildProCutApiUri(proCutApi, processingSetup, out var endpointUri, out var uriError))
+        {
+            return new ProcessingResult
+            {
+                Success = false,
+                Message = $"ProCut Suite API processing failed: {uriError}",
+                SourcePath = sourcePath,
+                OutputPath = defaultOutputPath,
+                RemoteFolderName = remoteFolderName,
+                StartedAtUtc = startedAt,
+                FinishedAtUtc = DateTime.UtcNow,
+                Errors = [uriError]
+            };
+        }
+
+        var activityMessages = new List<string>
+        {
+            $"ProCut Suite API endpoint: {endpointUri}",
+            $"ProCut Suite API tools: {string.Join(", ", BuildProCutToolTypeList(processingSetup))}"
+        };
+
+        if (sourceIsDirectory)
+        {
+            Directory.CreateDirectory(defaultOutputPath);
+            var processedFiles = new List<string>();
+            foreach (var sourceFile in FileSystemItemFilter.EnumerateIncludedFiles(sourcePath))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var relativePath = Path.GetRelativePath(sourcePath, sourceFile);
+                var relativeDirectory = Path.GetDirectoryName(relativePath);
+                var outputDirectory = string.IsNullOrWhiteSpace(relativeDirectory)
+                    ? defaultOutputPath
+                    : Path.Combine(defaultOutputPath, relativeDirectory);
+                Directory.CreateDirectory(outputDirectory);
+
+                string processedFileName;
+                try
+                {
+                    processedFileName = await ProcessFileWithProCutApiAsync(sourceFile, outputDirectory, endpointUri!, proCutApi.ApiKey, processingSetup, activityMessages, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    activityMessages.Add($"ProCut Suite API processing failed for {Path.GetFileName(sourceFile)}: {ex.Message}");
+                    return new ProcessingResult
+                    {
+                        Success = false,
+                        Message = $"ProCut Suite API processing failed: {ex.Message}",
+                        SourcePath = sourcePath,
+                        OutputPath = defaultOutputPath,
+                        RemoteFolderName = remoteFolderName,
+                        StartedAtUtc = startedAt,
+                        FinishedAtUtc = DateTime.UtcNow,
+                        ActivityMessages = activityMessages,
+                        Errors = [ex.ToString()]
+                    };
+                }
+
+                var processedRelativePath = string.IsNullOrWhiteSpace(relativeDirectory)
+                    ? processedFileName
+                    : Path.Combine(relativeDirectory, processedFileName);
+                processedFiles.Add(processedRelativePath);
+            }
+
+            return new ProcessingResult
+            {
+                Success = true,
+                Message = $"ProCut Suite API processed {processedFiles.Count} file(s) into {defaultOutputPath}",
+                SourcePath = sourcePath,
+                OutputPath = defaultOutputPath,
+                RemoteFolderName = remoteFolderName,
+                StartedAtUtc = startedAt,
+                FinishedAtUtc = DateTime.UtcNow,
+                ActivityMessages = activityMessages,
+                ProcessedFiles = processedFiles
+            };
+        }
+
+        if (!sourceIsFile)
+        {
+            return new ProcessingResult
+            {
+                Success = false,
+                Message = $"Source path does not exist: {sourcePath}",
+                SourcePath = sourcePath,
+                OutputPath = defaultOutputPath,
+                RemoteFolderName = remoteFolderName,
+                StartedAtUtc = startedAt,
+                FinishedAtUtc = DateTime.UtcNow,
+                Errors = [$"Source path does not exist: {sourcePath}"]
+            };
+        }
+
+        var fileName = Path.GetFileName(sourcePath);
+        if (FileSystemItemFilter.ShouldIgnoreFileSystemItem(fileName))
+        {
+            return new ProcessingResult
+            {
+                Success = true,
+                Message = $"Skipped ignored file: {fileName}",
+                SourcePath = sourcePath,
+                OutputPath = defaultOutputPath,
+                RemoteFolderName = remoteFolderName,
+                StartedAtUtc = startedAt,
+                FinishedAtUtc = DateTime.UtcNow
+            };
+        }
+
+        var outputFolder = Path.GetDirectoryName(defaultOutputPath) ?? profile.StagingFolder;
+        Directory.CreateDirectory(outputFolder);
+        string outputFileName;
+        try
+        {
+            outputFileName = await ProcessFileWithProCutApiAsync(sourcePath, outputFolder, endpointUri!, proCutApi.ApiKey, processingSetup, activityMessages, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            activityMessages.Add($"ProCut Suite API processing failed for {fileName}: {ex.Message}");
+            return new ProcessingResult
+            {
+                Success = false,
+                Message = $"ProCut Suite API processing failed: {ex.Message}",
+                SourcePath = sourcePath,
+                OutputPath = defaultOutputPath,
+                RemoteFolderName = remoteFolderName,
+                StartedAtUtc = startedAt,
+                FinishedAtUtc = DateTime.UtcNow,
+                ActivityMessages = activityMessages,
+                Errors = [ex.ToString()]
+            };
+        }
+
+        var outputPath = Path.Combine(outputFolder, outputFileName);
+
+        return new ProcessingResult
+        {
+            Success = true,
+            Message = $"ProCut Suite API processed 1 file into {outputPath}",
+            SourcePath = sourcePath,
+            OutputPath = outputPath,
+            RemoteFolderName = remoteFolderName,
+            StartedAtUtc = startedAt,
+            FinishedAtUtc = DateTime.UtcNow,
+            ActivityMessages = activityMessages,
+            ProcessedFiles = [outputFileName]
+        };
+    }
+
+    private async Task<string> ProcessFileWithProCutApiAsync(
+        string sourceFile,
+        string outputDirectory,
+        Uri endpointUri,
+        string apiKey,
+        ProcessingSetupSettings processingSetup,
+        List<string> activityMessages,
+        CancellationToken cancellationToken)
+    {
+        var sourceFileName = Path.GetFileName(sourceFile);
+        var toolsJson = BuildProCutToolsJson(processingSetup);
+        activityMessages.Add($"ProCut Suite API upload starting: {sourceFileName}");
+
+        await using var fileStream = File.OpenRead(sourceFile);
+        using var fileContent = new StreamContent(fileStream);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("text/plain");
+
+        using var content = new MultipartFormDataContent();
+        content.Add(fileContent, "file", sourceFileName);
+        content.Add(new StringContent(toolsJson, Encoding.UTF8, "application/json"), "tools");
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, endpointUri)
+        {
+            Content = content
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            var detail = string.IsNullOrWhiteSpace(errorBody)
+                ? response.ReasonPhrase
+                : errorBody.Trim();
+            activityMessages.Add($"ProCut Suite API error {(int)response.StatusCode} {response.StatusCode}: {detail}");
+            throw new InvalidOperationException($"ProCut Suite API returned {(int)response.StatusCode} {response.StatusCode}: {detail}");
+        }
+
+        var outputFileName = ResolveProCutOutputFileName(response.Content.Headers.ContentDisposition, sourceFileName);
+        var outputPath = Path.Combine(outputDirectory, outputFileName);
+        await using var outputStream = File.Create(outputPath);
+        await response.Content.CopyToAsync(outputStream, cancellationToken);
+        activityMessages.Add($"ProCut Suite API response received: {sourceFileName} -> {outputFileName}");
+        return outputFileName;
+    }
+
+    private static IReadOnlyList<string> BuildProCutToolTypeList(ProcessingSetupSettings processingSetup)
+    {
+        var tools = new List<string>();
+
+        if (processingSetup.ProCutArcFittingEnabled &&
+            ProCutGcodeToolAvailability.IsAvailable("arc_fitting", schemaEnabled: null))
+        {
+            tools.Add("arc_fitting");
+        }
+
+        if (processingSetup.ProCutLineJoinerEnabled)
+        {
+            tools.Add("line_joiner");
+        }
+
+        if (processingSetup.ProCutArcJoinerEnabled &&
+            ProCutGcodeToolAvailability.IsAvailable("arc_joiner", schemaEnabled: null))
+        {
+            tools.Add("arc_joiner");
+        }
+
+        if (processingSetup.ProCutCornerSmoothEnabled)
+        {
+            tools.Add("corner_smooth");
+        }
+
+        return tools;
+    }
+
+    private static string BuildProCutToolsJson(ProcessingSetupSettings processingSetup)
+    {
+        var tools = new List<object>();
+
+        if (processingSetup.ProCutArcFittingEnabled &&
+            ProCutGcodeToolAvailability.IsAvailable("arc_fitting", schemaEnabled: null))
+        {
+            tools.Add(new
+            {
+                type = "arc_fitting",
+                options = new
+                {
+                    toleranceMm = processingSetup.ProCutArcFittingToleranceMm,
+                    minSegments = processingSetup.ProCutArcFittingMinSegments,
+                    maxSegments = processingSetup.ProCutArcFittingMaxSegments
+                }
+            });
+        }
+
+        if (processingSetup.ProCutLineJoinerEnabled)
+        {
+            tools.Add(new
+            {
+                type = "line_joiner",
+                options = new
+                {
+                    preserveFeedBoundaries = processingSetup.ProCutLineJoinerPreserveFeedBoundaries
+                }
+            });
+        }
+
+        if (processingSetup.ProCutArcJoinerEnabled &&
+            ProCutGcodeToolAvailability.IsAvailable("arc_joiner", schemaEnabled: null))
+        {
+            tools.Add(new
+            {
+                type = "arc_joiner",
+                options = new
+                {
+                    maxCombinedAngleDeg = processingSetup.ProCutArcJoinerMaxCombinedAngleDeg
+                }
+            });
+        }
+
+        if (processingSetup.ProCutCornerSmoothEnabled)
+        {
+            tools.Add(new
+            {
+                type = "corner_smooth",
+                options = new
+                {
+                    angleThresholdDeg = processingSetup.ProCutCornerSmoothAngleThresholdDeg,
+                    slowdownDistanceMm = processingSetup.ProCutCornerSmoothSlowdownDistanceMm,
+                    slowdownFeedrateMmMin = processingSetup.ProCutCornerSmoothSlowdownFeedrateMmMin,
+                    smallArcThresholdMm = processingSetup.ProCutCornerSmoothSmallArcThresholdMm,
+                    includeCircularRamps = processingSetup.ProCutCornerSmoothIncludeCircularRamps
+                }
+            });
+        }
+
+        if (tools.Count == 0)
+        {
+            throw new InvalidOperationException("At least one ProCut Suite G-code processing tool must be enabled.");
+        }
+
+        return JsonSerializer.Serialize(tools);
+    }
+
+    private static bool TryBuildProCutApiUri(
+        ProCutApiSettings proCutApi,
+        ProcessingSetupSettings processingSetup,
+        out Uri? endpointUri,
+        out string error)
+    {
+        endpointUri = null;
+        error = string.Empty;
+
+        var endpoint = string.IsNullOrWhiteSpace(processingSetup.ProCutApiEndpoint)
+            ? "/api/external/gcode/process"
+            : processingSetup.ProCutApiEndpoint.Trim();
+        if (Uri.TryCreate(endpoint, UriKind.Absolute, out endpointUri) &&
+            (string.Equals(endpointUri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(endpointUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)))
+        {
+            return true;
+        }
+
+        if (!Uri.TryCreate(proCutApi.BaseUrl, UriKind.Absolute, out var baseUri))
+        {
+            error = "the ProCut Suite API base URL is invalid.";
+            return false;
+        }
+
+        endpointUri = new Uri(baseUri, endpoint.TrimStart('/'));
+        return true;
+    }
+
+    private static string ResolveProCutOutputFileName(ContentDispositionHeaderValue? contentDisposition, string fallbackFileName)
+    {
+        var fileName = contentDisposition?.FileNameStar;
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            fileName = contentDisposition?.FileName;
+        }
+
+        fileName = fileName?.Trim().Trim('"');
+        return string.IsNullOrWhiteSpace(fileName)
+            ? fallbackFileName
+            : Path.GetFileName(fileName);
     }
 
     private static void DeletePathIfExists(string path)

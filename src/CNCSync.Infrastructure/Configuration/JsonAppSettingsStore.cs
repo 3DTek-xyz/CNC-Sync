@@ -16,15 +16,19 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
     };
 
     private readonly string _settingsDirectory;
-    private readonly string _legacySettingsDirectory;
+    private readonly string[] _legacySettingsDirectories;
     private readonly string _bundledScriptsDirectory;
     private readonly ISecretStore _secretStore;
 
     public JsonAppSettingsStore()
     {
         var appDataRoot = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        _settingsDirectory = Path.Combine(appDataRoot, "CNC Sync");
-        _legacySettingsDirectory = Path.Combine(appDataRoot, "CNCSync");
+        _settingsDirectory = Path.Combine(appDataRoot, "ProCut Suite Desktop");
+        _legacySettingsDirectories =
+        [
+            Path.Combine(appDataRoot, "CNC Sync"),
+            Path.Combine(appDataRoot, "CNCSync")
+        ];
         SettingsFilePath = Path.Combine(_settingsDirectory, "settings.json");
         ScriptsDirectoryPath = Path.Combine(_settingsDirectory, "Scripts");
         _bundledScriptsDirectory = Path.Combine(AppContext.BaseDirectory, "BundledScripts");
@@ -34,7 +38,7 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
     public JsonAppSettingsStore(string settingsDirectory, string legacySettingsDirectory, string bundledScriptsDirectory, ISecretStore? secretStore = null)
     {
         _settingsDirectory = settingsDirectory;
-        _legacySettingsDirectory = legacySettingsDirectory;
+        _legacySettingsDirectories = [legacySettingsDirectory];
         SettingsFilePath = Path.Combine(_settingsDirectory, "settings.json");
         ScriptsDirectoryPath = Path.Combine(_settingsDirectory, "Scripts");
         _bundledScriptsDirectory = bundledScriptsDirectory;
@@ -65,7 +69,8 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
         }
         var normalized = (settings ?? AppSettings.CreateDefault()).Normalize();
         var migratedLegacyPasswords = RestoreDestinationPasswords(normalized);
-        if (migratedLegacyPasswords)
+        var migratedProCutApiKey = RestoreProCutApiKey(normalized);
+        if (migratedLegacyPasswords || migratedProCutApiKey)
         {
             RewriteSettingsFile(CreateSanitizedSettingsCopy(normalized));
         }
@@ -85,6 +90,7 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
         Directory.CreateDirectory(ScriptsDirectoryPath);
         SeedBundledScripts();
         PersistDestinationPasswords(settings);
+        PersistProCutApiKey(settings);
 
         var sanitizedSettings = CreateSanitizedSettingsCopy(settings);
         await RewriteSettingsFileAsync(sanitizedSettings, cancellationToken);
@@ -138,26 +144,29 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
 
     private void MigrateLegacyDataIfNeeded()
     {
-        if (!Directory.Exists(_legacySettingsDirectory))
+        foreach (var legacySettingsDirectory in _legacySettingsDirectories)
         {
-            return;
-        }
-
-        Directory.CreateDirectory(_settingsDirectory);
-
-        foreach (var sourcePath in Directory.EnumerateFiles(_legacySettingsDirectory, "*", SearchOption.AllDirectories))
-        {
-            var relativePath = Path.GetRelativePath(_legacySettingsDirectory, sourcePath);
-            var destinationPath = Path.Combine(_settingsDirectory, relativePath);
-            var destinationDirectory = Path.GetDirectoryName(destinationPath);
-            if (!string.IsNullOrWhiteSpace(destinationDirectory))
+            if (!Directory.Exists(legacySettingsDirectory))
             {
-                Directory.CreateDirectory(destinationDirectory);
+                continue;
             }
 
-            if (!File.Exists(destinationPath))
+            Directory.CreateDirectory(_settingsDirectory);
+
+            foreach (var sourcePath in Directory.EnumerateFiles(legacySettingsDirectory, "*", SearchOption.AllDirectories))
             {
-                File.Copy(sourcePath, destinationPath);
+                var relativePath = Path.GetRelativePath(legacySettingsDirectory, sourcePath);
+                var destinationPath = Path.Combine(_settingsDirectory, relativePath);
+                var destinationDirectory = Path.GetDirectoryName(destinationPath);
+                if (!string.IsNullOrWhiteSpace(destinationDirectory))
+                {
+                    Directory.CreateDirectory(destinationDirectory);
+                }
+
+                if (!File.Exists(destinationPath))
+                {
+                    File.Copy(sourcePath, destinationPath);
+                }
             }
         }
     }
@@ -227,6 +236,20 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
         return migratedLegacyPasswords;
     }
 
+    private bool RestoreProCutApiKey(AppSettings settings)
+    {
+        var legacyApiKey = settings.ProCutApi.ApiKey;
+        if (!string.IsNullOrWhiteSpace(legacyApiKey))
+        {
+            _secretStore.SetSecret(ProCutApiKeySecretKey, legacyApiKey);
+            settings.ProCutApi.ApiKey = legacyApiKey;
+            return true;
+        }
+
+        settings.ProCutApi.ApiKey = _secretStore.GetSecret(ProCutApiKeySecretKey) ?? string.Empty;
+        return false;
+    }
+
     private void PersistDestinationPasswords(AppSettings settings)
     {
         foreach (var destination in settings.Destinations)
@@ -254,6 +277,17 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
         }
     }
 
+    private void PersistProCutApiKey(AppSettings settings)
+    {
+        if (string.IsNullOrWhiteSpace(settings.ProCutApi.ApiKey))
+        {
+            _secretStore.DeleteSecret(ProCutApiKeySecretKey);
+            return;
+        }
+
+        _secretStore.SetSecret(ProCutApiKeySecretKey, settings.ProCutApi.ApiKey);
+    }
+
     private static AppSettings CreateSanitizedSettingsCopy(AppSettings settings)
     {
         var copy = JsonSerializer.Deserialize<AppSettings>(
@@ -265,10 +299,12 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
             destination.Password = string.Empty;
             destination.PrivateKeyPassphrase = string.Empty;
         }
+        copy.ProCutApi.ApiKey = string.Empty;
 
         return copy;
     }
 
+    private const string ProCutApiKeySecretKey = "procutsuite:api-key";
     private static string BuildDestinationPasswordKey(DestinationSettings destination) => $"{destination.Id}:password";
     private static string BuildDestinationPrivateKeyPassphraseKey(DestinationSettings destination) => $"{destination.Id}:private-key-passphrase";
 

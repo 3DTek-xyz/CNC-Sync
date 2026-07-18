@@ -338,7 +338,7 @@ public partial class App : Application
             _trayRecentActivityMenuItem3.Header = messages.ElementAtOrDefault(2) ?? "-";
         }
 
-        var tooltipLines = new List<string> { "CNC Sync", $"Status: {status}" };
+        var tooltipLines = new List<string> { "ProCut Suite Desktop", $"Status: {status}" };
         tooltipLines.AddRange(messages);
         _appTrayIcon.ToolTipText = string.Join(Environment.NewLine, tooltipLines);
     }

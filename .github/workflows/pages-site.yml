@@ -31,16 +31,26 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
+
           download_run_artifact() {
             local run_id="$1"
             local artifact_name="$2"
             local target_dir="$3"
+            if [[ -z "$run_id" || "$run_id" == "null" ]]; then
+              echo "No release workflow run id available for $artifact_name; continuing."
+              return 0
+            fi
             if ! gh run download "$run_id" --repo "$GITHUB_REPOSITORY" --name "$artifact_name" --dir "$target_dir"; then
               echo "No workflow artifact named $artifact_name matched for $target_dir; continuing."
             fi
           }
 
           run_id="${{ github.event.workflow_run.id }}"
+          if [[ -z "$run_id" || "$run_id" == "null" ]]; then
+            run_id="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow release.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
+          fi
+
           mkdir -p site
           cp -R docs/. site/
           mkdir -p site/downloads/win site/downloads/macos site/downloads/linux site/updates
@@ -52,6 +62,59 @@ jobs:
           download_run_artifact "$run_id" "macos-release-arm64-update-feed" site/updates
           download_run_artifact "$run_id" "macos-release-x64-update-feed" site/updates
           download_run_artifact "$run_id" "linux-update-feed" site/updates
+          latest_tag="$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq '.tagName' 2>/dev/null || true)"
+          version="${latest_tag#v}"
+          base_url="https://${GITHUB_REPOSITORY_OWNER}.github.io/CNC-Sync"
+          export PCS_DESKTOP_MANIFEST_VERSION="$version"
+          export PCS_DESKTOP_MANIFEST_BASE_URL="$base_url"
+          python3 - <<'PY'
+          import datetime
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          site = Path("site")
+          candidates = {
+              "windows-amd64": [
+                  site / "downloads" / "win" / "3DTek.ProCutSuiteDesktop-win-Setup.exe",
+                  site / "downloads" / "win" / "3DTek.CNCSync-win-Setup.exe",
+              ],
+              "darwin-arm64": [
+                  site / "downloads" / "macos" / "3DTek.ProCutSuiteDesktop-osx-arm64-Setup.pkg",
+                  site / "downloads" / "macos" / "3DTek.CNCSync-osx-arm64-Setup.pkg",
+              ],
+              "darwin-amd64": [
+                  site / "downloads" / "macos" / "3DTek.ProCutSuiteDesktop-osx-x64-Setup.pkg",
+                  site / "downloads" / "macos" / "3DTek.CNCSync-osx-x64-Setup.pkg",
+              ],
+              "linux-amd64": [
+                  site / "downloads" / "linux" / "3DTek.ProCutSuiteDesktop-linux-x64.AppImage",
+                  site / "downloads" / "linux" / "3DTek.CNCSync-linux-x64.AppImage",
+              ],
+          }
+
+          base_url = os.environ["PCS_DESKTOP_MANIFEST_BASE_URL"].rstrip("/")
+          assets = {}
+          for key, paths in candidates.items():
+              file_path = next((path for path in paths if path.exists()), None)
+              if file_path is None:
+                  continue
+              rel_path = file_path.relative_to(site).as_posix()
+              digest = hashlib.sha256(file_path.read_bytes()).hexdigest()
+              assets[key] = {
+                  "url": f"{base_url}/{rel_path}",
+                  "sha256": digest,
+              }
+
+          manifest = {
+              "version": os.environ.get("PCS_DESKTOP_MANIFEST_VERSION") or "",
+              "published_at": datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+              "notes": "GitHub Pages update feed for ProCut Suite Desktop downloads.",
+              "assets": assets,
+          }
+          (site / "update.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+          PY
           touch site/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

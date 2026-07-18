@@ -10,6 +10,7 @@ using CNCSync.Core.Processing;
 using CNCSync.Core.Services;
 using CNCSync.App.Services;
 using CNCSync.Infrastructure.Logging;
+using CNCSync.Infrastructure.ProCutApi;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -28,6 +29,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IVpnService _vpnService;
     private readonly IThemePreferenceService _themePreferenceService;
     private readonly IUsageTelemetryService _usageTelemetryService;
+    private readonly ProCutApiSchemaClient _proCutApiSchemaClient = new();
     private readonly SemaphoreSlim _saveLock = new(1, 1);
     private readonly Lock _activityLogFileLock = new();
     private readonly DispatcherTimer _scheduledCatchUpTimer = new();
@@ -41,8 +43,38 @@ public partial class MainWindowViewModel : ViewModelBase
     private DateTime? _telemetryLastSeenAtUtc;
     private DateTime? _telemetryLastHeartbeatAtUtc;
 
+    private static ProCutApiServiceOption CreateDefaultProCutGcodeServiceOption() =>
+        new()
+        {
+            Id = "gcode_processing",
+            Name = "G-code Processing",
+            Endpoint = "/api/external/gcode/process",
+            Description = "Process G-code with ProCut Suite tools",
+            Tools =
+            [
+                new ProCutApiToolOption { Type = "arc_fitting", Label = "Arc Fitting" },
+                new ProCutApiToolOption { Type = "line_joiner", Label = "Line Joiner" },
+                new ProCutApiToolOption { Type = "arc_joiner", Label = "Arc Joiner" },
+                new ProCutApiToolOption { Type = "corner_smooth", Label = "Corner Smoothing" }
+            ]
+        };
+
+    private static bool IsDesktopGcodeProcessingService(ProCutApiServiceOption service)
+    {
+        if (service.Deprecated)
+        {
+            return false;
+        }
+
+        return service.Tools.Any(tool =>
+            string.Equals(tool.Type, "arc_fitting", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(tool.Type, "line_joiner", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(tool.Type, "arc_joiner", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(tool.Type, "corner_smooth", StringComparison.OrdinalIgnoreCase));
+    }
+
     [ObservableProperty]
-    private string appTitle = "CNC Sync";
+    private string appTitle = "ProCut Suite Desktop";
 
     [ObservableProperty]
     private string subtitle = string.Empty;
@@ -87,7 +119,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private string saveMessage = "Changes save automatically.";
 
     [ObservableProperty]
-    private string updateStatus = "Installed CNC Sync builds use the public update feed with Velopack.";
+    private string updateStatus = "Installed ProCut Suite Desktop builds use the public update feed with Velopack.";
 
     [ObservableProperty]
     private bool hasUpdatePrompt;
@@ -96,7 +128,16 @@ public partial class MainWindowViewModel : ViewModelBase
     private string updatePromptTitle = "Software Updates";
 
     [ObservableProperty]
-    private string updatePromptMessage = "CNC Sync can check for newer releases from the public update feed.";
+    private string updatePromptMessage = "ProCut Suite Desktop can check for newer releases from the public update feed.";
+
+    [ObservableProperty]
+    private string proCutApiBaseUrl = "https://procutsuite.com";
+
+    [ObservableProperty]
+    private string proCutApiKey = string.Empty;
+
+    [ObservableProperty]
+    private string proCutApiServicesStatus = "Refresh ProCut Suite services after saving a base URL and API key.";
 
     [ObservableProperty]
     private string validationSummary = "Validation has not been run.";
@@ -170,7 +211,7 @@ public partial class MainWindowViewModel : ViewModelBase
         ActivityLogPath = Path.Combine(Path.GetDirectoryName(SettingsPath) ?? AppContext.BaseDirectory, "activity.log");
         ScriptsPath = _settingsStore.ScriptsDirectoryPath;
         UpdateStatus = _updateService.IsSupported
-            ? "Update checks are available for installed packaged releases from the public CNC Sync update feed."
+            ? "Update checks are available for installed packaged releases from the public ProCut Suite Desktop update feed."
             : "Automatic updates are only available on supported packaged desktop builds.";
         Apply(initialSettings);
         TelemetryNotice = _usageTelemetryService.NoticeText;
@@ -185,6 +226,10 @@ public partial class MainWindowViewModel : ViewModelBase
         AddActivity("Initial settings loaded.");
         UpdateScheduledCatchUpTimer();
         _ = RefreshVpnConnectionsCoreAsync(logResult: false);
+        if (!string.IsNullOrWhiteSpace(ProCutApiKey))
+        {
+            _ = RefreshProCutApiServicesAsync();
+        }
     }
 
     public MainWindowViewModel()
@@ -213,6 +258,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public ObservableCollection<ProcessingSetupItemViewModel> ProcessingSetups { get; } = [];
 
+    public ObservableCollection<ProCutApiServiceOptionViewModel> AvailableProCutApiServices { get; } =
+        [new(CreateDefaultProCutGcodeServiceOption())];
+
     public ObservableCollection<RemoteBrowserItemViewModel> RemoteBrowserItems { get; } = [];
     public ObservableCollection<VpnConnectionOptionViewModel> AvailableVpnConnectionOptions { get; } =
         [new(string.Empty, "(None)")];
@@ -233,9 +281,57 @@ public partial class MainWindowViewModel : ViewModelBase
     public IReadOnlyList<AppThemePreference> AvailableThemePreferences { get; } = Enum.GetValues<AppThemePreference>();
 
     public string AppVersion => ResolvedAppVersion;
-    public string ProjectSiteUrl => "https://3dtek-xyz.github.io/CNC-Sync/";
+    public string ProjectSiteUrl => "https://procutsuite.com";
     public string ReleaseNotesUrl => "https://github.com/3DTek-xyz/CNC-Sync/releases";
     public string SupportIssuesUrl => "https://github.com/3DTek-xyz/CNC-Sync/issues";
+    public string ProCutApiKeyStatus => string.IsNullOrWhiteSpace(ProCutApiKey)
+        ? "No ProCut Suite API key is saved."
+        : "ProCut Suite API key is saved securely.";
+
+    public ProCutApiServiceOptionViewModel? SelectedProcessingSetupProCutApiService
+    {
+        get
+        {
+            if (SelectedProcessingSetup is null)
+            {
+                return null;
+            }
+
+            return AvailableProCutApiServices.FirstOrDefault(service =>
+                string.Equals(service.Id, SelectedProcessingSetup.ProCutServiceId, StringComparison.OrdinalIgnoreCase));
+        }
+        set
+        {
+            if (SelectedProcessingSetup is null || value is null)
+            {
+                return;
+            }
+
+            SelectedProcessingSetup.ProCutServiceId = value.Id;
+            SelectedProcessingSetup.ProCutApiEndpoint = value.Endpoint;
+            ApplySelectedProCutApiToolAvailability(SelectedProcessingSetup);
+            NotifySelectedProCutApiServiceChanged();
+        }
+    }
+
+    public string SelectedProCutApiServiceDescription => SelectedProcessingSetupProCutApiService?.Description ?? string.Empty;
+    public string SelectedProCutApiServiceMetadataSummary => SelectedProcessingSetupProCutApiService?.MetadataSummary ?? string.Empty;
+    public bool SelectedProCutApiServiceHasTools => SelectedProcessingSetupProCutApiService?.HasTools == true;
+    public bool SelectedProCutApiServiceHasOptions => SelectedProcessingSetupProCutApiService?.HasOptions == true;
+    public bool SelectedProCutApiServiceSupportsGcodeTools => SelectedProcessingSetupProCutApiService?.SupportsGcodeTools == true;
+    public bool SelectedProCutApiServiceDoesNotSupportGcodeTools => SelectedProcessingSetupProCutApiService is not null &&
+                                                                     !SelectedProCutApiServiceSupportsGcodeTools;
+    public bool SelectedProCutApiServiceHasNoParameterMetadata => SelectedProcessingSetupProCutApiService?.HasNoParameterMetadata == true;
+    public IReadOnlyList<ProCutApiToolOptionViewModel> SelectedProCutApiServiceTools => SelectedProcessingSetupProCutApiService?.Tools ?? [];
+    public IReadOnlyList<ProCutApiParameterOptionViewModel> SelectedProCutApiServiceOptions => SelectedProcessingSetupProCutApiService?.Options ?? [];
+    public bool SelectedProCutArcFittingAvailable => IsSelectedProCutToolAvailable("arc_fitting");
+    public bool SelectedProCutLineJoinerAvailable => IsSelectedProCutToolAvailable("line_joiner");
+    public bool SelectedProCutArcJoinerAvailable => IsSelectedProCutToolAvailable("arc_joiner");
+    public bool SelectedProCutCornerSmoothAvailable => IsSelectedProCutToolAvailable("corner_smooth");
+    public bool SelectedProCutArcFittingUnavailable => !SelectedProCutArcFittingAvailable;
+    public bool SelectedProCutArcJoinerUnavailable => !SelectedProCutArcJoinerAvailable;
+    public string SelectedProCutArcFittingUnavailableReason => GetSelectedProCutToolUnavailableReason("arc_fitting");
+    public string SelectedProCutArcJoinerUnavailableReason => GetSelectedProCutToolUnavailableReason("arc_joiner");
 
     public string ActiveMonitoringProfilesSummary
     {
@@ -405,6 +501,19 @@ public partial class MainWindowViewModel : ViewModelBase
     public bool CanStopMonitoring => string.Equals(MonitoringStatus, "Running", StringComparison.OrdinalIgnoreCase);
 
     public bool CanApplyUpdate => _updateService.CanApplyUpdate;
+
+    partial void OnProCutApiKeyChanged(string value)
+    {
+        OnPropertyChanged(nameof(ProCutApiKeyStatus));
+        ProCutApiServicesStatus = string.IsNullOrWhiteSpace(value)
+            ? "Save a ProCut Suite API key before refreshing services."
+            : "Refresh ProCut Suite services to load the current endpoint list.";
+    }
+
+    partial void OnProCutApiBaseUrlChanged(string value)
+    {
+        ProCutApiServicesStatus = "Refresh ProCut Suite services to load the current endpoint list.";
+    }
 
     partial void OnMonitoringStatusChanged(string value)
     {
@@ -654,6 +763,62 @@ public partial class MainWindowViewModel : ViewModelBase
             CurrentTask = message;
             ProcessingSetupImportStatus = message;
             AddActivity(message);
+        }
+    }
+
+    [RelayCommand]
+    private async Task RefreshProCutApiServicesAsync(CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(ProCutApiBaseUrl) || string.IsNullOrWhiteSpace(ProCutApiKey))
+        {
+            ProCutApiServicesStatus = "Save a ProCut Suite API base URL and API key before refreshing services.";
+            return;
+        }
+
+        try
+        {
+            ProCutApiServicesStatus = "Refreshing ProCut Suite services...";
+            var services = await _proCutApiSchemaClient.GetServicesAsync(
+                new ProCutApiSettings
+                {
+                    BaseUrl = ProCutApiBaseUrl,
+                    ApiKey = ProCutApiKey
+                },
+                cancellationToken);
+
+            var desktopServices = services
+                .Where(IsDesktopGcodeProcessingService)
+                .ToList();
+
+            if (desktopServices.Count == 0)
+            {
+                throw new InvalidOperationException("ProCut Suite schema did not include any desktop G-code processing services.");
+            }
+
+            AvailableProCutApiServices.Clear();
+            foreach (var service in desktopServices)
+            {
+                AvailableProCutApiServices.Add(new ProCutApiServiceOptionViewModel(service));
+            }
+
+            EnsureProcessingSetupsUseAvailableProCutServices();
+            foreach (var setup in ProcessingSetups)
+            {
+                ApplySelectedProCutApiServiceEndpoint(setup);
+                ApplySelectedProCutApiToolAvailability(setup);
+            }
+            NotifySelectedProCutApiServiceChanged();
+
+            var hiddenCount = services.Count - desktopServices.Count;
+            ProCutApiServicesStatus = hiddenCount > 0
+                ? $"Loaded {AvailableProCutApiServices.Count} desktop G-code service(s). Hid {hiddenCount} unrelated/deprecated service(s)."
+                : $"Loaded {AvailableProCutApiServices.Count} desktop G-code service(s).";
+            AddActivity(ProCutApiServicesStatus);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            ProCutApiServicesStatus = $"Could not refresh ProCut Suite services: {ex.Message}";
+            AddActivity(ProCutApiServicesStatus);
         }
     }
 
@@ -922,7 +1087,8 @@ public partial class MainWindowViewModel : ViewModelBase
         var result = await _syncCoordinator.CatchUpMissingItemsAsync(
             SelectedManualWatchProfile.ToSettings(),
             destination.ToSettings(),
-            processingSetupSettings);
+            processingSetupSettings,
+            ToSettings().ProCutApi);
         LastProcessingSummary = result.Message;
         CurrentTask = result.Message;
         _usageTelemetryService.CaptureManualCatchUpCompleted(result.Success, result.Message);
@@ -992,6 +1158,8 @@ public partial class MainWindowViewModel : ViewModelBase
         ScheduledCatchUpEnabled = settings.ScheduledCatchUpEnabled;
         ScheduledCatchUpIntervalMinutes = settings.ScheduledCatchUpIntervalMinutes;
         CustomScriptSourceUrl = settings.CustomScriptSourceUrl;
+        ProCutApiBaseUrl = settings.ProCutApi.BaseUrl;
+        ProCutApiKey = settings.ProCutApi.ApiKey;
         _usageTelemetryService.ApplySettings(settings);
         TelemetryNotice = _usageTelemetryService.NoticeText;
 
@@ -1006,6 +1174,7 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             ProcessingSetups.Add(ProcessingSetupItemViewModel.FromSettings(setup));
         }
+        EnsureProcessingSetupsUseAvailableProCutServices();
 
         WatchProfiles.Clear();
         foreach (var profile in settings.WatchProfiles)
@@ -1038,6 +1207,11 @@ public partial class MainWindowViewModel : ViewModelBase
             ScheduledCatchUpEnabled = ScheduledCatchUpEnabled,
             ScheduledCatchUpIntervalMinutes = ScheduledCatchUpIntervalMinutes,
             CustomScriptSourceUrl = CustomScriptSourceUrl,
+            ProCutApi = new ProCutApiSettings
+            {
+                BaseUrl = ProCutApiBaseUrl,
+                ApiKey = ProCutApiKey
+            },
             Destinations = Destinations.Select(destination => destination.ToSettings()).ToList(),
             ProcessingSetups = ProcessingSetups.Select(setup => setup.ToSettings()).ToList(),
             WatchProfiles = WatchProfiles.Select(profile => profile.ToSettings()).ToList()
@@ -1165,7 +1339,7 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        if (e.PropertyName is nameof(LaunchAtLogin) or nameof(StartMinimized))
+        if (e.PropertyName is nameof(LaunchAtLogin) or nameof(StartMinimized) or nameof(ProCutApiBaseUrl) or nameof(ProCutApiKey))
         {
             RequestAutoSave(restartMonitoringAfterSave: false);
         }
@@ -1456,6 +1630,24 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
+        if (sender is ProcessingSetupItemViewModel setup &&
+            e.PropertyName == nameof(ProcessingSetupItemViewModel.ProCutServiceId))
+        {
+            ApplySelectedProCutApiServiceEndpoint(setup);
+            ApplySelectedProCutApiToolAvailability(setup);
+            if (ReferenceEquals(setup, SelectedProcessingSetup))
+            {
+                NotifySelectedProCutApiServiceChanged();
+            }
+        }
+
+        if (sender is ProcessingSetupItemViewModel endpointSetup &&
+            e.PropertyName == nameof(ProcessingSetupItemViewModel.ProCutApiEndpoint) &&
+            ReferenceEquals(endpointSetup, SelectedProcessingSetup))
+        {
+            NotifySelectedProCutApiServiceChanged();
+        }
+
         RequestAutoSave(restartMonitoringAfterSave: true);
     }
 
@@ -1465,6 +1657,116 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             ProcessingSetupImportStatus = "Add or select a processing setup.";
         }
+
+        if (value is not null)
+        {
+            ApplySelectedProCutApiToolAvailability(value);
+        }
+        NotifySelectedProCutApiServiceChanged();
+    }
+
+    private void EnsureProcessingSetupsUseAvailableProCutServices()
+    {
+        var fallbackService = AvailableProCutApiServices.FirstOrDefault();
+        if (fallbackService is null)
+        {
+            return;
+        }
+
+        foreach (var setup in ProcessingSetups)
+        {
+            if (AvailableProCutApiServices.Any(service =>
+                    string.Equals(service.Id, setup.ProCutServiceId, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            setup.ProCutServiceId = fallbackService.Id;
+            setup.ProCutApiEndpoint = fallbackService.Endpoint;
+            ApplySelectedProCutApiToolAvailability(setup);
+        }
+    }
+
+    private void ApplySelectedProCutApiServiceEndpoint(ProcessingSetupItemViewModel setup)
+    {
+        var selectedService = AvailableProCutApiServices.FirstOrDefault(service =>
+            string.Equals(service.Id, setup.ProCutServiceId, StringComparison.OrdinalIgnoreCase));
+
+        if (selectedService is null || string.IsNullOrWhiteSpace(selectedService.Endpoint))
+        {
+            return;
+        }
+
+        if (!string.Equals(setup.ProCutApiEndpoint, selectedService.Endpoint, StringComparison.Ordinal))
+        {
+            setup.ProCutApiEndpoint = selectedService.Endpoint;
+        }
+    }
+
+    private ProCutApiToolOptionViewModel? GetSelectedProCutTool(string toolType) =>
+        SelectedProcessingSetupProCutApiService?.Tools.FirstOrDefault(tool =>
+            string.Equals(tool.Type, toolType, StringComparison.OrdinalIgnoreCase));
+
+    private bool IsSelectedProCutToolAvailable(string toolType) => GetSelectedProCutTool(toolType)?.IsAvailable == true;
+
+    private string GetSelectedProCutToolUnavailableReason(string toolType) =>
+        GetSelectedProCutTool(toolType)?.DisabledReason ?? string.Empty;
+
+    private static bool IsServiceToolAvailable(ProCutApiServiceOptionViewModel service, string toolType) =>
+        service.Tools.FirstOrDefault(tool =>
+            string.Equals(tool.Type, toolType, StringComparison.OrdinalIgnoreCase))?.IsAvailable == true;
+
+    private void ApplySelectedProCutApiToolAvailability(ProcessingSetupItemViewModel setup)
+    {
+        var selectedService = AvailableProCutApiServices.FirstOrDefault(service =>
+            string.Equals(service.Id, setup.ProCutServiceId, StringComparison.OrdinalIgnoreCase));
+
+        if (selectedService is null)
+        {
+            return;
+        }
+
+        if (!IsServiceToolAvailable(selectedService, "arc_fitting"))
+        {
+            setup.ProCutArcFittingEnabled = false;
+        }
+
+        if (!IsServiceToolAvailable(selectedService, "line_joiner"))
+        {
+            setup.ProCutLineJoinerEnabled = false;
+        }
+
+        if (!IsServiceToolAvailable(selectedService, "arc_joiner"))
+        {
+            setup.ProCutArcJoinerEnabled = false;
+        }
+
+        if (!IsServiceToolAvailable(selectedService, "corner_smooth"))
+        {
+            setup.ProCutCornerSmoothEnabled = false;
+        }
+    }
+
+    private void NotifySelectedProCutApiServiceChanged()
+    {
+        OnPropertyChanged(nameof(SelectedProcessingSetupProCutApiService));
+        OnPropertyChanged(nameof(SelectedProCutApiServiceDescription));
+        OnPropertyChanged(nameof(SelectedProCutApiServiceMetadataSummary));
+        OnPropertyChanged(nameof(SelectedProCutApiServiceHasTools));
+        OnPropertyChanged(nameof(SelectedProCutApiServiceHasOptions));
+        OnPropertyChanged(nameof(SelectedProCutApiServiceSupportsGcodeTools));
+        OnPropertyChanged(nameof(SelectedProCutApiServiceDoesNotSupportGcodeTools));
+        OnPropertyChanged(nameof(SelectedProCutApiServiceHasNoParameterMetadata));
+        OnPropertyChanged(nameof(SelectedProCutApiServiceTools));
+        OnPropertyChanged(nameof(SelectedProCutApiServiceOptions));
+        OnPropertyChanged(nameof(SelectedProCutArcFittingAvailable));
+        OnPropertyChanged(nameof(SelectedProCutLineJoinerAvailable));
+        OnPropertyChanged(nameof(SelectedProCutArcJoinerAvailable));
+        OnPropertyChanged(nameof(SelectedProCutCornerSmoothAvailable));
+        OnPropertyChanged(nameof(SelectedProCutArcFittingUnavailable));
+        OnPropertyChanged(nameof(SelectedProCutArcJoinerUnavailable));
+        OnPropertyChanged(nameof(SelectedProCutArcFittingUnavailableReason));
+        OnPropertyChanged(nameof(SelectedProCutArcJoinerUnavailableReason));
     }
 
     private void RequestAutoSave(bool restartMonitoringAfterSave)
@@ -1537,8 +1839,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private sealed class DesignSettingsStore : IAppSettingsStore
     {
-        public string SettingsFilePath => "~/.config/cnc-sync/settings.json";
-        public string ScriptsDirectoryPath => "~/.config/cnc-sync/Scripts";
+        public string SettingsFilePath => "~/.config/ProCut Suite Desktop/settings.json";
+        public string ScriptsDirectoryPath => "~/.config/ProCut Suite Desktop/Scripts";
 
         public Task<AppSettings> LoadAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(AppSettings.CreateDefault());
@@ -1739,6 +2041,7 @@ public partial class MainWindowViewModel : ViewModelBase
             WatchProfileSettings profile,
             DestinationSettings? destination,
             ProcessingSetupSettings processingSetup,
+            ProCutApiSettings? proCutApi = null,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(new ProcessingResult
             {
@@ -1757,6 +2060,7 @@ public partial class MainWindowViewModel : ViewModelBase
             WatchProfileSettings profile,
             DestinationSettings destination,
             ProcessingSetupSettings processingSetup,
+            ProCutApiSettings? proCutApi = null,
             CancellationToken cancellationToken = default) =>
             Task.FromResult<(bool Success, string Message)>((true, $"Design-time catch-up complete for {profile.Name}."));
 

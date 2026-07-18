@@ -18,10 +18,69 @@ public class AppSettingsTests
         Assert.Equal(AppThemePreference.Light, settings.ThemePreference);
         Assert.False(settings.ScheduledCatchUpEnabled);
         Assert.Equal(10, settings.ScheduledCatchUpIntervalMinutes);
+        Assert.Equal("https://procutsuite.com", settings.ProCutApi.BaseUrl);
+        Assert.Equal(string.Empty, settings.ProCutApi.ApiKey);
+        Assert.Equal("gcode_processing", settings.ProcessingSetups[0].ProCutServiceId);
+        Assert.Equal("/api/external/gcode/process", settings.ProcessingSetups[0].ProCutApiEndpoint);
+        Assert.True(settings.ProcessingSetups[0].ProCutCornerSmoothEnabled);
         Assert.Equal(10, profile.StabilityDelaySeconds);
         Assert.Equal(5, profile.StabilityPollingSeconds);
         Assert.Equal(WatchProfileWorkItemMode.ChangedFilesAndFolders, profile.WorkItemMode);
         Assert.Equal(ftp.Id, profile.DestinationId);
+    }
+
+    [Fact]
+    public void Normalize_FillsInMissingProCutApiSettingsForOlderSettings()
+    {
+        var settings = new AppSettings
+        {
+            ProCutApi = null!,
+            Destinations = [],
+            WatchProfiles = []
+        };
+
+        settings.Normalize();
+
+        Assert.NotNull(settings.ProCutApi);
+        Assert.Equal("https://procutsuite.com", settings.ProCutApi.BaseUrl);
+        Assert.Equal(string.Empty, settings.ProCutApi.ApiKey);
+    }
+
+    [Fact]
+    public void ProcessingModes_IncludeProCutApi()
+    {
+        Assert.Contains(ProcessingMode.ProCutApi, Enum.GetValues<ProcessingMode>());
+    }
+
+    [Fact]
+    public void Validator_RejectsProCutApiProcessingWithoutApiKey()
+    {
+        var validator = new AppSettingsValidator();
+        var settings = AppSettings.CreateDefault();
+        settings.ProcessingSetups[0].Mode = ProcessingMode.ProCutApi;
+
+        var result = validator.Validate(settings);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, error => error.Contains("ProCut Suite API key", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Validator_RejectsProCutApiProcessingWithoutEnabledTools()
+    {
+        var validator = new AppSettingsValidator();
+        var settings = AppSettings.CreateDefault();
+        settings.ProCutApi.ApiKey = TestSecrets.ProCutApiKey;
+        settings.ProcessingSetups[0].Mode = ProcessingMode.ProCutApi;
+        settings.ProcessingSetups[0].ProCutArcFittingEnabled = false;
+        settings.ProcessingSetups[0].ProCutLineJoinerEnabled = false;
+        settings.ProcessingSetups[0].ProCutArcJoinerEnabled = false;
+        settings.ProcessingSetups[0].ProCutCornerSmoothEnabled = false;
+
+        var result = validator.Validate(settings);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, error => error.Contains("at least one G-code tool", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -188,6 +247,106 @@ public class AppSettingsTests
         {
             Directory.Delete(watchFolder, recursive: true);
             Directory.Delete(stagingFolder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Validator_RejectsOverlappingWatchStagingAndLocalOutputFolders()
+    {
+        var validator = new AppSettingsValidator();
+        var root = Path.Combine(Path.GetTempPath(), $"cncsync-loop-guard-{Guid.NewGuid():N}");
+        var watchFolder = Path.Combine(root, "Input");
+        Directory.CreateDirectory(watchFolder);
+
+        try
+        {
+            var settings = AppSettings.CreateDefault();
+            settings.WatchProfiles[0].WatchFolder = watchFolder;
+            settings.WatchProfiles[0].StagingFolder = Path.Combine(watchFolder, "Staging");
+            settings.Destinations[0].Type = DestinationType.LocalFolder;
+            settings.Destinations[0].LocalRootPath = Path.Combine(watchFolder, "Output");
+            settings.Destinations[0].Host = string.Empty;
+
+            var result = validator.Validate(settings);
+
+            Assert.False(result.IsValid);
+            Assert.Contains(result.Errors, error => error.Contains("watch folder and staging folder must not overlap", StringComparison.OrdinalIgnoreCase));
+            Assert.Contains(result.Errors, error => error.Contains("watch folder and local destination folder must not overlap", StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Validator_AllowsSiblingInputStagingAndOutputFolders()
+    {
+        var validator = new AppSettingsValidator();
+        var root = Path.Combine(Path.GetTempPath(), $"cncsync-loop-guard-{Guid.NewGuid():N}");
+        var watchFolder = Path.Combine(root, "Input");
+        var stagingFolder = Path.Combine(root, "InputStaging");
+        var outputFolder = Path.Combine(root, "Output");
+        Directory.CreateDirectory(watchFolder);
+
+        try
+        {
+            var settings = AppSettings.CreateDefault();
+            settings.WatchProfiles[0].WatchFolder = watchFolder;
+            settings.WatchProfiles[0].StagingFolder = stagingFolder;
+            settings.Destinations[0].Type = DestinationType.LocalFolder;
+            settings.Destinations[0].LocalRootPath = outputFolder;
+            settings.Destinations[0].Host = string.Empty;
+
+            var result = validator.Validate(settings);
+
+            Assert.True(result.IsValid);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Validator_RejectsLocalOutputThatFeedsAnotherEnabledWatchFolder()
+    {
+        var validator = new AppSettingsValidator();
+        var root = Path.Combine(Path.GetTempPath(), $"cncsync-loop-guard-{Guid.NewGuid():N}");
+        var firstWatchFolder = Path.Combine(root, "InputA");
+        var secondWatchFolder = Path.Combine(root, "InputB");
+        Directory.CreateDirectory(firstWatchFolder);
+        Directory.CreateDirectory(secondWatchFolder);
+
+        try
+        {
+            var settings = AppSettings.CreateDefault();
+            settings.WatchProfiles[0].WatchFolder = firstWatchFolder;
+            settings.WatchProfiles[0].StagingFolder = Path.Combine(root, "StageA");
+            settings.Destinations[0].Type = DestinationType.LocalFolder;
+            settings.Destinations[0].LocalRootPath = secondWatchFolder;
+            settings.Destinations[0].Host = string.Empty;
+            settings.WatchProfiles.Add(new WatchProfileSettings
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                Name = "Watch 2",
+                Enabled = true,
+                WatchFolder = secondWatchFolder,
+                StagingFolder = Path.Combine(root, "StageB"),
+                DestinationId = settings.Destinations[0].Id,
+                ProcessingSetupId = settings.ProcessingSetups[0].Id,
+                StabilityDelaySeconds = 10,
+                StabilityPollingSeconds = 5
+            });
+
+            var result = validator.Validate(settings);
+
+            Assert.False(result.IsValid);
+            Assert.Contains(result.Errors, error => error.Contains("local destination folder must not overlap enabled watch folder", StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
         }
     }
 

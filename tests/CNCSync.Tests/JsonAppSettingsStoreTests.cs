@@ -132,6 +132,78 @@ public sealed class JsonAppSettingsStoreTests
     }
 
     [Fact]
+    public async Task SaveAsync_StoresProCutApiKeyInSecretStore()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"cncsync-store-{Guid.NewGuid():N}");
+        var settingsDirectory = Path.Combine(root, "current");
+        var legacyDirectory = Path.Combine(root, "legacy");
+        var bundledScriptsDirectory = Path.Combine(root, "bundled");
+
+        try
+        {
+            var secretStore = new InMemorySecretStore();
+            var store = new JsonAppSettingsStore(settingsDirectory, legacyDirectory, bundledScriptsDirectory, secretStore);
+            var settings = AppSettings.CreateDefault();
+            settings.ProCutApi.BaseUrl = "https://api.example.test";
+            settings.ProCutApi.ApiKey = TestSecrets.ProCutApiSecret;
+
+            await store.SaveAsync(settings);
+
+            var savedJson = await File.ReadAllTextAsync(Path.Combine(settingsDirectory, "settings.json"));
+            Assert.Contains("https://api.example.test", savedJson, StringComparison.Ordinal);
+            Assert.DoesNotContain(TestSecrets.ProCutApiSecret, savedJson, StringComparison.Ordinal);
+            Assert.Equal(TestSecrets.ProCutApiSecret, secretStore.GetSecret("procutsuite:api-key"));
+
+            var reloaded = await store.LoadAsync();
+            Assert.Equal("https://api.example.test", reloaded.ProCutApi.BaseUrl);
+            Assert.Equal(TestSecrets.ProCutApiSecret, reloaded.ProCutApi.ApiKey);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task LoadAsync_MigratesLegacyPlaintextProCutApiKeyIntoSecretStore()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"cncsync-store-{Guid.NewGuid():N}");
+        var settingsDirectory = Path.Combine(root, "current");
+        var legacyDirectory = Path.Combine(root, "legacy");
+        var bundledScriptsDirectory = Path.Combine(root, "bundled");
+        Directory.CreateDirectory(settingsDirectory);
+
+        try
+        {
+            var secretStore = new InMemorySecretStore();
+            var settings = AppSettings.CreateDefault();
+            settings.ProCutApi.ApiKey = TestSecrets.LegacyProCutApiSecret;
+
+            await File.WriteAllTextAsync(
+                Path.Combine(settingsDirectory, "settings.json"),
+                JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));
+
+            var store = new JsonAppSettingsStore(settingsDirectory, legacyDirectory, bundledScriptsDirectory, secretStore);
+            var loaded = await store.LoadAsync();
+            var rewrittenJson = await File.ReadAllTextAsync(Path.Combine(settingsDirectory, "settings.json"));
+
+            Assert.Equal(TestSecrets.LegacyProCutApiSecret, loaded.ProCutApi.ApiKey);
+            Assert.Equal(TestSecrets.LegacyProCutApiSecret, secretStore.GetSecret("procutsuite:api-key"));
+            Assert.DoesNotContain(TestSecrets.LegacyProCutApiSecret, rewrittenJson, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task LoadAsync_MigratesLegacyPlaintextPasswordsIntoSecretStore()
     {
         var root = Path.Combine(Path.GetTempPath(), $"cncsync-store-{Guid.NewGuid():N}");

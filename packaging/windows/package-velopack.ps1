@@ -1,11 +1,11 @@
 param(
     [string]$Root = (Resolve-Path (Join-Path $PSScriptRoot "..\\..")).Path,
-    [string]$Version = "1.0.82",
+    [string]$Version = "1.0.83",
     [string]$BuildDir = "",
     [string]$DistDir = "",
-    [string]$PackId = "3DTek.CNCSync",
+    [string]$PackId = "3DTek.ProCutSuiteDesktop",
     [string]$MainExe = "CNCSync.exe",
-    [string]$PackTitle = "CNC Sync",
+    [string]$PackTitle = "ProCut Suite Desktop",
     [string]$PackAuthors = "3DTek",
     [string]$IconPath = ""
 )
@@ -21,7 +21,7 @@ if ([string]::IsNullOrWhiteSpace($DistDir)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($IconPath)) {
-    $IconPath = Join-Path $Root "src\\CNCSync.App\\Assets\\cnc-sync.ico"
+    $IconPath = Join-Path $Root "src\\CNCSync.App\\Assets\\procut-suite.ico"
 }
 
 New-Item -ItemType Directory -Force -Path $DistDir | Out-Null

@@ -13,6 +13,7 @@ public sealed class AppSettings
     public bool ScheduledCatchUpEnabled { get; set; }
     public int ScheduledCatchUpIntervalMinutes { get; set; } = 10;
     public string CustomScriptSourceUrl { get; set; } = string.Empty;
+    public ProCutApiSettings ProCutApi { get; set; } = new();
     public List<DestinationSettings> Destinations { get; set; } = [];
     public List<ProcessingSetupSettings> ProcessingSetups { get; set; } = [];
     public List<WatchProfileSettings> WatchProfiles { get; set; } = [];
@@ -32,6 +33,7 @@ public sealed class AppSettings
             ScheduledCatchUpEnabled = false,
             ScheduledCatchUpIntervalMinutes = 10,
             CustomScriptSourceUrl = string.Empty,
+            ProCutApi = new ProCutApiSettings(),
             Destinations = [ftpDestination],
             ProcessingSetups = [processingSetup],
             WatchProfiles = [watchProfile]
@@ -43,6 +45,7 @@ public sealed class AppSettings
         Destinations ??= [];
         ProcessingSetups ??= [];
         WatchProfiles ??= [];
+        ProCutApi ??= new ProCutApiSettings();
 
         if (!Enum.IsDefined(ThemePreference))
         {
@@ -62,6 +65,10 @@ public sealed class AppSettings
         }
 
         CustomScriptSourceUrl = (CustomScriptSourceUrl ?? string.Empty).Trim();
+        ProCutApi.BaseUrl = string.IsNullOrWhiteSpace(ProCutApi.BaseUrl)
+            ? "https://procutsuite.com"
+            : ProCutApi.BaseUrl.Trim().TrimEnd('/');
+        ProCutApi.ApiKey = (ProCutApi.ApiKey ?? string.Empty).Trim();
 
         if (Destinations.Count == 0)
         {
@@ -113,6 +120,20 @@ public sealed class AppSettings
             processingSetup.ArgumentsTemplate = string.IsNullOrWhiteSpace(processingSetup.ArgumentsTemplate)
                 ? "\"{sourcePath}\" \"{outputPath}\""
                 : processingSetup.ArgumentsTemplate;
+            processingSetup.ProCutServiceId = string.IsNullOrWhiteSpace(processingSetup.ProCutServiceId)
+                ? "gcode_processing"
+                : processingSetup.ProCutServiceId.Trim();
+            processingSetup.ProCutApiEndpoint = string.IsNullOrWhiteSpace(processingSetup.ProCutApiEndpoint)
+                ? "/api/external/gcode/process"
+                : processingSetup.ProCutApiEndpoint.Trim();
+            processingSetup.ProCutArcFittingToleranceMm = processingSetup.ProCutArcFittingToleranceMm <= 0 ? 0.05 : processingSetup.ProCutArcFittingToleranceMm;
+            processingSetup.ProCutArcFittingMinSegments = Math.Max(0, processingSetup.ProCutArcFittingMinSegments);
+            processingSetup.ProCutArcFittingMaxSegments = Math.Max(0, processingSetup.ProCutArcFittingMaxSegments);
+            processingSetup.ProCutArcJoinerMaxCombinedAngleDeg = processingSetup.ProCutArcJoinerMaxCombinedAngleDeg <= 0 ? 180 : processingSetup.ProCutArcJoinerMaxCombinedAngleDeg;
+            processingSetup.ProCutCornerSmoothAngleThresholdDeg = processingSetup.ProCutCornerSmoothAngleThresholdDeg <= 0 ? 45 : processingSetup.ProCutCornerSmoothAngleThresholdDeg;
+            processingSetup.ProCutCornerSmoothSlowdownDistanceMm = processingSetup.ProCutCornerSmoothSlowdownDistanceMm <= 0 ? 5 : processingSetup.ProCutCornerSmoothSlowdownDistanceMm;
+            processingSetup.ProCutCornerSmoothSlowdownFeedrateMmMin = processingSetup.ProCutCornerSmoothSlowdownFeedrateMmMin <= 0 ? 1250 : processingSetup.ProCutCornerSmoothSlowdownFeedrateMmMin;
+            processingSetup.ProCutCornerSmoothSmallArcThresholdMm = processingSetup.ProCutCornerSmoothSmallArcThresholdMm < 0 ? 10 : processingSetup.ProCutCornerSmoothSmallArcThresholdMm;
 
             NormalizeBundledScriptArguments(processingSetup);
         }
