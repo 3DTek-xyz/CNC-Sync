@@ -1,8 +1,8 @@
-# CNC Sync User Guide
+# ProCut Suite Desktop User Guide
 
-## What CNC Sync Does
+## What ProCut Suite Desktop Does
 
-CNC Sync watches one or more local folders, optionally runs a local processing step, and delivers the prepared result to a reusable destination.
+ProCut Suite Desktop, formerly CNC Sync, watches one or more local folders, optionally runs a local or ProCut Suite API processing step, and delivers the prepared result to a reusable destination.
 
 The app is built around four reusable setup types:
 
@@ -11,7 +11,7 @@ The app is built around four reusable setup types:
 - `Destinations`
   - named FTP, SFTP, SCP, Local Folder, or Network Share targets that can be reused by many watch profiles
 - `Processing Setups`
-  - named processing rules, including simple passthrough or external scripts
+  - named processing rules, including simple passthrough, external scripts, or ProCut Suite API G-code processing
 - `Watch Folders`
   - the actual monitored folders that combine a watch path, a processing setup, and a destination
 
@@ -28,13 +28,15 @@ The app is built around four reusable setup types:
 Use `App Settings` for behaviour that applies to the whole app:
 
 - `Launch At Login`
-  - start CNC Sync when the user logs in
+  - start ProCut Suite Desktop when the user logs in
 - `Start Minimized`
   - start hidden/minimized when supported on the current platform
 - `Import Settings...`
   - browse for a `settings.json` file from another machine or previous installation and import it into the current app profile
 - `Validate Settings`
   - check the current configuration for missing or invalid items
+- `ProCut Suite API`
+  - save the ProCut Suite base URL and API key used by ProCut Suite API processing setups
 
 Settings are saved automatically as you change them.
 Imported settings replace the current profile configuration.
@@ -75,9 +77,9 @@ Network Share notes:
 - on Linux, SMB shares work best when they are already mounted by the desktop environment
 - on Linux, explicit SMB username/password access may still require mounting the share first in the desktop file manager
 - if a destination requires a VPN first, choose it in `Required VPN`
-- VPN profiles used by CNC Sync must be able to connect automatically without prompting for user interaction
+- VPN profiles used by ProCut Suite Desktop must be able to connect automatically without prompting for user interaction
 - if enabled, `Check destination before starting VPN` tries the destination directly first and only starts the VPN if direct access fails
-- if enabled, `Disconnect VPN When Finished` disconnects a VPN only when CNC Sync had to connect it itself, and only after a short idle window
+- if enabled, `Disconnect VPN When Finished` disconnects a VPN only when ProCut Suite Desktop had to connect it itself, and only after a short idle window
 - `FTP Data Mode` can be set to:
   - `Auto Passive`
     - the usual choice
@@ -114,7 +116,7 @@ Use this when no custom transformation is required.
 
 This runs a local script or executable before upload.
 
-You can import a shared script bundle from the left side of the `Processing Setups` tab. CNC Sync copies it to your local Scripts folder.
+You can import a shared script bundle from the left side of the `Processing Setups` tab. ProCut Suite Desktop copies it to your local Scripts folder.
 
 Fields:
 
@@ -129,7 +131,7 @@ Fields:
     - `Command`
     - `Direct`
 - `Script Path`
-  - the local file CNC Sync should run
+  - the local file ProCut Suite Desktop should run
 - `Custom Script Source URL`
   - a shared customer script source used by `Check / Import` on the left side of the `Processing Setups` tab
 - `Arguments Template`
@@ -174,8 +176,8 @@ Script contract:
 OUTPUT_PATH=/path/to/final/output
 ```
 
-If `OUTPUT_PATH=` is printed, CNC Sync uploads that folder.
-If not, CNC Sync uploads the prepared output folder it already passed in.
+If `OUTPUT_PATH=` is printed, ProCut Suite Desktop uploads that folder.
+If not, ProCut Suite Desktop uploads the prepared output folder it already passed in.
 
 ### Shared Custom Script Imports
 
@@ -183,7 +185,7 @@ If you are receiving customer-specific scripts from a shared source:
 
 - paste the shared link once into `Custom Script Source URL` in the left Processing Setups panel
 - click `Check / Import`
-- CNC Sync imports the files into the local Scripts folder under `Imported/CustomSource`
+- ProCut Suite Desktop imports the files into the local Scripts folder under `Imported/CustomSource`
 - each processing setup can then choose whichever imported local script it needs using `Script Path`
 
 Import behavior:
@@ -193,6 +195,49 @@ Import behavior:
 - unchanged files are left alone
 - old local versions are archived with a timestamp before replacement
 - junk files such as `.DS_Store`, `._*`, `Thumbs.db`, `desktop.ini`, and `ehthumbs.db` are ignored during import
+
+### ProCut Suite API
+
+This mode sends detected G-code files to ProCut Suite for server-side processing, then stages the returned file before normal destination delivery.
+
+Before using it:
+
+- generate or copy a ProCut Suite API key from the ProCut Suite web app
+- open `App Settings`
+- set `Base URL` to `https://procutsuite.com` unless testing another server
+- paste the API key into `API Key`
+- save settings
+
+In a processing setup:
+
+- set `Mode` to `ProCut Suite API`
+- click `Refresh` to load the current service schema from ProCut Suite
+- choose the available G-code processing service
+- tick the tools you want enabled
+
+Current desktop-facing G-code tools:
+
+- `Corner Smoothing` is available
+- `Line Joiner` is available
+- `Arc Fitting` is shown but temporarily disabled pending validation
+- `Arc Joiner` is shown but temporarily disabled pending validation
+
+The desktop app fetches service and tool availability from:
+
+```text
+GET https://procutsuite.com/api/external/schema
+```
+
+When processing a file, it posts multipart form data to:
+
+```text
+POST https://procutsuite.com/api/external/gcode/process
+Authorization: Bearer <api_key>
+file=<g-code file>
+tools=[{"type":"corner_smooth","options":{...}}]
+```
+
+If the API returns an error, including rate limiting, the Activity screen logs the HTTP status and response body so the failure is visible during testing and support.
 
 ## Watch Folders
 
@@ -211,7 +256,7 @@ Fields:
 - `Additional Remote Path`
   - optional path appended under the selected destination base path
 - `Work Item Mode`
-  - choose whether CNC Sync should process each change on its own, or group changes by the main project folder
+  - choose whether ProCut Suite Desktop should process each change on its own, or group changes by the main project folder
 - `Processing Setup`
   - which processing rule to run
 - `Destination`
@@ -219,7 +264,7 @@ Fields:
 - `Required Quiet Time`
   - how long files/folders must stay unchanged before processing starts
 - `Stability Check Interval`
-  - how often CNC Sync checks pending items to see if they are ready
+  - how often ProCut Suite Desktop checks pending items to see if they are ready
 
 `Individual files and folders` is the general-purpose mode and reacts to each change on its own.
 
@@ -252,7 +297,7 @@ It:
 - retries those staged items to the selected destination
 - removes staged items after a successful upload
 
-It does not reconstruct files that appeared while CNC Sync was not running.
+It does not reconstruct files that appeared while ProCut Suite Desktop was not running.
 
 Use this when:
 
@@ -261,7 +306,7 @@ Use this when:
 - staged items are still waiting locally after a failed delivery
 
 Scheduled catch-up uses the same staged-outbox model.
-It can only retry items that made it into staging while CNC Sync was running.
+It can only retry items that made it into staging while ProCut Suite Desktop was running.
 
 ## Activity Log
 
@@ -273,7 +318,7 @@ The `Activity` tab shows recent events with:
 
 Timestamps include milliseconds so quick processing sequences are easier to follow.
 The log text is selectable for copy/paste.
-The same activity stream is also written to a text file in the app data folder. On Linux that is typically `~/.config/CNC Sync/activity.log`, on macOS it is `~/Library/Application Support/CNC Sync/activity.log`, and on Windows it is typically `%AppData%\CNC Sync\activity.log`.
+The same activity stream is also written to a text file in the app data folder. On Linux that is typically `~/.config/ProCut Suite Desktop/activity.log`, on macOS it is `~/Library/Application Support/ProCut Suite Desktop/activity.log`, and on Windows it is typically `%AppData%\ProCut Suite Desktop\activity.log`.
 
 ## Help / About
 

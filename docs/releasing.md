@@ -1,4 +1,6 @@
-# Releasing CNC Sync
+# Releasing ProCut Suite Desktop
+
+ProCut Suite Desktop was formerly CNC Sync. The repo, solution, and some internal project names still use `CNCSync`, but release artifacts use the ProCut Suite Desktop product name.
 
 This is the current bump, tag, and build process used for official releases.
 

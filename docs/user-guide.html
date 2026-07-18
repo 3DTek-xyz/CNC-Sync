@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CNC Sync User Guide</title>
+  <title>ProCut Suite Desktop User Guide</title>
   <style>
     :root {
       --bg: #eff5fb;
@@ -210,10 +210,10 @@
 <body>
   <main class="shell">
     <section class="hero">
-      <span class="eyebrow">CNC Sync Guide</span>
+      <span class="eyebrow">ProCut Suite Desktop Guide</span>
       <h1>Set up watch folders, processing, and destination delivery with confidence.</h1>
       <p>
-        This guide walks through how CNC Sync is organised, how to set up reusable destinations and
+        This guide walks through how ProCut Suite Desktop is organised, how to set up reusable destinations and
         processing setups, and how monitoring, staging, and manual catch-up behave in practice.
       </p>
       <div class="actions">
@@ -225,7 +225,7 @@
       <aside class="card toc">
         <h2>On This Page</h2>
         <ul>
-          <li><a href="#what-it-does">What CNC Sync Does</a></li>
+          <li><a href="#what-it-does">What ProCut Suite Desktop Does</a></li>
           <li><a href="#setup-flow">Typical Setup Flow</a></li>
           <li><a href="#app-settings">App Settings</a></li>
           <li><a href="#destinations">Destinations</a></li>
@@ -242,10 +242,10 @@
 
       <article class="card content">
         <section id="what-it-does">
-          <h2>What CNC Sync Does</h2>
+          <h2>What ProCut Suite Desktop Does</h2>
           <p>
-            CNC Sync watches one or more local folders, optionally runs a local processing step,
-            and delivers the prepared result to a reusable destination.
+            ProCut Suite Desktop, formerly CNC Sync, watches one or more local folders, optionally runs a local
+            or ProCut Suite API processing step, and delivers the prepared result to a reusable destination.
           </p>
           <div class="lead-list">
             <div class="mini-card">
@@ -258,7 +258,7 @@
             </div>
             <div class="mini-card">
               <h3>Processing Setups</h3>
-              <p>Reusable processing rules including external scripts.</p>
+              <p>Reusable processing rules including passthrough, external scripts, or ProCut Suite API processing.</p>
             </div>
             <div class="mini-card">
               <h3>Watch Folders</h3>
@@ -282,10 +282,11 @@
           <h2>App Settings</h2>
           <p>Use <code>App Settings</code> for behaviour that applies to the whole app:</p>
           <ul>
-            <li><code>Launch At Login</code>: start CNC Sync when the user logs in.</li>
+            <li><code>Launch At Login</code>: start ProCut Suite Desktop when the user logs in.</li>
             <li><code>Start Minimized</code>: start hidden/minimized when supported on the current platform.</li>
             <li><code>Import Settings...</code>: browse for a <code>settings.json</code> file from another machine or previous installation and import it into the current app profile.</li>
             <li><code>Validate Settings</code>: check the current configuration for missing or invalid items.</li>
+            <li><code>ProCut Suite API</code>: save the ProCut Suite base URL and API key used by ProCut Suite API processing setups.</li>
           </ul>
           <p>Settings are saved automatically as you change them.</p>
           <p>The same area also includes a short notice that anonymised usage telemetry is collected for product improvements and support planning.</p>
@@ -318,9 +319,9 @@
             <li>On Linux, SMB shares work best when they are already mounted by the desktop environment.</li>
             <li>On Linux, explicit SMB username/password access may still require mounting the share first in the desktop file manager.</li>
             <li>If a destination requires a VPN first, choose it in <code>Required VPN</code>.</li>
-            <li>VPN profiles used by CNC Sync must be able to connect automatically without prompting for user interaction.</li>
+            <li>VPN profiles used by ProCut Suite Desktop must be able to connect automatically without prompting for user interaction.</li>
             <li>If enabled, <code>Check destination before starting VPN</code> tries the destination directly first and only starts the VPN if direct access fails.</li>
-            <li>If enabled, <code>Disconnect VPN When Finished</code> disconnects a VPN only when CNC Sync had to connect it itself, and only after a short idle window.</li>
+            <li>If enabled, <code>Disconnect VPN When Finished</code> disconnects a VPN only when ProCut Suite Desktop had to connect it itself, and only after a short idle window.</li>
             <li><code>FTP Data Mode</code> can be set to <code>Auto Passive</code>, <code>Passive</code>, or <code>Active</code>. Auto Passive is the usual choice, Passive can help if uploads start but stall, and Active is only for servers that need to connect back to your machine.</li>
           </ul>
           <p>The effective remote path is built from the destination base path plus the watch profile additional remote path.</p>
@@ -336,11 +337,11 @@
 
           <h3>External Script</h3>
           <p>This runs a local script or executable before upload.</p>
-          <p>You can import a shared script bundle from the left side of the <code>Processing Setups</code> tab. CNC Sync copies it to your local Scripts folder.</p>
+          <p>You can import a shared script bundle from the left side of the <code>Processing Setups</code> tab. ProCut Suite Desktop copies it to your local Scripts folder.</p>
           <ul>
             <li><code>Mode</code>: choose <code>ExternalScript</code>.</li>
             <li><code>Runner</code>: use Auto unless your script needs a specific way to run: <code>Auto</code>, <code>PowerShell</code>, <code>Bash</code>, <code>Python</code>, <code>Command</code>, or <code>Direct</code>.</li>
-            <li><code>Script Path</code>: the local file CNC Sync should run.</li>
+            <li><code>Script Path</code>: the local file ProCut Suite Desktop should run.</li>
             <li><code>Custom Script Source URL</code>: a shared customer script source used by the left-side <code>Check / Import</code> action.</li>
             <li><code>Arguments Template</code>: extra arguments passed to the script at runtime.</li>
           </ul>
@@ -367,15 +368,48 @@
             <li>Non-zero means failure.</li>
             <li>Optional stdout line: <code>OUTPUT_PATH=/path/to/final/output</code></li>
           </ul>
-          <p>If <code>OUTPUT_PATH=</code> is printed, CNC Sync uploads that folder. If not, it uploads the prepared output folder it already passed in.</p>
+          <p>If <code>OUTPUT_PATH=</code> is printed, ProCut Suite Desktop uploads that folder. If not, it uploads the prepared output folder it already passed in.</p>
           <h3>Shared Custom Script Imports</h3>
           <ul>
             <li>Paste the shared link once into <code>Custom Script Source URL</code> in the left Processing Setups panel.</li>
             <li>Click <code>Check / Import</code>.</li>
-            <li>CNC Sync imports the files into the local Scripts folder under <code>Imported/CustomSource</code>.</li>
+            <li>ProCut Suite Desktop imports the files into the local Scripts folder under <code>Imported/CustomSource</code>.</li>
             <li>Each processing setup can then choose whichever imported local script it needs using <code>Script Path</code>.</li>
           </ul>
           <p>Imported scripts stay local and are executed locally. Repeated checks only archive and replace files that actually changed. Unchanged files are left alone, and junk files such as <code>.DS_Store</code>, <code>._*</code>, <code>Thumbs.db</code>, <code>desktop.ini</code>, and <code>ehthumbs.db</code> are ignored during import.</p>
+
+          <h3>ProCut Suite API</h3>
+          <p>This mode sends detected G-code files to ProCut Suite for server-side processing, then stages the returned file before normal destination delivery.</p>
+          <p>Before using it:</p>
+          <ul>
+            <li>Generate or copy a ProCut Suite API key from the ProCut Suite web app.</li>
+            <li>Open <code>App Settings</code>.</li>
+            <li>Set <code>Base URL</code> to <code>https://procutsuite.com</code> unless testing another server.</li>
+            <li>Paste the API key into <code>API Key</code>.</li>
+            <li>Save settings.</li>
+          </ul>
+          <p>In a processing setup:</p>
+          <ul>
+            <li>Set <code>Mode</code> to <code>ProCut Suite API</code>.</li>
+            <li>Click <code>Refresh</code> to load the current service schema from ProCut Suite.</li>
+            <li>Choose the available G-code processing service.</li>
+            <li>Tick the tools you want enabled.</li>
+          </ul>
+          <p>Current desktop-facing G-code tools:</p>
+          <ul>
+            <li><code>Corner Smoothing</code> is available.</li>
+            <li><code>Line Joiner</code> is available.</li>
+            <li><code>Arc Fitting</code> is shown but temporarily disabled pending validation.</li>
+            <li><code>Arc Joiner</code> is shown but temporarily disabled pending validation.</li>
+          </ul>
+          <p>The desktop app fetches service and tool availability from:</p>
+          <pre><code>GET https://procutsuite.com/api/external/schema</code></pre>
+          <p>When processing a file, it posts multipart form data to:</p>
+          <pre><code>POST https://procutsuite.com/api/external/gcode/process
+Authorization: Bearer &lt;api_key&gt;
+file=&lt;g-code file&gt;
+tools=[{"type":"corner_smooth","options":{...}}]</code></pre>
+          <p>If the API returns an error, including rate limiting, the Activity screen logs the HTTP status and response body so the failure is visible during testing and support.</p>
         </section>
 
         <section id="watch-folders">
@@ -387,11 +421,11 @@
             <li><code>Watch Folder</code>: local folder being watched.</li>
             <li><code>Staging Folder</code>: local folder used for prepared output.</li>
             <li><code>Additional Remote Path</code>: optional path appended under the selected destination base path.</li>
-            <li><code>Work Item Mode</code>: choose whether CNC Sync should process each change on its own, or group changes by the main project folder.</li>
+            <li><code>Work Item Mode</code>: choose whether ProCut Suite Desktop should process each change on its own, or group changes by the main project folder.</li>
             <li><code>Processing Setup</code>: which processing rule to run.</li>
             <li><code>Destination</code>: which destination to upload to.</li>
             <li><code>Required Quiet Time</code>: how long files or folders must stay unchanged before processing starts.</li>
-            <li><code>Stability Check Interval</code>: how often CNC Sync checks pending items to see if they are ready.</li>
+            <li><code>Stability Check Interval</code>: how often ProCut Suite Desktop checks pending items to see if they are ready.</li>
           </ul>
           <p><code>Individual files and folders</code> is the general-purpose mode and reacts to each change on its own.</p>
           <p><code>Grouped project folders</code> is for job-folder workflows such as Mozaik exports. It is the safer choice when a destination replaces remote folder contents before upload.</p>
@@ -422,7 +456,7 @@
             <li>removes staged items after a successful upload</li>
           </ul>
           <p>Use this when the destination was unavailable, monitoring was stopped, or staged items are still waiting locally after a failed delivery.</p>
-          <p>Scheduled catch-up uses the same staged-outbox model. It can only retry items that made it into staging while CNC Sync was running, so it cannot detect and reprocess files that were created while the app was not running and never made it into staging.</p>
+          <p>Scheduled catch-up uses the same staged-outbox model. It can only retry items that made it into staging while ProCut Suite Desktop was running, so it cannot detect and reprocess files that were created while the app was not running and never made it into staging.</p>
         </section>
 
         <section id="activity-log">
@@ -435,7 +469,7 @@
           </ul>
           <p>Timestamps include milliseconds so quick processing sequences are easier to follow.</p>
           <p>The log text is selectable for copy/paste.</p>
-          <p>The same activity stream is also written to a text file in the app data folder. On Linux that is typically <code>~/.config/CNC Sync/activity.log</code>, on macOS it is <code>~/Library/Application Support/CNC Sync/activity.log</code>, and on Windows it is typically <code>%AppData%\CNC Sync\activity.log</code>.</p>
+          <p>The same activity stream is also written to a text file in the app data folder. On Linux that is typically <code>~/.config/ProCut Suite Desktop/activity.log</code>, on macOS it is <code>~/Library/Application Support/ProCut Suite Desktop/activity.log</code>, and on Windows it is typically <code>%AppData%\ProCut Suite Desktop\activity.log</code>.</p>
           <p>Unhandled exceptions and lower-level troubleshooting details are also written beside it as <code>diagnostics.log</code>.</p>
         </section>
 
@@ -458,7 +492,7 @@
         <section id="security-prompts">
           <h2>Security Prompts</h2>
           <p>
-            CNC Sync is not yet code signed on Windows and is not yet notarized on macOS, so the
+            ProCut Suite Desktop is not yet code signed on Windows and is not yet notarized on macOS, so the
             first install or first launch may trigger platform trust prompts.
           </p>
           <div class="lead-list">
@@ -472,7 +506,7 @@
             </div>
             <div class="mini-card">
               <h3>What It Means</h3>
-              <p>These prompts are expected platform trust checks for unsigned software, not CNC Sync reporting that it found malware.</p>
+              <p>These prompts are expected platform trust checks for unsigned software, not ProCut Suite Desktop reporting that it found malware.</p>
             </div>
           </div>
         </section>

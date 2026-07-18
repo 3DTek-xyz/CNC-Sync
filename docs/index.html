@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CNC Sync</title>
+  <title>ProCut Suite Desktop</title>
   <style>
     :root {
       --bg: #eff5fb;
@@ -154,11 +154,11 @@
 <body>
   <main class="shell">
     <section class="hero">
-      <span class="hero-badge">CNC Sync</span>
+      <span class="hero-badge">ProCut Suite Desktop</span>
       <h1>Watch local CNC export folders, process them, and deliver them reliably.</h1>
       <p>
-        CNC Sync monitors watch folders, runs optional local processing scripts, stages the result,
-        delivers it to reusable destinations, and supports manual catch-up when a destination or connection was unavailable.
+        Formerly CNC Sync, ProCut Suite Desktop monitors watch folders, runs optional local or ProCut Suite API processing,
+        stages the result, delivers it to reusable destinations, and supports manual catch-up when a destination or connection was unavailable.
       </p>
       <div class="actions">
         <a class="button primary" href="./user-guide.html">Open User Guide</a>
@@ -169,17 +169,17 @@
     <section class="grid">
       <article class="card">
         <h3>Windows</h3>
-        <p><a href="./downloads/win/3DTek.CNCSync-win-Setup.exe">Installer</a></p>
-        <p><a href="./downloads/win/3DTek.CNCSync-win-Portable.zip">Portable ZIP</a></p>
+        <p><a href="./downloads/win/3DTek.ProCutSuiteDesktop-win-Setup.exe">Installer</a></p>
+        <p><a href="./downloads/win/3DTek.ProCutSuiteDesktop-win-Portable.zip">Portable ZIP</a></p>
       </article>
       <article class="card">
         <h3>macOS</h3>
-        <p><a href="./downloads/macos/cnc-sync-macos-arm64-latest.pkg">Apple Silicon installer</a></p>
-        <p><a href="./downloads/macos/cnc-sync-macos-x64-latest.pkg">Intel installer</a></p>
+        <p><a href="./downloads/macos/3DTek.ProCutSuiteDesktop-osx-arm64-Setup.pkg">Apple Silicon installer</a></p>
+        <p><a href="./downloads/macos/3DTek.ProCutSuiteDesktop-osx-x64-Setup.pkg">Intel installer</a></p>
       </article>
       <article class="card">
         <h3>Linux</h3>
-        <p><a href="./downloads/linux/cnc-sync-linux-x64-latest.AppImage">Linux x64 AppImage</a></p>
+        <p><a href="./downloads/linux/3DTek.ProCutSuiteDesktop-linux-x64.AppImage">Linux x64 AppImage</a></p>
       </article>
     </section>
 
@@ -191,7 +191,7 @@
       </article>
       <article class="card">
         <h3>Processing Setups</h3>
-        <p>Use default upload mode or run local scripts to reorganize, filter, or rewrite CNC jobs before upload.</p>
+        <p>Use default upload mode, run local scripts, or call the ProCut Suite API to process G-code before delivery.</p>
       </article>
       <article class="card">
         <h3>Destinations</h3>
@@ -213,14 +213,14 @@
       <article class="card">
         <h3>How It Works</h3>
         <ul>
-          <li>Install CNC Sync from the release downloads.</li>
+          <li>Install ProCut Suite Desktop from the release downloads.</li>
           <li>Use <strong>Check for Updates</strong> inside the app.</li>
           <li>If a newer release is available, download and restart to apply it.</li>
         </ul>
       </article>
       <article class="card">
         <h3>Current Scope</h3>
-        <p>The public Pages site hosts the download files, and installed Windows, macOS, and Linux Velopack builds use the shared Pages update feed for software updates.</p>
+        <p>The public Pages site hosts the download files, and installed Windows, macOS, and Linux Velopack builds use the shared Pages update feed for software updates. ProCut Suite API mode currently exposes Corner Smoothing and Line Joiner, with Arc Fitting and Arc Joiner visible but disabled pending validation.</p>
       </article>
     </section>
 
@@ -238,7 +238,7 @@
       </article>
       <article class="card">
         <h3>Anonymous Telemetry</h3>
-        <p>CNC Sync includes a short in-app notice that anonymised usage telemetry is collected for product improvements and support planning.</p>
+        <p>ProCut Suite Desktop includes a short in-app notice that anonymised usage telemetry is collected for product improvements and support planning.</p>
       </article>
     </section>
 
@@ -247,7 +247,7 @@
       <article class="card">
         <h3>Windows</h3>
         <p>
-          CNC Sync is currently distributed without Windows code signing, so browsers or SmartScreen
+          ProCut Suite Desktop is currently distributed without Windows code signing, so browsers or SmartScreen
           may warn that the installer is suspicious.
         </p>
         <ul>
@@ -258,17 +258,17 @@
       <article class="card">
         <h3>macOS</h3>
         <p>
-          CNC Sync is not yet notarized, so macOS may block the installer or first launch by default.
+          ProCut Suite Desktop is not yet notarized, so macOS may block the installer or first launch by default.
         </p>
         <ul>
           <li>Open <strong>System Settings &gt; Privacy &amp; Security</strong>.</li>
-          <li>Find the blocked CNC Sync item and choose <strong>Open Anyway</strong> or allow it there.</li>
+          <li>Find the blocked ProCut Suite Desktop item and choose <strong>Open Anyway</strong> or allow it there.</li>
         </ul>
       </article>
       <article class="card">
         <h3>Why This Happens</h3>
         <p>
-          These prompts are platform trust checks, not CNC Sync detecting a problem with itself.
+          These prompts are platform trust checks, not ProCut Suite Desktop detecting a problem with itself.
           They should become smoother once the project is code signed and notarized.
         </p>
       </article>

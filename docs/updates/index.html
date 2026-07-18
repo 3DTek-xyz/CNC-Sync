@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CNC Sync Updates</title>
+  <title>ProCut Suite Desktop Updates</title>
   <style>
     :root {
       color-scheme: light;
@@ -109,10 +109,11 @@
   <main>
     <section class="hero">
       <p class="eyebrow">Software Updates</p>
-      <h1>CNC Sync Update Feed</h1>
+      <h1>ProCut Suite Desktop Update Feed</h1>
       <p>
-        This page exists so the public update feed has a real human-visible home. Installed CNC Sync
-        builds use the update files under this path automatically through Velopack.
+        This page exists so the public update feed has a real human-visible home. Installed ProCut Suite Desktop
+        builds, formerly CNC Sync, use the update files under this path automatically through Velopack.
+        The root update manifest is also used by the ProCut Suite website download cards.
       </p>
       <div class="code">
         <a href="https://3dtek-xyz.github.io/CNC-Sync/updates/">https://3dtek-xyz.github.io/CNC-Sync/updates</a>
@@ -126,6 +127,7 @@
           <li>Windows builds read platform-specific files such as <strong>releases.win.json</strong>.</li>
           <li>Apple Silicon and Intel macOS builds each use their own macOS feed files.</li>
           <li>Linux builds use the Linux feed files from the same update root.</li>
+          <li>The ProCut Suite website reads the root <strong>update.json</strong> for current download links.</li>
         </ul>
       </article>
 
@@ -137,6 +139,7 @@
           <li><a href="./releases.osx-arm64.json">macOS Apple Silicon feed JSON</a></li>
           <li><a href="./releases.osx-x64.json">macOS Intel feed JSON</a></li>
           <li><a href="./releases.linux-x64.json">Linux feed JSON</a></li>
+          <li><a href="../update.json">Website download manifest</a></li>
         </ul>
       </article>
 

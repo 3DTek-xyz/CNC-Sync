@@ -1,6 +1,8 @@
-# CNC Sync
+# ProCut Suite Desktop
 
-Cross-platform CNC file monitoring, optional processing, and destination delivery built with Avalonia UI and .NET.
+Cross-platform CNC file monitoring, optional processing, ProCut Suite API processing, and destination delivery built with Avalonia UI and .NET.
+
+This app was formerly CNC Sync. It is now the supported ProCut Suite Desktop app and replaces the older Go-based ProCutSuite-Desktop 0.1.x agent.
 
 - Documentation: [3dtek-xyz.github.io/CNC-Sync](https://3dtek-xyz.github.io/CNC-Sync/)
 - Releases: [github.com/3DTek-xyz/CNC-Sync/releases](https://github.com/3DTek-xyz/CNC-Sync/releases)
@@ -23,6 +25,7 @@ Cross-platform CNC file monitoring, optional processing, and destination deliver
 The current app is built around reusable destinations, processing setups, and watch folders:
 
 - FTP, SFTP, SCP, Local Folder, and Network Share destinations
+- ProCut Suite API processing setup mode for server-side G-code processing
 - optional VPN preflight for destinations that require it
 - password and private-key SSH authentication
 - start at login desktop behavior instead of a service-style deployment
@@ -45,9 +48,9 @@ The current app is built around reusable destinations, processing setups, and wa
   - Windows zip packaging: [`packaging/windows/package-zip.ps1`](packaging/windows/package-zip.ps1)
   - Linux: [`packaging/linux/package-tarball.sh`](packaging/linux/package-tarball.sh)
 - Windows installer path:
-  - Velopack `Setup.exe` installs by default to `%LocalAppData%\\3DTek.CNCSync`
+  - Velopack `Setup.exe` installs by default to `%LocalAppData%\\3DTek.ProCutSuiteDesktop`
 - Windows update feed:
-  - packaged Windows releases check GitHub Releases for updates
+  - packaged releases use the public GitHub Pages update feed and Velopack metadata
 
 ### Quick Release Steps
 
