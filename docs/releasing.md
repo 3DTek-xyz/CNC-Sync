@@ -28,7 +28,7 @@ This is the current bump, tag, and build process used for official releases.
 3. Build locally:
 
 ```bash
-dotnet build /Users/benharper/Coding/CBWSS-Sync/CNCSync.sln -m:1 -p:BuildInParallel=false
+dotnet build /Volumes/Storage/DevStorage/PCS-Sync/CNCSync.sln -m:1 -p:BuildInParallel=false
 ```
 
 4. Commit the release changes to `main`.
