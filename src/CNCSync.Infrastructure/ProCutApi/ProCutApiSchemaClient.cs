@@ -8,13 +8,16 @@ public sealed class ProCutApiSchemaClient
 {
     private readonly HttpClient _httpClient;
 
+    /// <param name="httpClient">An optional client configured not to follow redirects.</param>
     public ProCutApiSchemaClient(HttpClient? httpClient = null)
     {
-        _httpClient = httpClient ?? new HttpClient
+        _httpClient = httpClient ?? new HttpClient(CreateDefaultHandler())
         {
             Timeout = TimeSpan.FromSeconds(20)
         };
     }
+
+    internal static HttpClientHandler CreateDefaultHandler() => new() { AllowAutoRedirect = false };
 
     public async Task<IReadOnlyList<ProCutApiServiceOption>> GetServicesAsync(
         ProCutApiSettings settings,
@@ -35,12 +38,12 @@ public sealed class ProCutApiSchemaClient
             throw new InvalidOperationException("ProCut Suite API key is required.");
         }
 
-        if (!Uri.TryCreate(settings.BaseUrl.Trim(), UriKind.Absolute, out var baseUri))
+        var baseUrl = settings.BaseUrl;
+        if (!ProCutApiUri.TryResolveEndpoint(baseUrl, "api/external/schema", out var schemaUri))
         {
-            throw new InvalidOperationException("ProCut Suite API base URL is invalid.");
+            throw new InvalidOperationException("ProCut Suite API base URL must be a valid HTTPS URL without credentials, a query, or a fragment.");
         }
 
-        var schemaUri = new Uri(baseUri, "api/external/schema");
         using var request = new HttpRequestMessage(HttpMethod.Get, schemaUri);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", settings.ApiKey.Trim());
 
@@ -64,7 +67,7 @@ public sealed class ProCutApiSchemaClient
         {
             var id = ReadString(serviceElement, "id");
             var endpoint = ReadString(serviceElement, "endpoint");
-            if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(endpoint))
+            if (string.IsNullOrWhiteSpace(id) || !ProCutApiUri.TryResolveEndpoint(baseUrl, endpoint, out _))
             {
                 continue;
             }

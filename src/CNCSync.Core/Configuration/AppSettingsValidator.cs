@@ -187,10 +187,10 @@ public sealed class AppSettingsValidator
 
             if (setup.Mode == ProcessingMode.ProCutApi)
             {
-                if (string.IsNullOrWhiteSpace(settings.ProCutApi.BaseUrl) ||
-                    !Uri.TryCreate(settings.ProCutApi.BaseUrl, UriKind.Absolute, out _))
+                var validBase = ProCutApiUri.TryGetBaseUri(settings.ProCutApi.BaseUrl, out _);
+                if (!validBase)
                 {
-                    result.Errors.Add($"{label} requires a valid ProCut Suite API base URL.");
+                    result.Errors.Add($"{label} requires a valid HTTPS ProCut Suite API base URL without credentials, a query, or a fragment.");
                 }
 
                 if (string.IsNullOrWhiteSpace(settings.ProCutApi.ApiKey))
@@ -201,6 +201,10 @@ public sealed class AppSettingsValidator
                 if (string.IsNullOrWhiteSpace(setup.ProCutApiEndpoint))
                 {
                     result.Errors.Add($"{label} requires a ProCut Suite API endpoint.");
+                }
+                else if (validBase && !ProCutApiUri.TryResolveEndpoint(settings.ProCutApi.BaseUrl, setup.ProCutApiEndpoint, out _))
+                {
+                    result.Errors.Add($"{label} requires a valid HTTPS ProCut Suite API endpoint on the same origin as the base URL.");
                 }
 
                 if (!setup.ProCutArcFittingEnabled &&
@@ -281,109 +285,9 @@ public sealed class AppSettingsValidator
             }
         }
 
-        AddUniqueFolderValidationErrors(
-            settings.WatchProfiles,
-            profile => profile.WatchFolder,
-            "watch folder",
-            result);
-
-        AddUniqueFolderValidationErrors(
-            settings.WatchProfiles,
-            profile => profile.StagingFolder,
-            "staging folder",
-            result);
-
-        AddFolderLoopValidationErrors(settings, destinationsById, result);
+        ProfileFolderValidator.AddErrors(settings.WatchProfiles, destinationsById, result);
 
         return result;
-    }
-
-    private static void AddFolderLoopValidationErrors(
-        AppSettings settings,
-        IReadOnlyDictionary<string, DestinationSettings> destinationsById,
-        AppSettingsValidationResult result)
-    {
-        var enabledProfiles = settings.WatchProfiles
-            .Where(profile => profile.Enabled)
-            .Select(profile => new
-            {
-                Profile = profile,
-                Label = string.IsNullOrWhiteSpace(profile.Name)
-                    ? $"Watch profile '{profile.Id}'"
-                    : $"Watch profile '{profile.Name}'",
-                WatchPath = NormalizeDirectoryPath(profile.WatchFolder),
-                StagingPath = NormalizeDirectoryPath(profile.StagingFolder),
-                Destination = !string.IsNullOrWhiteSpace(profile.DestinationId) &&
-                              destinationsById.TryGetValue(profile.DestinationId, out var destination)
-                    ? destination
-                    : null
-            })
-            .ToList();
-
-        foreach (var profile in enabledProfiles)
-        {
-            if (DirectoryPathsOverlap(profile.WatchPath, profile.StagingPath))
-            {
-                result.Errors.Add($"{profile.Label} watch folder and staging folder must not overlap. Put staging outside the watched tree to prevent processing loops.");
-            }
-
-            if (profile.Destination?.Type == DestinationType.LocalFolder)
-            {
-                var localOutputPath = NormalizeDirectoryPath(profile.Destination.LocalRootPath);
-                if (DirectoryPathsOverlap(profile.WatchPath, localOutputPath))
-                {
-                    result.Errors.Add($"{profile.Label} watch folder and local destination folder must not overlap. Output inside the watched tree can be reprocessed indefinitely.");
-                }
-
-                if (DirectoryPathsOverlap(profile.StagingPath, localOutputPath))
-                {
-                    result.Errors.Add($"{profile.Label} staging folder and local destination folder must not overlap. Staging and output must be separate folders.");
-                }
-            }
-        }
-
-        foreach (var sourceProfile in enabledProfiles)
-        {
-            if (sourceProfile.Destination?.Type != DestinationType.LocalFolder)
-            {
-                continue;
-            }
-
-            var localOutputPath = NormalizeDirectoryPath(sourceProfile.Destination.LocalRootPath);
-            foreach (var targetProfile in enabledProfiles)
-            {
-                if (DirectoryPathsOverlap(localOutputPath, targetProfile.WatchPath))
-                {
-                    result.Errors.Add(
-                        $"{sourceProfile.Label} local destination folder must not overlap enabled watch folder '{targetProfile.Profile.Name}'. " +
-                        "Local output can feed another watch profile and create a processing loop.");
-                }
-            }
-        }
-    }
-
-    private static void AddUniqueFolderValidationErrors(
-        IReadOnlyList<WatchProfileSettings> profiles,
-        Func<WatchProfileSettings, string?> pathSelector,
-        string fieldLabel,
-        AppSettingsValidationResult result)
-    {
-        var duplicates = profiles
-            .Where(profile => profile.Enabled)
-            .Select(profile => new
-            {
-                ProfileName = string.IsNullOrWhiteSpace(profile.Name) ? profile.Id : profile.Name,
-                Path = NormalizeDirectoryPath(pathSelector(profile))
-            })
-            .Where(item => !string.IsNullOrWhiteSpace(item.Path))
-            .GroupBy(item => item.Path!, StringComparer.OrdinalIgnoreCase)
-            .Where(group => group.Count() > 1);
-
-        foreach (var duplicate in duplicates)
-        {
-            var profileNames = string.Join(", ", duplicate.Select(item => item.ProfileName));
-            result.Errors.Add($"Enabled watch profiles must use a unique {fieldLabel}. Shared {fieldLabel} found for: {profileNames}.");
-        }
     }
 
     private static bool IsValidRemotePath(string? path)
@@ -406,46 +310,5 @@ public sealed class AppSettingsValidator
 
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         return Path.Combine(home, path[2..]);
-    }
-
-    private static string? NormalizeDirectoryPath(string? path)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return null;
-        }
-
-        try
-        {
-            return Path.GetFullPath(path)
-                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        }
-        catch
-        {
-            return path.Trim();
-        }
-    }
-
-    private static bool DirectoryPathsOverlap(string? firstPath, string? secondPath)
-    {
-        if (string.IsNullOrWhiteSpace(firstPath) || string.IsNullOrWhiteSpace(secondPath))
-        {
-            return false;
-        }
-
-        var first = TrimDirectoryPath(firstPath);
-        var second = TrimDirectoryPath(secondPath);
-        return string.Equals(first, second, StringComparison.OrdinalIgnoreCase) ||
-               IsSubdirectoryOf(first, second) ||
-               IsSubdirectoryOf(second, first);
-    }
-
-    private static string TrimDirectoryPath(string path) =>
-        path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-
-    private static bool IsSubdirectoryOf(string candidatePath, string parentPath)
-    {
-        var parentPrefix = TrimDirectoryPath(parentPath) + Path.DirectorySeparatorChar;
-        return candidatePath.StartsWith(parentPrefix, StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -6,6 +6,13 @@ namespace CNCSync.Tests;
 
 public sealed class JsonAppSettingsStoreTests
 {
+    private sealed class TemporaryDirectory : IDisposable
+    {
+        public string Path { get; } = Directory.CreateTempSubdirectory("cncsync-store-").FullName;
+
+        public void Dispose() => Directory.Delete(Path, recursive: true);
+    }
+
     private sealed class InMemorySecretStore : ISecretStore
     {
         private readonly Dictionary<string, string> _secrets = new();
@@ -84,6 +91,46 @@ public sealed class JsonAppSettingsStoreTests
                 Directory.Delete(root, recursive: true);
             }
         }
+    }
+
+    [Fact]
+    public async Task LoadAndSave_DoNotOverwriteAnEditedImportTemplate()
+    {
+        using var root = new TemporaryDirectory();
+        var store = new JsonAppSettingsStore(root.Path, Path.Combine(root.Path, "legacy"),
+            Path.Combine(root.Path, "bundled"), new InMemorySecretStore());
+        var settings = await store.LoadAsync();
+        var templatePath = Path.Combine(root.Path, JsonAppSettingsStore.ProCutApiImportTemplateFileName);
+        const string editedTemplate = "{\"StartMinimized\": false}";
+
+        await File.WriteAllTextAsync(templatePath, editedTemplate);
+        await store.LoadAsync();
+        Assert.Equal(editedTemplate, await File.ReadAllTextAsync(templatePath));
+
+        await store.SaveAsync(settings);
+        Assert.Equal(editedTemplate, await File.ReadAllTextAsync(templatePath));
+    }
+
+    [Fact]
+    public async Task LoadAsync_DoesNotRestoreSavedKeyForModifiedSettingsOrigin()
+    {
+        using var root = new TemporaryDirectory();
+        var store = new JsonAppSettingsStore(root.Path, Path.Combine(root.Path, "legacy"),
+            Path.Combine(root.Path, "bundled"), new InMemorySecretStore());
+        var settings = AppSettings.CreateDefault();
+        settings.ProCutApi.BaseUrl = "https://api.example.test";
+        settings.ProCutApi.ApiKey = TestSecrets.ProCutApiSecret;
+        await store.SaveAsync(settings);
+
+        settings.ProCutApi.BaseUrl = "https://api.example.test:444";
+        settings.ProCutApi.ApiKey = string.Empty;
+        await File.WriteAllTextAsync(store.SettingsFilePath, JsonSerializer.Serialize(settings));
+
+        Assert.Empty((await store.LoadAsync()).ProCutApi.ApiKey);
+
+        settings.ProCutApi.BaseUrl = "https://API.example.test:443/another/path";
+        await File.WriteAllTextAsync(store.SettingsFilePath, JsonSerializer.Serialize(settings));
+        Assert.Equal(TestSecrets.ProCutApiSecret, (await store.LoadAsync()).ProCutApi.ApiKey);
     }
 
     [Fact]
@@ -188,7 +235,7 @@ public sealed class JsonAppSettingsStoreTests
             var savedJson = await File.ReadAllTextAsync(Path.Combine(settingsDirectory, "settings.json"));
             Assert.Contains("https://api.example.test", savedJson, StringComparison.Ordinal);
             Assert.DoesNotContain(TestSecrets.ProCutApiSecret, savedJson, StringComparison.Ordinal);
-            Assert.Equal(TestSecrets.ProCutApiSecret, secretStore.GetSecret("procutsuite:api-key"));
+            Assert.Null(secretStore.GetSecret("procutsuite:api-key"));
 
             var reloaded = await store.LoadAsync();
             Assert.Equal("https://api.example.test", reloaded.ProCutApi.BaseUrl);
@@ -227,7 +274,7 @@ public sealed class JsonAppSettingsStoreTests
             var rewrittenJson = await File.ReadAllTextAsync(Path.Combine(settingsDirectory, "settings.json"));
 
             Assert.Equal(TestSecrets.LegacyProCutApiSecret, loaded.ProCutApi.ApiKey);
-            Assert.Equal(TestSecrets.LegacyProCutApiSecret, secretStore.GetSecret("procutsuite:api-key"));
+            Assert.Equal(TestSecrets.LegacyProCutApiSecret, (await store.LoadAsync()).ProCutApi.ApiKey);
             Assert.DoesNotContain(TestSecrets.LegacyProCutApiSecret, rewrittenJson, StringComparison.Ordinal);
         }
         finally
@@ -237,6 +284,67 @@ public sealed class JsonAppSettingsStoreTests
                 Directory.Delete(root, recursive: true);
             }
         }
+    }
+
+    [Fact]
+    public async Task LoadAsync_BindsExistingSecretToTheCurrentSettingsOriginOnFirstLoad()
+    {
+        using var root = new TemporaryDirectory();
+        var secrets = new InMemorySecretStore();
+        secrets.SetSecret("procutsuite:api-key", TestSecrets.LegacyProCutApiSecret);
+        var store = new JsonAppSettingsStore(root.Path, Path.Combine(root.Path, "legacy"),
+            Path.Combine(root.Path, "bundled"), secrets);
+        var settings = AppSettings.CreateDefault();
+        settings.ProCutApi.BaseUrl = "https://api.example.test";
+        await File.WriteAllTextAsync(store.SettingsFilePath, JsonSerializer.Serialize(settings));
+
+        Assert.Equal(TestSecrets.LegacyProCutApiSecret, (await store.LoadAsync()).ProCutApi.ApiKey);
+        Assert.Null(secrets.GetSecret("procutsuite:api-key"));
+
+        settings.ProCutApi.BaseUrl = "https://other.example.test";
+        await File.WriteAllTextAsync(store.SettingsFilePath, JsonSerializer.Serialize(settings));
+        Assert.Empty((await store.LoadAsync()).ProCutApi.ApiKey);
+    }
+
+    [Fact]
+    public async Task SaveAsync_DoesNotRebindAnUnchangedKeyToAnEditedOrigin()
+    {
+        using var root = new TemporaryDirectory();
+        var store = new JsonAppSettingsStore(root.Path, Path.Combine(root.Path, "legacy"),
+            Path.Combine(root.Path, "bundled"), new InMemorySecretStore());
+        var settings = AppSettings.CreateDefault();
+        settings.ProCutApi.BaseUrl = "https://api.example.test";
+        settings.ProCutApi.ApiKey = TestSecrets.ProCutApiSecret;
+        await store.SaveAsync(settings);
+
+        settings.ProCutApi.BaseUrl = "https://other.example.test";
+        await store.SaveAsync(settings);
+        Assert.Empty((await store.LoadAsync()).ProCutApi.ApiKey);
+
+        settings.ProCutApi.ApiKey = TestSecrets.LegacyProCutApiSecret;
+        await store.SaveAsync(settings);
+        Assert.Equal(TestSecrets.LegacyProCutApiSecret, (await store.LoadAsync()).ProCutApi.ApiKey);
+    }
+
+    [Fact]
+    public async Task SaveAsync_AfterImportDoesNotTransferOrDeleteTheOriginalOriginsKey()
+    {
+        using var root = new TemporaryDirectory();
+        var store = new JsonAppSettingsStore(root.Path, Path.Combine(root.Path, "legacy"),
+            Path.Combine(root.Path, "bundled"), new InMemorySecretStore());
+        var original = AppSettings.CreateDefault();
+        original.ProCutApi.BaseUrl = "https://api.example.test";
+        original.ProCutApi.ApiKey = TestSecrets.ProCutApiSecret;
+        await store.SaveAsync(original);
+
+        var imported = AppSettings.CreateDefault();
+        imported.ProCutApi.BaseUrl = "https://other.example.test";
+        await store.SaveAsync(AppSettings.PrepareImported(imported, original.ProCutApi.BaseUrl, original.ProCutApi.ApiKey));
+        Assert.Empty((await store.LoadAsync()).ProCutApi.ApiKey);
+
+        original.ProCutApi.ApiKey = string.Empty;
+        await File.WriteAllTextAsync(store.SettingsFilePath, JsonSerializer.Serialize(original));
+        Assert.Equal(TestSecrets.ProCutApiSecret, (await store.LoadAsync()).ProCutApi.ApiKey);
     }
 
     [Fact]

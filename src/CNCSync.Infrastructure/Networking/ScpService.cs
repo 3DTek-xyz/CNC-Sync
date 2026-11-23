@@ -31,7 +31,7 @@ public sealed class ScpService : IScpService, IDisposable
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 using var client = CreateSshClient(destination);
-                client.Connect();
+                client.ConnectAsync(cancellationToken).GetAwaiter().GetResult();
                 return (true, $"SCP connection successful: {destination.Host}:{destination.Port}");
             }
             catch (OperationCanceledException)
@@ -40,6 +40,7 @@ public sealed class ScpService : IScpService, IDisposable
             }
             catch (Exception ex)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 return (false, $"SCP connection failed: {ex.Message}");
             }
         }, cancellationToken);
@@ -66,9 +67,7 @@ public sealed class ScpService : IScpService, IDisposable
             try
             {
                 using var sshClient = CreateSshClient(destination);
-                using var scpClient = CreateScpClient(destination);
-                sshClient.Connect();
-                scpClient.Connect();
+                sshClient.ConnectAsync(cancellationToken).GetAwaiter().GetResult();
 
                 var targetRoot = NormalizeSessionDirectoryPath(remoteDirectoryPath);
                 EnsureDirectoryExists(sshClient, targetRoot, cancellationToken);
@@ -81,10 +80,10 @@ public sealed class ScpService : IScpService, IDisposable
                         return (true, $"Skipped ignored file: {fileName}");
                     }
 
-                    var remoteFilePath = CombineRemoteFilePath(targetRoot, fileName);
+                    var remoteFilePath = BuildScpUploadPath(targetRoot, fileName);
                     progress?.Report($"Uploading {fileName}...");
                     using var fileStream = File.OpenRead(localPath);
-                    scpClient.Upload(fileStream, remoteFilePath);
+                    UploadFile(sshClient, fileStream, remoteFilePath, cancellationToken);
                 }
                 else
                 {
@@ -95,13 +94,13 @@ public sealed class ScpService : IScpService, IDisposable
                         var file = files[index];
 
                         var relativePath = Path.GetRelativePath(localPath, file).Replace('\\', '/');
-                        var remoteFilePath = CombineRemoteFilePath(targetRoot, relativePath);
+                        var remoteFilePath = BuildScpUploadPath(targetRoot, relativePath);
                         var remoteDirectory = GetParentRemotePath(remoteFilePath);
                         EnsureDirectoryExists(sshClient, remoteDirectory, cancellationToken);
 
                         progress?.Report($"Uploading {index + 1}/{files.Count}: {relativePath}");
                         using var fileStream = File.OpenRead(file);
-                        scpClient.Upload(fileStream, remoteFilePath);
+                        UploadFile(sshClient, fileStream, remoteFilePath, cancellationToken);
                     }
                 }
 
@@ -113,6 +112,7 @@ public sealed class ScpService : IScpService, IDisposable
             }
             catch (Exception ex)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 return (false, $"SCP upload failed: {ex.Message}");
             }
         }, cancellationToken);
@@ -130,11 +130,11 @@ public sealed class ScpService : IScpService, IDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            using var sessionLease = AcquireBrowserSession(destination);
+            using var sessionLease = AcquireBrowserSession(destination, cancellationToken);
             var targetPath = NormalizeSessionDirectoryPath(remoteDirectoryPath);
 
             var command = BuildListDirectoryCommand(targetPath);
-            var result = RunCommand(sessionLease.Client, command, "SCP listing");
+            var result = RunCommand(sessionLease.Client, command, "SCP listing", cancellationToken);
             if (!result.Success)
             {
                 return (false, [], result.Message);
@@ -155,6 +155,7 @@ public sealed class ScpService : IScpService, IDisposable
         }
         catch (Exception ex)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             return (false, [], $"SCP listing failed: {ex.Message}");
         }
         finally
@@ -176,9 +177,9 @@ public sealed class ScpService : IScpService, IDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            using var sessionLease = AcquireBrowserSession(destination);
+            using var sessionLease = AcquireBrowserSession(destination, cancellationToken);
             var normalizedPath = NormalizeSessionPath(remoteFilePath);
-            var result = RunCommand(sessionLease.Client, BuildReadFileSizeCommand(normalizedPath), "SCP size check");
+            var result = RunCommand(sessionLease.Client, BuildReadFileSizeCommand(normalizedPath), "SCP size check", cancellationToken);
             if (!result.Success)
             {
                 return (false, null, result.Message);
@@ -203,6 +204,7 @@ public sealed class ScpService : IScpService, IDisposable
         }
         catch (Exception ex)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             return (false, null, $"Could not read SCP file size: {ex.Message}");
         }
         finally
@@ -223,7 +225,7 @@ public sealed class ScpService : IScpService, IDisposable
             try
             {
                 using var client = CreateSshClient(destination);
-                client.Connect();
+                client.ConnectAsync(cancellationToken).GetAwaiter().GetResult();
 
                 var normalizedPath = NormalizeSessionPath(remotePath);
                 if (normalizedPath == ".")
@@ -231,7 +233,7 @@ public sealed class ScpService : IScpService, IDisposable
                     return (true, "Remote root cleanup skipped.");
                 }
 
-                var result = RunCommand(client, BuildDeleteCommand(normalizedPath, isDirectory), "SCP delete");
+                var result = RunCommand(client, BuildDeleteCommand(normalizedPath, isDirectory), "SCP delete", cancellationToken);
                 if (!result.Success)
                 {
                     return (false, result.Message);
@@ -245,6 +247,7 @@ public sealed class ScpService : IScpService, IDisposable
             }
             catch (Exception ex)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 return (false, $"SCP delete failed: {ex.Message}");
             }
         }, cancellationToken);
@@ -289,7 +292,7 @@ public sealed class ScpService : IScpService, IDisposable
         return (true, string.Empty);
     }
 
-    private BrowserSessionLease AcquireBrowserSession(DestinationSettings destination)
+    private BrowserSessionLease AcquireBrowserSession(DestinationSettings destination, CancellationToken cancellationToken)
     {
         lock (_browserSessionGate)
         {
@@ -309,7 +312,15 @@ public sealed class ScpService : IScpService, IDisposable
             DisposeCachedBrowserSessionUnsafe();
 
             var client = CreateSshClient(destination);
-            client.Connect();
+            try
+            {
+                client.ConnectAsync(cancellationToken).GetAwaiter().GetResult();
+            }
+            catch
+            {
+                client.Dispose();
+                throw;
+            }
             _cachedBrowserSession = new CachedBrowserSession(connectionKey, client);
             ScheduleBrowserSessionExpiry();
             return new BrowserSessionLease(client);
@@ -408,9 +419,12 @@ public sealed class ScpService : IScpService, IDisposable
     private static bool ContainsMissingMarker(string output) =>
         output.Contains("__CNCSYNC_MISSING__", StringComparison.Ordinal);
 
-    private static (bool Success, string Output, string Message) RunCommand(SshClient client, string commandText, string operationLabel)
+    private static (bool Success, string Output, string Message) RunCommand(
+        SshClient client, string commandText, string operationLabel, CancellationToken cancellationToken)
     {
-        var command = client.RunCommand(commandText);
+        using var command = client.CreateCommand(commandText);
+        command.CommandTimeout = SshConnectionFactory.IoTimeout;
+        command.ExecuteAsync(cancellationToken).GetAwaiter().GetResult();
         if (command.ExitStatus != 0)
         {
             var error = string.IsNullOrWhiteSpace(command.Error) ? command.Result.Trim() : command.Error.Trim();
@@ -430,21 +444,53 @@ public sealed class ScpService : IScpService, IDisposable
         return new SshClient(SshConnectionFactory.CreateConnectionInfo(destination));
     }
 
-    private static ScpClient CreateScpClient(DestinationSettings destination)
+    private static void UploadFile(SshClient client, Stream file, string remotePath, CancellationToken cancellationToken)
     {
-        return new ScpClient(SshConnectionFactory.CreateConnectionInfo(destination));
+        using var idle = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        void ResetIdleTimeout() => idle.CancelAfter(SshConnectionFactory.IoTimeout);
+
+        var directory = GetParentRemotePath(remotePath);
+        var fileName = remotePath[(remotePath.LastIndexOf('/') + 1)..];
+        using var command = client.CreateCommand(ScpUploadProtocol.BuildCommand(directory));
+        Task? execution = null;
+        try
+        {
+            ResetIdleTimeout();
+            execution = command.ExecuteAsync(idle.Token);
+            using (var input = command.CreateInputStream())
+            {
+                ScpUploadProtocol.Send(file, input, command.OutputStream, fileName, client.ConnectionInfo.Encoding,
+                    ResetIdleTimeout, idle.Token);
+            }
+
+            execution.GetAwaiter().GetResult();
+            if (command.ExitStatus != 0)
+            {
+                throw new IOException($"Remote SCP command failed: {command.Error.Trim()}");
+            }
+        }
+        catch (Exception ex) when (idle.IsCancellationRequested)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            throw new TimeoutException($"SCP upload stalled for {SshConnectionFactory.IoTimeout.TotalSeconds:g} seconds.", ex);
+        }
+        finally
+        {
+            // Closing the command also completes its task if the protocol failed first.
+            command.Dispose();
+            _ = execution?.Exception;
+        }
     }
 
-    private static void EnsureDirectoryExists(SshClient client, string? remotePath, CancellationToken cancellationToken)
+    private static void EnsureDirectoryExists(SshClient client, string remotePath, CancellationToken cancellationToken)
     {
-        var normalizedPath = NormalizeSessionDirectoryPath(remotePath);
-        if (string.IsNullOrWhiteSpace(normalizedPath) || normalizedPath is "/" or ".")
+        if (string.IsNullOrWhiteSpace(remotePath) || remotePath is "/" or ".")
         {
             return;
         }
 
         cancellationToken.ThrowIfCancellationRequested();
-        var result = RunCommand(client, $"mkdir -p -- {EscapeShellArgument(normalizedPath)}", "SCP mkdir");
+        var result = RunCommand(client, $"mkdir -p -- {EscapeShellArgument(remotePath)}", "SCP mkdir", cancellationToken);
         if (!result.Success)
         {
             throw new InvalidOperationException(result.Message);
@@ -529,32 +575,33 @@ public sealed class ScpService : IScpService, IDisposable
         return NormalizeRemotePath(path);
     }
 
-    private static string CombineRemoteFilePath(string basePath, string relativePath)
+    internal static string BuildScpUploadPath(string basePath, string relativePath)
     {
+        if (relativePath.AsSpan().IndexOfAny('\0', '\r', '\n') >= 0 ||
+            basePath.AsSpan().IndexOfAny('\0', '\r', '\n') >= 0)
+        {
+            throw new ArgumentException("SCP upload paths cannot contain NUL or line breaks.");
+        }
+
         var normalizedRelativePath = relativePath.Replace('\\', '/').Trim('/');
         if (string.IsNullOrWhiteSpace(basePath) || basePath == ".")
         {
-            return normalizedRelativePath;
+            // Keep a relative directory from being parsed as an scp option.
+            return normalizedRelativePath.StartsWith('-') ? $"./{normalizedRelativePath}" : normalizedRelativePath;
         }
 
         return CombineRemotePath(basePath, normalizedRelativePath);
     }
 
-    private static string GetParentRemotePath(string? remoteFilePath)
+    private static string GetParentRemotePath(string remoteFilePath)
     {
-        var normalizedPath = NormalizeRemotePath(remoteFilePath);
-        if (string.IsNullOrWhiteSpace(normalizedPath) || normalizedPath == "/")
+        var lastSeparatorIndex = remoteFilePath.LastIndexOf('/');
+        return lastSeparatorIndex switch
         {
-            return string.Empty;
-        }
-
-        var lastSeparatorIndex = normalizedPath.LastIndexOf('/');
-        if (lastSeparatorIndex <= 0)
-        {
-            return string.Empty;
-        }
-
-        return normalizedPath[..lastSeparatorIndex];
+            -1 => ".",
+            0 => "/",
+            _ => remoteFilePath[..lastSeparatorIndex]
+        };
     }
 
     private static string BuildConnectionKey(DestinationSettings destination) =>

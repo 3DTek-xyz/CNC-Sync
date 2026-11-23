@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using CNCSync.Core.Configuration;
 using CNCSync.Core.Services;
+using CNCSync.Infrastructure.Processing;
 
 namespace CNCSync.Infrastructure.Networking;
 
@@ -52,9 +53,14 @@ public sealed class DestinationService : IDestinationService
         }
     }
 
-    public async Task<(bool Success, string Message)> UploadDirectoryAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
+    public Task<(bool Success, string Message)> UploadDirectoryAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
     {
-        return await UploadFileSystemItemAsync(localPath, destination, remoteDirectoryPath, progress, cancellationToken);
+        if (destination.Type == DestinationType.LocalFolder && destination.ReplaceRemoteFolderOnUpload)
+        {
+            return Task.FromResult((false, "Replacing grouped output in a Local Folder is not supported. Turn off 'Replace Remote Folder On Upload' and retry, or choose a supported remote destination."));
+        }
+
+        return UploadFileSystemItemAsync(localPath, destination, remoteDirectoryPath, progress, cancellationToken);
     }
 
     public async Task<(bool Success, string Message)> UploadFileSystemItemAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
@@ -381,28 +387,11 @@ public sealed class DestinationService : IDestinationService
 
                 progress?.Report($"Copying {fileName}...");
                 var destinationFile = Path.Combine(targetRoot, fileName);
-                await using var sourceStream = File.OpenRead(localPath);
-                await using var destinationStream = File.Create(destinationFile);
-                await sourceStream.CopyToAsync(destinationStream, cancellationToken);
+                await CopyLocalFileAsync(localPath, destinationFile, cancellationToken);
             }
             else
             {
-                var files = FileSystemItemFilter.EnumerateIncludedFiles(localPath).ToList();
-                for (var index = 0; index < files.Count; index++)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var file = files[index];
-                    var relativePath = Path.GetRelativePath(localPath, file);
-                    progress?.Report($"Copying {index + 1}/{files.Count}: {relativePath.Replace('\\', '/')}");
-                    var destinationFile = Path.Combine(targetRoot, relativePath);
-                    var destinationDirectory = Path.GetDirectoryName(destinationFile);
-                    if (!string.IsNullOrWhiteSpace(destinationDirectory))
-                    {
-                        Directory.CreateDirectory(destinationDirectory);
-                    }
-
-                    File.Copy(file, destinationFile, overwrite: true);
-                }
+                await CopyLocalDirectoryAsync(localPath, targetRoot, progress, cancellationToken);
             }
 
             return (true, $"Local upload completed to {targetRoot}: {localPath}");
@@ -412,6 +401,28 @@ public sealed class DestinationService : IDestinationService
             return (false, $"Local upload failed: {ex.Message}");
         }
     }
+
+    private static async Task CopyLocalDirectoryAsync(string localPath, string targetRoot, IProgress<string>? progress, CancellationToken cancellationToken)
+    {
+        var files = FileSystemItemFilter.EnumerateIncludedFiles(localPath).ToList();
+        for (var index = 0; index < files.Count; index++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var file = files[index];
+            var relativePath = Path.GetRelativePath(localPath, file);
+            progress?.Report($"Copying {index + 1}/{files.Count}: {relativePath.Replace('\\', '/')}");
+            var destinationFile = Path.Combine(targetRoot, relativePath);
+            Directory.CreateDirectory(Path.GetDirectoryName(destinationFile)!);
+            await CopyLocalFileAsync(file, destinationFile, cancellationToken);
+        }
+    }
+
+    private static Task CopyLocalFileAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken) =>
+        AtomicOutputFile.WriteAsync(destinationPath, overwrite: true, async (output, token) =>
+        {
+            await using var source = File.OpenRead(sourcePath);
+            await source.CopyToAsync(output, token);
+        }, cancellationToken);
 
     private static (bool Success, IReadOnlyList<RemoteEntryInfo> Entries, string Message) ListLocalEntries(DestinationSettings destination, string remoteDirectoryPath)
     {

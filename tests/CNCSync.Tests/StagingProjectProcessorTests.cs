@@ -35,7 +35,9 @@ public sealed class StagingProjectProcessorTests
             Assert.True(result.Success);
             Assert.True(File.Exists(result.OutputPath));
             Assert.False(Directory.Exists(result.OutputPath));
-            Assert.Equal(Path.Combine(stagingFolder, "program.nc"), result.OutputPath);
+            var published = Assert.Single(CompletedStagedOutput.Enumerate(stagingFolder, profile.Id));
+            Assert.Equal(result.OutputPath, published.OutputPath);
+            Assert.Equal("program.nc", Path.GetFileName(published.OutputPath));
             Assert.Equal(["program.nc"], result.ProcessedFiles);
         }
         finally
@@ -125,14 +127,15 @@ public sealed class StagingProjectProcessorTests
         try
         {
             var processor = new StagingProjectProcessor(new HttpClient(handler));
+            var profile = new WatchProfileSettings
+            {
+                Name = "Watch 1",
+                WatchFolder = watchFolder,
+                StagingFolder = stagingFolder
+            };
             var result = await processor.ProcessAsync(
                 sourceFile,
-                new WatchProfileSettings
-                {
-                    Name = "Watch 1",
-                    WatchFolder = watchFolder,
-                    StagingFolder = stagingFolder
-                },
+                profile,
                 new ProcessingSetupSettings
                 {
                     Name = "Smooth",
@@ -159,7 +162,9 @@ public sealed class StagingProjectProcessorTests
             Assert.Contains("corner_smooth", handler.RequestContent);
             Assert.DoesNotContain("arc_fitting", handler.RequestContent);
             Assert.DoesNotContain("arc_joiner", handler.RequestContent);
-            Assert.Equal(Path.Combine(stagingFolder, "program_smoothed.nc"), result.OutputPath);
+            var published = Assert.Single(CompletedStagedOutput.Enumerate(stagingFolder, profile.Id));
+            Assert.Equal(result.OutputPath, published.OutputPath);
+            Assert.Equal("program_smoothed.nc", Path.GetFileName(published.OutputPath));
             Assert.Equal(["program_smoothed.nc"], result.ProcessedFiles);
             Assert.Contains(result.ActivityMessages, message => message.Contains("ProCut Suite API endpoint", StringComparison.OrdinalIgnoreCase));
             Assert.Contains(result.ActivityMessages, message => message.Contains("line_joiner", StringComparison.OrdinalIgnoreCase));

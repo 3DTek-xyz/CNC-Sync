@@ -36,6 +36,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private CancellationTokenSource? _autoSaveCts;
     private bool _restartMonitoringAfterSave;
     private bool _isApplyingSettings;
+    private string? _proCutApiKeyOrigin;
     private bool _scheduledCatchUpInProgress;
     private string _telemetryInstallId = Guid.NewGuid().ToString("N");
     private DateTime? _telemetryInstallReportedAtUtc;
@@ -505,6 +506,10 @@ public partial class MainWindowViewModel : ViewModelBase
 
     partial void OnProCutApiKeyChanged(string value)
     {
+        _proCutApiKeyOrigin = !string.IsNullOrWhiteSpace(value) &&
+            ProCutApiUri.TryGetBaseUri(ProCutApiBaseUrl, out var uri)
+            ? uri.GetLeftPart(UriPartial.Authority)
+            : null;
         OnPropertyChanged(nameof(ProCutApiKeyStatus));
         ProCutApiServicesStatus = string.IsNullOrWhiteSpace(value)
             ? "Save a ProCut Suite API key before refreshing services."
@@ -513,6 +518,13 @@ public partial class MainWindowViewModel : ViewModelBase
 
     partial void OnProCutApiBaseUrlChanged(string value)
     {
+        if (!_isApplyingSettings && !string.IsNullOrWhiteSpace(ProCutApiKey) &&
+            ProCutApiUri.TryGetBaseUri(value, out _) && !ProCutApiUri.HasSameOrigin(value, _proCutApiKeyOrigin))
+        {
+            ProCutApiKey = string.Empty;
+            return;
+        }
+
         ProCutApiServicesStatus = "Refresh ProCut Suite services to load the current endpoint list.";
     }
 
@@ -727,7 +739,8 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         await using var stream = File.OpenRead(filePath);
         var imported = await JsonSerializer.DeserializeAsync<AppSettings>(stream);
-        var normalized = AppSettings.PrepareImported(imported, ProCutApiKey);
+        var currentApi = GetBoundProCutApiSettings();
+        var normalized = AppSettings.PrepareImported(imported, currentApi.BaseUrl, currentApi.ApiKey);
         Apply(normalized);
         await SaveCurrentSettingsAsync(CancellationToken.None);
         SaveMessage = $"Settings imported from {filePath}.";
@@ -770,7 +783,8 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private async Task RefreshProCutApiServicesAsync(CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(ProCutApiBaseUrl) || string.IsNullOrWhiteSpace(ProCutApiKey))
+        var api = GetBoundProCutApiSettings();
+        if (string.IsNullOrWhiteSpace(api.ApiKey))
         {
             ProCutApiServicesStatus = "Save a ProCut Suite API base URL and API key before refreshing services.";
             return;
@@ -779,13 +793,7 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             ProCutApiServicesStatus = "Refreshing ProCut Suite services...";
-            var services = await _proCutApiSchemaClient.GetServicesAsync(
-                new ProCutApiSettings
-                {
-                    BaseUrl = ProCutApiBaseUrl,
-                    ApiKey = ProCutApiKey
-                },
-                cancellationToken);
+            var services = await _proCutApiSchemaClient.GetServicesAsync(api, cancellationToken);
 
             var desktopServices = services
                 .Where(IsDesktopGcodeProcessingService)
@@ -1160,7 +1168,11 @@ public partial class MainWindowViewModel : ViewModelBase
         ScheduledCatchUpIntervalMinutes = settings.ScheduledCatchUpIntervalMinutes;
         CustomScriptSourceUrl = settings.CustomScriptSourceUrl;
         ProCutApiBaseUrl = settings.ProCutApi.BaseUrl;
-        ProCutApiKey = settings.ProCutApi.ApiKey;
+        // Load and import supply a matched URL/key pair, even when the key text did not change.
+        _proCutApiKeyOrigin = ProCutApiUri.TryGetBaseUri(ProCutApiBaseUrl, out var uri)
+            ? uri.GetLeftPart(UriPartial.Authority)
+            : null;
+        ProCutApiKey = _proCutApiKeyOrigin is null ? string.Empty : settings.ProCutApi.ApiKey;
         _usageTelemetryService.ApplySettings(settings);
         TelemetryNotice = _usageTelemetryService.NoticeText;
 
@@ -1208,15 +1220,14 @@ public partial class MainWindowViewModel : ViewModelBase
             ScheduledCatchUpEnabled = ScheduledCatchUpEnabled,
             ScheduledCatchUpIntervalMinutes = ScheduledCatchUpIntervalMinutes,
             CustomScriptSourceUrl = CustomScriptSourceUrl,
-            ProCutApi = new ProCutApiSettings
-            {
-                BaseUrl = ProCutApiBaseUrl,
-                ApiKey = ProCutApiKey
-            },
+            ProCutApi = GetBoundProCutApiSettings(),
             Destinations = Destinations.Select(destination => destination.ToSettings()).ToList(),
             ProcessingSetups = ProcessingSetups.Select(setup => setup.ToSettings()).ToList(),
             WatchProfiles = WatchProfiles.Select(profile => profile.ToSettings()).ToList()
         };
+
+    private ProCutApiSettings GetBoundProCutApiSettings() =>
+        ProCutApiSettings.ForBoundKey(ProCutApiBaseUrl, _proCutApiKeyOrigin, ProCutApiKey);
 
     private void OnActivityLogged(ActivityLogEntry entry)
     {

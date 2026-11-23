@@ -6,4 +6,5 @@ public sealed class WorkItemReadyEvent
 {
     public required string Path { get; init; }
     public required WatchProfileSettings Profile { get; init; }
+    public string? StableMetadataFingerprint { get; init; }
 }

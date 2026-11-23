@@ -92,9 +92,42 @@ public class AppSettingsTests
     {
         var imported = AppSettings.CreateProCutApiImportTemplate();
 
-        var prepared = AppSettings.PrepareImported(imported, TestSecrets.ProCutApiSecret);
+        var prepared = AppSettings.PrepareImported(imported, "https://PROCUTSUITE.COM:443/base", TestSecrets.ProCutApiSecret);
 
         Assert.Equal(TestSecrets.ProCutApiSecret, prepared.ProCutApi.ApiKey);
+    }
+
+    [Theory]
+    [InlineData("https://different.example.test")]
+    [InlineData("https://procutsuite.com:444")]
+    [InlineData("http://procutsuite.com")]
+    [InlineData("https://user@procutsuite.com")]
+    public void PrepareImportedSettings_DoesNotRetainKeyForDifferentOrInvalidOrigin(string importedUrl)
+    {
+        var imported = AppSettings.CreateProCutApiImportTemplate();
+        imported.ProCutApi.BaseUrl = importedUrl;
+
+        var prepared = AppSettings.PrepareImported(imported, "https://procutsuite.com", TestSecrets.ProCutApiSecret);
+
+        Assert.Empty(prepared.ProCutApi.ApiKey);
+    }
+
+    [Theory]
+    [InlineData("http://localhost:8123", "/process", "HTTPS")]
+    [InlineData("ftp://api.example.test", "/process", "HTTPS")]
+    [InlineData("https://api.example.test", "https://other.example.test/process", "same origin")]
+    [InlineData("https://api.example.test", "//other.example.test/process", "same origin")]
+    [InlineData("https://api.example.test", "https://api.example.test:444/process", "same origin")]
+    public void Validator_RejectsInsecureProCutApiRequests(string baseUrl, string endpoint, string expectedError)
+    {
+        var settings = AppSettings.CreateProCutApiImportTemplate();
+        settings.ProCutApi.BaseUrl = baseUrl;
+        settings.ProCutApi.ApiKey = TestSecrets.ProCutApiKey;
+        settings.ProcessingSetups[0].ProCutApiEndpoint = endpoint;
+
+        var result = new AppSettingsValidator().Validate(settings);
+
+        Assert.Contains(result.Errors, error => error.Contains(expectedError, StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

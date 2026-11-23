@@ -205,10 +205,12 @@ Before using it:
 
 - generate or copy a ProCut Suite API key from the ProCut Suite web app
 - open `App Settings`
-- set `Base URL` to `https://procutsuite.com` unless testing another server
+- set `Base URL` to `https://procutsuite.com` unless testing another HTTPS server; the processing endpoint must use the same host and port
 - paste the API key into `API Key`
 - save settings
 - optionally import `Settings for ProCut Suite API.json` from the app settings folder, then update the watch, staging, and output folders
+
+If you change the API host or port, enter a key for the new server. The existing key is not sent to the new server.
 
 In a processing setup:
 
@@ -239,7 +241,9 @@ file=<g-code file>
 tools=[{"type":"corner_smooth","options":{...}}]
 ```
 
-If the API returns an error, including rate limiting, the Activity screen logs the HTTP status and response body so the failure is visible during testing and support.
+The Activity screen reports HTTP failures without logging the API response body. Monitoring retries transient failures, including HTTP 429, with increasing delays and a limited number of attempts. It waits longer when the API supplies a longer `Retry-After`. If retries are exhausted, the source file stays in the watch folder and Activity reports the failure.
+
+Interrupted or invalid responses are not eligible for delivery. For a local destination, each file is published under its final name only after the copy completes.
 
 ## Watch Folders
 
@@ -254,7 +258,7 @@ Fields:
 - `Watch Folder`
   - local folder being watched
 - `Staging Folder`
-  - local folder used for prepared output
+  - local folder used for prepared output and recovery records; keep it separate from watched folders and local destinations
 - `Additional Remote Path`
   - optional path appended under the selected destination base path
 - `Work Item Mode`
@@ -268,9 +272,11 @@ Fields:
 - `Stability Check Interval`
   - how often ProCut Suite Desktop checks pending items to see if they are ready
 
-`Individual files and folders` is the general-purpose mode and reacts to each change on its own.
+`Individual files and folders` is the general-purpose mode and reacts to each change on its own. When using ProCut Suite API processing in this mode, files in subfolders keep their folder structure relative to the watch folder at the destination.
 
-`Grouped project folders` is for job-folder workflows such as Mozaik exports. It is the safer choice when a destination replaces remote folder contents before upload.
+`Grouped project folders` is for job-folder workflows such as Mozaik exports. It is the safer choice when a remote destination replaces folder contents before upload.
+
+Grouped delivery to a `Local Folder` with `Replace Remote Folder On Upload` enabled is rejected before destination files change. Turn off replacement and run `Manual Catch-Up` to copy the staged output without removing obsolete files, or use a supported remote destination. Single-file API delivery to a local folder is unaffected.
 
 ## Monitoring
 
@@ -287,28 +293,13 @@ The `Monitoring` panel shows:
 If enabled watch profiles exist and settings validate successfully, the app can auto-start monitoring on launch.
 Changes to monitoring-related settings are applied live by reloading monitoring automatically.
 
+Starting monitoring scans existing inputs, including files that arrived while it was stopped. Unchanged inputs with a successful delivery record are skipped. Before starting after an upgrade, review any files already in the watch folder that should not be submitted again; older deliveries may not have recovery records.
+
 ## Manual Catch-Up
 
-`Manual Catch-Up` is for reconciling missed uploads.
+`Manual Catch-Up` retries verified staged output for the selected profile, such as after a destination outage. Successfully delivered output is removed from staging. Scheduled catch-up uses the same rules.
 
-It uses the local staging folder as a retry outbox.
-It:
-
-- reads the selected watch profile
-- looks for items still waiting in staging because a previous delivery did not complete successfully
-- retries those staged items to the selected destination
-- removes staged items after a successful upload
-
-It does not reconstruct files that appeared while ProCut Suite Desktop was not running.
-
-Use this when:
-
-- the destination was unavailable
-- monitoring was stopped
-- staged items are still waiting locally after a failed delivery
-
-Scheduled catch-up uses the same staged-outbox model.
-It can only retry items that made it into staging while ProCut Suite Desktop was running.
+Catch-up does not rerun processing, submit missed inputs to the API, or upload incomplete files. Older files in staging without a completion record are also ignored; review and reprocess the original input if needed. To pick up new inputs that arrived while monitoring was stopped, start monitoring.
 
 ## Activity Log
 

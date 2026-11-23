@@ -40,6 +40,17 @@ git push origin main
 git push origin v1.0.72
 ```
 
+## Reliability Checks
+
+From the repository root, run the tests and transitive dependency audit before tagging:
+
+```bash
+dotnet test tests/CNCSync.Tests/CNCSync.Tests.csproj
+dotnet list CNCSync.sln package --vulnerable --include-transitive
+```
+
+`ReliabilityEndToEndTests` uses a real filesystem watcher, temporary folders, and mocked HTTP to check delivery (including same-named files in different jobs), partial-response safety, rate-limit recovery, and restart deduplication. This does not replace a Windows package smoke test or a separate check against a non-production API.
+
 ## What GitHub Actions Does
 
 - Pushing `main` updates the repo and Pages content.

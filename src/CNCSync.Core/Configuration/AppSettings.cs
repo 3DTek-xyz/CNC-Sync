@@ -111,11 +111,13 @@ public sealed class AppSettings
         };
     }
 
-    public static AppSettings PrepareImported(AppSettings? imported, string existingProCutApiKey)
+    public static AppSettings PrepareImported(AppSettings? imported, string existingProCutApiBaseUrl, string existingProCutApiKey)
     {
+        var importBaseUrl = imported?.ProCutApi?.BaseUrl;
         var normalized = (imported ?? CreateDefault()).Normalize();
         if (string.IsNullOrWhiteSpace(normalized.ProCutApi.ApiKey) &&
-            !string.IsNullOrWhiteSpace(existingProCutApiKey))
+            !string.IsNullOrWhiteSpace(existingProCutApiKey) &&
+            ProCutApiUri.HasSameOrigin(existingProCutApiBaseUrl, importBaseUrl))
         {
             normalized.ProCutApi.ApiKey = existingProCutApiKey.Trim();
         }

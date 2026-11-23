@@ -70,9 +70,10 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
         {
             settings = JsonSerializer.Deserialize<AppSettings>(stream, JsonOptions);
         }
+        var originalApiBaseUrl = settings?.ProCutApi?.BaseUrl;
         var normalized = (settings ?? AppSettings.CreateDefault()).Normalize();
         var migratedLegacyPasswords = RestoreDestinationPasswords(normalized);
-        var migratedProCutApiKey = RestoreProCutApiKey(normalized);
+        var migratedProCutApiKey = RestoreProCutApiKey(normalized, originalApiBaseUrl);
         if (migratedLegacyPasswords || migratedProCutApiKey)
         {
             RewriteSettingsFile(CreateSanitizedSettingsCopy(normalized));
@@ -128,10 +129,30 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
 
     private void SeedSettingsTemplates()
     {
-        Directory.CreateDirectory(_settingsDirectory);
         var templatePath = Path.Combine(_settingsDirectory, ProCutApiImportTemplateFileName);
-        var template = AppSettings.CreateProCutApiImportTemplate();
-        RewriteSettingsTemplate(templatePath, template);
+        if (File.Exists(templatePath))
+        {
+            return;
+        }
+
+        var tempPath = $"{templatePath}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            using (var stream = new FileStream(tempPath, FileMode.CreateNew))
+            {
+                JsonSerializer.Serialize(stream, AppSettings.CreateProCutApiImportTemplate(), JsonOptions);
+            }
+
+            File.Move(tempPath, templatePath, overwrite: false);
+        }
+        catch (IOException) when (File.Exists(templatePath))
+        {
+            // Another process seeded the template first.
+        }
+        finally
+        {
+            File.Delete(tempPath);
+        }
     }
 
     private void RemoveObsoleteBundledScripts()
@@ -248,18 +269,34 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
         return migratedLegacyPasswords;
     }
 
-    private bool RestoreProCutApiKey(AppSettings settings)
+    private bool RestoreProCutApiKey(AppSettings settings, string? originalBaseUrl)
     {
-        var legacyApiKey = settings.ProCutApi.ApiKey;
-        if (!string.IsNullOrWhiteSpace(legacyApiKey))
+        var api = settings.ProCutApi;
+        var plaintextKey = api.ApiKey;
+        var credential = ReadProCutApiCredential();
+        if (credential is not null)
         {
-            _secretStore.SetSecret(ProCutApiKeySecretKey, legacyApiKey);
-            settings.ProCutApi.ApiKey = legacyApiKey;
-            return true;
+            api.ApiKey = ProCutApiUri.HasSameOrigin(credential.Origin, originalBaseUrl) ? credential.Key : string.Empty;
+            return !string.IsNullOrWhiteSpace(plaintextKey);
         }
 
-        settings.ProCutApi.ApiKey = _secretStore.GetSecret(ProCutApiKeySecretKey) ?? string.Empty;
-        return false;
+        // Legacy keys can only be associated with the base URL in the existing settings file.
+        var legacyKey = string.IsNullOrWhiteSpace(plaintextKey)
+            ? _secretStore.GetSecret(LegacyProCutApiKeySecretKey)
+            : plaintextKey;
+        api.ApiKey = string.Empty;
+        if (!string.IsNullOrWhiteSpace(legacyKey))
+        {
+            if (ProCutApiUri.TryGetBaseUri(originalBaseUrl, out var baseUri))
+            {
+                api.ApiKey = legacyKey;
+                WriteProCutApiCredential(baseUri, legacyKey);
+            }
+
+            _secretStore.DeleteSecret(LegacyProCutApiKeySecretKey);
+        }
+
+        return !string.IsNullOrWhiteSpace(plaintextKey);
     }
 
     private void PersistDestinationPasswords(AppSettings settings)
@@ -291,14 +328,43 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
 
     private void PersistProCutApiKey(AppSettings settings)
     {
-        if (string.IsNullOrWhiteSpace(settings.ProCutApi.ApiKey))
+        var api = settings.ProCutApi;
+        var previous = ReadProCutApiCredential();
+        var sameOrigin = previous is not null && ProCutApiUri.HasSameOrigin(previous.Origin, api.BaseUrl);
+        if (string.IsNullOrWhiteSpace(api.ApiKey))
         {
-            _secretStore.DeleteSecret(ProCutApiKeySecretKey);
+            if (sameOrigin)
+            {
+                _secretStore.DeleteSecret(ProCutApiKeySecretKey);
+            }
+
+            _secretStore.DeleteSecret(LegacyProCutApiKeySecretKey);
             return;
         }
 
-        _secretStore.SetSecret(ProCutApiKeySecretKey, settings.ProCutApi.ApiKey);
+        if (!ProCutApiUri.TryGetBaseUri(api.BaseUrl, out var baseUri))
+        {
+            return;
+        }
+
+        var key = api.ApiKey.Trim();
+        if (previous?.Key == key && !sameOrigin)
+        {
+            return;
+        }
+
+        WriteProCutApiCredential(baseUri, key);
+        _secretStore.DeleteSecret(LegacyProCutApiKeySecretKey);
     }
+
+    private ProCutApiCredential? ReadProCutApiCredential() =>
+        _secretStore.GetSecret(ProCutApiKeySecretKey) is { } json
+            ? JsonSerializer.Deserialize<ProCutApiCredential>(json)
+            : null;
+
+    private void WriteProCutApiCredential(Uri baseUri, string apiKey) =>
+        _secretStore.SetSecret(ProCutApiKeySecretKey,
+            JsonSerializer.Serialize(new ProCutApiCredential(baseUri.GetLeftPart(UriPartial.Authority), apiKey)));
 
     private static AppSettings CreateSanitizedSettingsCopy(AppSettings settings)
     {
@@ -316,7 +382,10 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
         return copy;
     }
 
-    private const string ProCutApiKeySecretKey = "procutsuite:api-key";
+    private sealed record ProCutApiCredential(string Origin, string Key);
+
+    private const string ProCutApiKeySecretKey = "procutsuite:api-key:v2";
+    private const string LegacyProCutApiKeySecretKey = "procutsuite:api-key";
     private static string BuildDestinationPasswordKey(DestinationSettings destination) => $"{destination.Id}:password";
     private static string BuildDestinationPrivateKeyPassphraseKey(DestinationSettings destination) => $"{destination.Id}:private-key-passphrase";
 
@@ -342,18 +411,6 @@ public sealed class JsonAppSettingsStore : IAppSettingsStore
         }
 
         MoveTempFileIntoPlace(tempPath, SettingsFilePath);
-    }
-
-    private void RewriteSettingsTemplate(string templatePath, AppSettings settings)
-    {
-        var sanitizedSettings = CreateSanitizedSettingsCopy(settings);
-        var tempPath = templatePath + ".tmp";
-        using (var stream = File.Create(tempPath))
-        {
-            JsonSerializer.Serialize(stream, sanitizedSettings, JsonOptions);
-        }
-
-        MoveTempFileIntoPlace(tempPath, templatePath);
     }
 
     private static void MoveTempFileIntoPlace(string tempPath, string destinationPath)

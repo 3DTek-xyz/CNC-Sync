@@ -6,6 +6,105 @@ namespace CNCSync.Tests;
 
 public sealed class ProCutApiSchemaClientTests
 {
+    [Theory]
+    [InlineData("https://other.example.test", false)]
+    [InlineData("https://api.example.test:444", false)]
+    [InlineData("http://api.example.test", false)]
+    [InlineData("https://API.example.test:443", true)]
+    public async Task GetServicesAsync_OnlySendsBoundKeyToItsOriginalOrigin(string editedBaseUrl, bool shouldSend)
+    {
+        var handler = new CapturingHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("""{"services":[{"id":"valid","endpoint":"/process"}]}""")
+        });
+        using var http = new HttpClient(handler);
+        var client = new ProCutApiSchemaClient(http);
+        var settings = ProCutApiSettings.ForBoundKey(editedBaseUrl, "https://api.example.test", TestSecrets.ProCutApiKey);
+
+        if (shouldSend)
+        {
+            await client.GetServicesAsync(settings);
+            Assert.Equal(TestSecrets.ProCutApiKey, handler.Request?.Headers.Authorization?.Parameter);
+        }
+        else
+        {
+            await Assert.ThrowsAsync<InvalidOperationException>(() => client.GetServicesAsync(settings));
+            Assert.Null(handler.Request);
+        }
+    }
+    [Fact]
+    public async Task GetServicesAsync_RejectsRedirectRatherThanRetrying()
+    {
+        using var defaultHandler = ProCutApiSchemaClient.CreateDefaultHandler();
+        Assert.False(defaultHandler.AllowAutoRedirect);
+
+        var requests = 0;
+        using var http = new HttpClient(new CapturingHandler(_ =>
+        {
+            requests++;
+            return new HttpResponseMessage(HttpStatusCode.TemporaryRedirect)
+            {
+                Headers = { Location = new Uri("https://other.example.test/schema") }
+            };
+        }));
+        var client = new ProCutApiSchemaClient(http);
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => client.GetServicesAsync(new ProCutApiSettings
+        {
+            BaseUrl = "https://api.example.test",
+            ApiKey = TestSecrets.ProCutApiKey
+        }));
+
+        Assert.Contains("307", error.Message, StringComparison.Ordinal);
+        Assert.Equal(1, requests);
+    }
+
+    [Theory]
+    [InlineData("http://127.0.0.1:54321")]
+    [InlineData("http://api.example.test")]
+    [InlineData("https://user@api.example.test")]
+    [InlineData("https://api.example.test/#fragment")]
+    public async Task GetServicesAsync_RejectsInvalidBaseUrlBeforeSending(string baseUrl)
+    {
+        var handler = new CapturingHandler(_ => new HttpResponseMessage(HttpStatusCode.BadRequest));
+        using var http = new HttpClient(handler);
+        var client = new ProCutApiSchemaClient(http);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => client.GetServicesAsync(new ProCutApiSettings
+        {
+            BaseUrl = baseUrl,
+            ApiKey = TestSecrets.ProCutApiKey
+        }));
+
+        Assert.Null(handler.Request);
+    }
+
+    [Fact]
+    public async Task GetServicesAsync_OmitsEndpointsOutsideConfiguredHttpsOrigin()
+    {
+        var handler = new CapturingHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("""
+                { "services": [
+                    { "id": "valid", "endpoint": "/process" },
+                    { "id": "different_host", "endpoint": "//other.example.test/process" },
+                    { "id": "different_port", "endpoint": "https://api.example.test:444/process" },
+                    { "id": "insecure", "endpoint": "http://api.example.test/process" }
+                ] }
+                """)
+        });
+        using var http = new HttpClient(handler);
+        var client = new ProCutApiSchemaClient(http);
+
+        var services = await client.GetServicesAsync(new ProCutApiSettings
+        {
+            BaseUrl = "https://api.example.test",
+            ApiKey = TestSecrets.ProCutApiKey
+        });
+
+        Assert.Equal("valid", Assert.Single(services).Id);
+    }
+
     [Fact]
     public async Task GetServicesAsync_FetchesSchemaWithBearerTokenAndParsesServices()
     {

@@ -9,7 +9,7 @@ namespace CNCSync.Infrastructure.Networking;
 public sealed class SftpService : ISftpService
 {
     public Task<(bool Success, string Message)> TestConnectionAsync(DestinationSettings destination, CancellationToken cancellationToken = default) =>
-        Task.Run(() =>
+        Task.Run(async () =>
         {
             if (string.IsNullOrWhiteSpace(destination.Host))
             {
@@ -37,7 +37,7 @@ public sealed class SftpService : ISftpService
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 using var client = CreateClient(destination);
-                client.Connect();
+                await client.ConnectAsync(cancellationToken);
                 return (true, $"SFTP connection successful: {destination.Host}:{destination.Port}");
             }
             catch (OperationCanceledException)
@@ -46,6 +46,7 @@ public sealed class SftpService : ISftpService
             }
             catch (Exception ex)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 return (false, $"SFTP connection failed: {ex.Message}");
             }
         }, cancellationToken);
@@ -54,7 +55,7 @@ public sealed class SftpService : ISftpService
         UploadFileSystemItemAsync(localPath, destination, remoteDirectoryPath, progress, cancellationToken);
 
     public Task<(bool Success, string Message)> UploadFileSystemItemAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, IProgress<string>? progress = null, CancellationToken cancellationToken = default) =>
-        Task.Run(() =>
+        Task.Run(async () =>
         {
             if (string.IsNullOrWhiteSpace(destination.Host))
             {
@@ -71,10 +72,10 @@ public sealed class SftpService : ISftpService
             try
             {
                 using var client = CreateClient(destination);
-                client.Connect();
+                await client.ConnectAsync(cancellationToken);
 
                 var targetRoot = NormalizeSessionDirectoryPath(remoteDirectoryPath);
-                EnsureDirectoryExists(client, targetRoot, cancellationToken);
+                await EnsureDirectoryExistsAsync(client, targetRoot, cancellationToken);
 
                 if (isFile)
                 {
@@ -87,7 +88,7 @@ public sealed class SftpService : ISftpService
                     var remoteFilePath = CombineRemoteFilePath(targetRoot, fileName);
                     progress?.Report($"Uploading {fileName}...");
                     using var fileStream = File.OpenRead(localPath);
-                    client.UploadFile(fileStream, remoteFilePath, true, null);
+                    await client.UploadFileAsync(fileStream, remoteFilePath, cancellationToken);
                 }
                 else
                 {
@@ -100,11 +101,11 @@ public sealed class SftpService : ISftpService
                         var relativePath = Path.GetRelativePath(localPath, file).Replace('\\', '/');
                         var remoteFilePath = CombineRemoteFilePath(targetRoot, relativePath);
                         var remoteDirectory = GetParentRemotePath(remoteFilePath);
-                        EnsureDirectoryExists(client, remoteDirectory, cancellationToken);
+                        await EnsureDirectoryExistsAsync(client, remoteDirectory, cancellationToken);
 
                         progress?.Report($"Uploading {index + 1}/{files.Count}: {relativePath}");
                         using var fileStream = File.OpenRead(file);
-                        client.UploadFile(fileStream, remoteFilePath, true, null);
+                        await client.UploadFileAsync(fileStream, remoteFilePath, cancellationToken);
                     }
                 }
 
@@ -116,12 +117,13 @@ public sealed class SftpService : ISftpService
             }
             catch (Exception ex)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 return (false, $"SFTP upload failed: {ex.Message}");
             }
         }, cancellationToken);
 
     public Task<(bool Success, IReadOnlyList<RemoteEntryInfo> Entries, string Message)> ListRootEntriesAsync(DestinationSettings destination, string remoteDirectoryPath, CancellationToken cancellationToken = default) =>
-        Task.Run<(bool Success, IReadOnlyList<RemoteEntryInfo> Entries, string Message)>(() =>
+        Task.Run<(bool Success, IReadOnlyList<RemoteEntryInfo> Entries, string Message)>(async () =>
         {
             if (string.IsNullOrWhiteSpace(destination.Host))
             {
@@ -131,30 +133,39 @@ public sealed class SftpService : ISftpService
             try
             {
                 using var client = CreateClient(destination);
-                client.Connect();
+                await client.ConnectAsync(cancellationToken);
 
                 var targetPath = NormalizeSessionDirectoryPath(remoteDirectoryPath);
 
-                if (!client.Exists(targetPath))
+                if (!await client.ExistsAsync(targetPath, cancellationToken))
                 {
                     return (true, [], "SFTP path does not exist yet; treating it as empty.");
                 }
 
-                var entries = client.ListDirectory(targetPath)
-                    .Where(entry => entry.Name is not "." and not "..")
-                    .Select(entry => new RemoteEntryInfo
+                var entries = new List<RemoteEntryInfo>();
+                await foreach (var entry in client.ListDirectoryAsync(targetPath, cancellationToken))
+                {
+                    if (entry.Name is "." or "..")
+                    {
+                        continue;
+                    }
+
+                    entries.Add(new RemoteEntryInfo
                     {
                         Name = entry.Name,
                         FullPath = NormalizeRemotePath(entry.FullName),
                         IsDirectory = entry.IsDirectory,
                         SizeBytes = entry.IsDirectory ? null : entry.Attributes.Size
-                    })
+                    });
+                }
+
+                var sortedEntries = entries
                     .OrderByDescending(entry => entry.IsDirectory)
                     .ThenBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase)
                     .ToList();
 
                 var describedPath = DescribeRemotePath(targetPath);
-                return (true, entries, $"Listed {entries.Count} item(s) from SFTP path {describedPath}.");
+                return (true, sortedEntries, $"Listed {entries.Count} item(s) from SFTP path {describedPath}.");
             }
             catch (OperationCanceledException)
             {
@@ -166,25 +177,26 @@ public sealed class SftpService : ISftpService
             }
             catch (Exception ex)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 return (false, [], $"SFTP listing failed: {ex.Message}");
             }
         }, cancellationToken);
 
     public Task<(bool Exists, long? SizeBytes, string Message)> TryGetFileSizeAsync(DestinationSettings destination, string remoteFilePath, CancellationToken cancellationToken = default) =>
-        Task.Run<(bool Exists, long? SizeBytes, string Message)>(() =>
+        Task.Run<(bool Exists, long? SizeBytes, string Message)>(async () =>
         {
             try
             {
                 using var client = CreateClient(destination);
-                client.Connect();
+                await client.ConnectAsync(cancellationToken);
 
                 var normalizedPath = NormalizeSessionPath(remoteFilePath);
-                if (!client.Exists(normalizedPath))
+                if (!await client.ExistsAsync(normalizedPath, cancellationToken))
                 {
                     return (false, null, $"Remote file does not exist: {DescribeRemotePath(normalizedPath)}");
                 }
 
-                var attributes = client.GetAttributes(normalizedPath);
+                var attributes = await client.GetAttributesAsync(normalizedPath, cancellationToken);
                 if (attributes.IsDirectory)
                 {
                     return (false, null, $"Remote path is a directory: {DescribeRemotePath(normalizedPath)}");
@@ -198,12 +210,13 @@ public sealed class SftpService : ISftpService
             }
             catch (Exception ex)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 return (false, null, $"Could not read SFTP file size: {ex.Message}");
             }
         }, cancellationToken);
 
     public Task<(bool Success, string Message)> DeleteRemoteItemAsync(DestinationSettings destination, string remotePath, bool isDirectory, CancellationToken cancellationToken = default) =>
-        Task.Run(() =>
+        Task.Run(async () =>
         {
             if (string.IsNullOrWhiteSpace(destination.Host))
             {
@@ -213,7 +226,7 @@ public sealed class SftpService : ISftpService
             try
             {
                 using var client = CreateClient(destination);
-                client.Connect();
+                await client.ConnectAsync(cancellationToken);
 
                 var normalizedPath = NormalizeSessionPath(remotePath);
                 if (normalizedPath == ".")
@@ -223,11 +236,11 @@ public sealed class SftpService : ISftpService
 
                 if (isDirectory)
                 {
-                    DeleteDirectoryRecursive(client, normalizedPath, cancellationToken);
+                    await DeleteDirectoryRecursiveAsync(client, normalizedPath, cancellationToken);
                 }
-                else if (client.Exists(normalizedPath))
+                else if (await client.ExistsAsync(normalizedPath, cancellationToken))
                 {
-                    client.DeleteFile(normalizedPath);
+                    await client.DeleteFileAsync(normalizedPath, cancellationToken);
                 }
 
                 return (true, $"{(isDirectory ? "Remote folder" : "Remote file")} deleted: {DescribeRemotePath(normalizedPath)}");
@@ -238,16 +251,17 @@ public sealed class SftpService : ISftpService
             }
             catch (Exception ex)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 return (false, $"SFTP delete failed: {ex.Message}");
             }
         }, cancellationToken);
 
-    private static SftpClient CreateClient(DestinationSettings destination)
+    internal static SftpClient CreateClient(DestinationSettings destination)
     {
-        return new SftpClient(SshConnectionFactory.CreateConnectionInfo(destination));
+        return new SftpClient(SshConnectionFactory.CreateConnectionInfo(destination)) { OperationTimeout = SshConnectionFactory.IoTimeout };
     }
 
-    private static void EnsureDirectoryExists(SftpClient client, string? remotePath, CancellationToken cancellationToken)
+    private static async Task EnsureDirectoryExistsAsync(SftpClient client, string? remotePath, CancellationToken cancellationToken)
     {
         var normalizedPath = NormalizeSessionDirectoryPath(remotePath);
         if (string.IsNullOrWhiteSpace(normalizedPath) || normalizedPath is "/" or ".")
@@ -261,35 +275,39 @@ public sealed class SftpService : ISftpService
             cancellationToken.ThrowIfCancellationRequested();
             currentPath = string.IsNullOrWhiteSpace(currentPath) ? $"/{segment}" : $"{currentPath}/{segment}";
 
-            if (!client.Exists(currentPath))
+            if (!await client.ExistsAsync(currentPath, cancellationToken))
             {
-                client.CreateDirectory(currentPath);
+                await client.CreateDirectoryAsync(currentPath, cancellationToken);
             }
         }
     }
 
-    private static void DeleteDirectoryRecursive(SftpClient client, string remotePath, CancellationToken cancellationToken)
+    private static async Task DeleteDirectoryRecursiveAsync(SftpClient client, string remotePath, CancellationToken cancellationToken)
     {
-        if (!client.Exists(remotePath))
+        if (!await client.ExistsAsync(remotePath, cancellationToken))
         {
             return;
         }
 
-        foreach (var entry in client.ListDirectory(remotePath).Where(entry => entry.Name is not "." and not ".."))
+        await foreach (var entry in client.ListDirectoryAsync(remotePath, cancellationToken))
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (entry.Name is "." or "..")
+            {
+                continue;
+            }
 
             if (entry.IsDirectory)
             {
-                DeleteDirectoryRecursive(client, NormalizeRemotePath(entry.FullName), cancellationToken);
+                await DeleteDirectoryRecursiveAsync(client, NormalizeRemotePath(entry.FullName), cancellationToken);
             }
             else
             {
-                client.DeleteFile(NormalizeRemotePath(entry.FullName));
+                await client.DeleteFileAsync(NormalizeRemotePath(entry.FullName), cancellationToken);
             }
         }
 
-        client.DeleteDirectory(remotePath);
+        await client.DeleteDirectoryAsync(remotePath, cancellationToken);
     }
 
     private static string NormalizeSessionDirectoryPath(string? path)

@@ -2,6 +2,7 @@ using CNCSync.Core.Configuration;
 using CNCSync.Core.Processing;
 using CNCSync.Core.Services;
 using System.Diagnostics;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -14,298 +15,209 @@ public sealed class StagingProjectProcessor : IProjectProcessor
 
     public StagingProjectProcessor(HttpClient? httpClient = null)
     {
-        _httpClient = httpClient ?? new HttpClient
+        _httpClient = httpClient ?? new HttpClient(new HttpClientHandler { AllowAutoRedirect = false })
         {
             Timeout = TimeSpan.FromMinutes(5)
         };
     }
 
-    public async Task<ProcessingResult> ProcessAsync(
+    public Task<ProcessingResult> ProcessAsync(
         string sourcePath,
         WatchProfileSettings profile,
         ProcessingSetupSettings processingSetup,
         ProCutApiSettings? proCutApi = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        ProcessCoreAsync(sourcePath, profile, processingSetup, proCutApi, null, cancellationToken);
+
+    public Task<ProcessingResult> ProcessQueuedAsync(
+        string sourcePath,
+        WatchProfileSettings profile,
+        ProcessingSetupSettings processingSetup,
+        ProCutApiSettings? proCutApi,
+        string sourceFingerprint,
+        CancellationToken cancellationToken) =>
+        ProcessCoreAsync(sourcePath, profile, processingSetup, proCutApi, sourceFingerprint, cancellationToken);
+
+    private async Task<ProcessingResult> ProcessCoreAsync(
+        string sourcePath,
+        WatchProfileSettings profile,
+        ProcessingSetupSettings processingSetup,
+        ProCutApiSettings? proCutApi,
+        string? sourceFingerprint,
+        CancellationToken cancellationToken)
     {
         var startedAt = DateTime.UtcNow;
-        var preparedOutputPath = string.Empty;
+        string? jobDirectory = null;
+        var published = false;
+        var activityMessages = new List<string>();
 
         try
         {
-            Directory.CreateDirectory(profile.StagingFolder);
-
-            var sourceName = Path.GetFileName(sourcePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
-            if (string.IsNullOrWhiteSpace(sourceName))
-            {
-                sourceName = "work-item";
-            }
-
+            cancellationToken.ThrowIfCancellationRequested();
+            sourcePath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(sourcePath));
+            var sourceName = Path.GetFileName(sourcePath);
             var sourceIsDirectory = Directory.Exists(sourcePath);
-            var sourceIsFile = File.Exists(sourcePath);
-            var remoteFolderName = sourceIsDirectory ? sourceName : null;
-
-            preparedOutputPath = Path.Combine(profile.StagingFolder, sourceName);
-            DeletePathIfExists(preparedOutputPath);
-
-            if (processingSetup.Mode == ProcessingMode.ExternalScript)
+            if (!sourceIsDirectory && !File.Exists(sourcePath))
             {
-                Directory.CreateDirectory(preparedOutputPath);
-                return await RunExternalScriptAsync(sourcePath, preparedOutputPath, processingSetup, startedAt, remoteFolderName, cancellationToken);
+                throw new InvalidOperationException($"Source path does not exist: {sourcePath}");
             }
 
-            if (processingSetup.Mode == ProcessingMode.ProCutApi)
-            {
-                return await RunProCutApiAsync(
-                    sourcePath,
-                    preparedOutputPath,
-                    profile,
-                    processingSetup,
-                    proCutApi,
-                    startedAt,
-                    remoteFolderName,
-                    sourceIsDirectory,
-                    sourceIsFile,
-                    cancellationToken);
-            }
-
-            List<string> processedFiles;
-            if (sourceIsDirectory)
-            {
-                Directory.CreateDirectory(preparedOutputPath);
-                processedFiles = CopyDirectory(sourcePath, preparedOutputPath, cancellationToken);
-            }
-            else if (sourceIsFile)
-            {
-                var fileName = Path.GetFileName(sourcePath);
-                if (FileSystemItemFilter.ShouldIgnoreFileSystemItem(fileName))
-                {
-                    return new ProcessingResult
-                    {
-                        Success = true,
-                        Message = $"Skipped ignored file: {fileName}",
-                        SourcePath = sourcePath,
-                        OutputPath = preparedOutputPath,
-                        StartedAtUtc = startedAt,
-                        FinishedAtUtc = DateTime.UtcNow
-                    };
-                }
-
-                File.Copy(sourcePath, preparedOutputPath, overwrite: true);
-                processedFiles = [fileName];
-            }
-            else
+            if (!sourceIsDirectory && FileSystemItemFilter.ShouldIgnoreFileSystemItem(sourceName))
             {
                 return new ProcessingResult
                 {
-                    Success = false,
-                    Message = $"Source path does not exist: {sourcePath}",
+                    Success = true,
+                    Message = $"Skipped ignored file: {sourceName}",
                     SourcePath = sourcePath,
-                    OutputPath = preparedOutputPath,
                     StartedAtUtc = startedAt,
-                    FinishedAtUtc = DateTime.UtcNow,
-                    Errors = [$"Source path does not exist: {sourcePath}"]
+                    FinishedAtUtc = DateTime.UtcNow
                 };
             }
 
+            var stagingRoot = Path.GetFullPath(profile.StagingFolder);
+            if (sourceIsDirectory && IsSameOrWithinDirectory(stagingRoot, sourcePath))
+            {
+                throw new InvalidOperationException("The staging folder cannot be inside the source folder.");
+            }
+
+            sourceFingerprint ??= WorkItemFingerprint.Capture(sourcePath, includeContent: true, cancellationToken);
+            jobDirectory = CompletedStagedOutput.CreateJobDirectory(stagingRoot);
+            var payloadDirectory = Path.Combine(jobDirectory, "payload");
+            Directory.CreateDirectory(payloadDirectory);
+            var outputPath = Path.Combine(payloadDirectory, string.IsNullOrWhiteSpace(sourceName) ? "work-item" : sourceName);
+            var remoteFolderName = ResolveRemoteFolderName(sourcePath, sourceName, sourceIsDirectory, profile);
+
+            switch (processingSetup.Mode)
+            {
+                case ProcessingMode.ExternalScript:
+                    Directory.CreateDirectory(outputPath);
+                    var scriptPath = await RunExternalScriptAsync(sourcePath, outputPath, processingSetup, cancellationToken);
+                    if (!IsSamePath(scriptPath, outputPath))
+                    {
+                        var snapshotPath = Path.Combine(jobDirectory, "script-output");
+                        if (IsSameOrWithinDirectory(snapshotPath, scriptPath))
+                        {
+                            throw new InvalidOperationException("The script output folder contains its staging destination.");
+                        }
+
+                        Directory.CreateDirectory(snapshotPath);
+                        CopyDirectory(scriptPath, snapshotPath, cancellationToken);
+                        outputPath = snapshotPath;
+                    }
+                    break;
+                case ProcessingMode.ProCutApi:
+                    outputPath = await RunProCutApiAsync(sourcePath, outputPath, processingSetup, proCutApi,
+                        sourceIsDirectory, activityMessages, cancellationToken);
+                    break;
+                default:
+                    if (sourceIsDirectory)
+                    {
+                        Directory.CreateDirectory(outputPath);
+                        CopyDirectory(sourcePath, outputPath, cancellationToken);
+                    }
+                    else
+                    {
+                        File.Copy(sourcePath, outputPath);
+                    }
+                    break;
+            }
+
+            if (!string.Equals(sourceFingerprint, WorkItemFingerprint.Capture(sourcePath, includeContent: true, cancellationToken), StringComparison.Ordinal))
+            {
+                throw new IOException("Source changed during processing; no staged output was published.");
+            }
+
+            var completed = CompletedStagedOutput.Publish(jobDirectory, profile.Id, sourcePath, outputPath,
+                remoteFolderName, sourceFingerprint, cancellationToken,
+                remoteRelativeParent: !sourceIsDirectory && processingSetup.Mode == ProcessingMode.ProCutApi
+                    ? ResolveRemoteRelativeParent(sourcePath, profile.WatchFolder) : null);
+            published = true;
             return new ProcessingResult
             {
                 Success = true,
-                Message = $"Processed {processedFiles.Count} file(s) into {preparedOutputPath}",
+                Message = $"Processed {completed.ProcessedFiles.Count} file(s) into {outputPath}",
                 SourcePath = sourcePath,
-                OutputPath = preparedOutputPath,
+                OutputPath = outputPath,
                 RemoteFolderName = remoteFolderName,
                 StartedAtUtc = startedAt,
-                FinishedAtUtc = DateTime.UtcNow,
-                ProcessedFiles = processedFiles
+                FinishedAtUtc = completed.CompletedAtUtc,
+                ProcessedFiles = completed.ProcessedFiles,
+                ActivityMessages = activityMessages,
+                CompletedOutput = completed
             };
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
+            var apiFailure = ex as ProCutOutputException;
             return new ProcessingResult
             {
                 Success = false,
                 Message = $"Processing failed: {ex.Message}",
                 SourcePath = sourcePath,
-                OutputPath = preparedOutputPath,
                 StartedAtUtc = startedAt,
                 FinishedAtUtc = DateTime.UtcNow,
-                Errors = [ex.ToString()]
+                ActivityMessages = activityMessages,
+                Errors = [ex.Message],
+                IsRetryable = apiFailure?.IsRetryable ?? (ex is HttpRequestException or IOException or OperationCanceledException),
+                RetryAfter = apiFailure?.RetryAfter
             };
+        }
+        finally
+        {
+            if (!published && jobDirectory is not null)
+            {
+                TryDiscardJobDirectory(jobDirectory);
+            }
         }
     }
 
-    private async Task<ProcessingResult> RunProCutApiAsync(
+    private async Task<string> RunProCutApiAsync(
         string sourcePath,
         string defaultOutputPath,
-        WatchProfileSettings profile,
         ProcessingSetupSettings processingSetup,
         ProCutApiSettings? proCutApi,
-        DateTime startedAt,
-        string? remoteFolderName,
         bool sourceIsDirectory,
-        bool sourceIsFile,
+        List<string> activityMessages,
         CancellationToken cancellationToken)
     {
         if (proCutApi is null || string.IsNullOrWhiteSpace(proCutApi.ApiKey))
         {
-            return new ProcessingResult
-            {
-                Success = false,
-                Message = "ProCut Suite API processing failed because no API key is saved.",
-                SourcePath = sourcePath,
-                OutputPath = defaultOutputPath,
-                RemoteFolderName = remoteFolderName,
-                StartedAtUtc = startedAt,
-                FinishedAtUtc = DateTime.UtcNow,
-                Errors = ["No ProCut Suite API key is saved."]
-            };
+            throw new InvalidOperationException("ProCut Suite API processing requires a saved API key.");
         }
 
         if (!TryBuildProCutApiUri(proCutApi, processingSetup, out var endpointUri, out var uriError))
         {
-            return new ProcessingResult
-            {
-                Success = false,
-                Message = $"ProCut Suite API processing failed: {uriError}",
-                SourcePath = sourcePath,
-                OutputPath = defaultOutputPath,
-                RemoteFolderName = remoteFolderName,
-                StartedAtUtc = startedAt,
-                FinishedAtUtc = DateTime.UtcNow,
-                Errors = [uriError]
-            };
+            throw new InvalidOperationException($"ProCut Suite API processing failed: {uriError}");
         }
 
-        var activityMessages = new List<string>
+        activityMessages.Add($"ProCut Suite API endpoint: {endpointUri!.GetLeftPart(UriPartial.Path)}");
+        activityMessages.Add($"ProCut Suite API tools: {string.Join(", ", BuildProCutToolTypeList(processingSetup))}");
+
+        if (!sourceIsDirectory)
         {
-            $"ProCut Suite API endpoint: {endpointUri}",
-            $"ProCut Suite API tools: {string.Join(", ", BuildProCutToolTypeList(processingSetup))}"
-        };
-
-        if (sourceIsDirectory)
-        {
-            Directory.CreateDirectory(defaultOutputPath);
-            var processedFiles = new List<string>();
-            foreach (var sourceFile in FileSystemItemFilter.EnumerateIncludedFiles(sourcePath))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var relativePath = Path.GetRelativePath(sourcePath, sourceFile);
-                var relativeDirectory = Path.GetDirectoryName(relativePath);
-                var outputDirectory = string.IsNullOrWhiteSpace(relativeDirectory)
-                    ? defaultOutputPath
-                    : Path.Combine(defaultOutputPath, relativeDirectory);
-                Directory.CreateDirectory(outputDirectory);
-
-                string processedFileName;
-                try
-                {
-                    processedFileName = await ProcessFileWithProCutApiAsync(sourceFile, outputDirectory, endpointUri!, proCutApi.ApiKey, processingSetup, activityMessages, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    activityMessages.Add($"ProCut Suite API processing failed for {Path.GetFileName(sourceFile)}: {ex.Message}");
-                    return new ProcessingResult
-                    {
-                        Success = false,
-                        Message = $"ProCut Suite API processing failed: {ex.Message}",
-                        SourcePath = sourcePath,
-                        OutputPath = defaultOutputPath,
-                        RemoteFolderName = remoteFolderName,
-                        StartedAtUtc = startedAt,
-                        FinishedAtUtc = DateTime.UtcNow,
-                        ActivityMessages = activityMessages,
-                        Errors = [ex.ToString()]
-                    };
-                }
-
-                var processedRelativePath = string.IsNullOrWhiteSpace(relativeDirectory)
-                    ? processedFileName
-                    : Path.Combine(relativeDirectory, processedFileName);
-                processedFiles.Add(processedRelativePath);
-            }
-
-            return new ProcessingResult
-            {
-                Success = true,
-                Message = $"ProCut Suite API processed {processedFiles.Count} file(s) into {defaultOutputPath}",
-                SourcePath = sourcePath,
-                OutputPath = defaultOutputPath,
-                RemoteFolderName = remoteFolderName,
-                StartedAtUtc = startedAt,
-                FinishedAtUtc = DateTime.UtcNow,
-                ActivityMessages = activityMessages,
-                ProcessedFiles = processedFiles
-            };
+            var outputDirectory = Path.GetDirectoryName(defaultOutputPath)!;
+            var outputName = await ProcessFileWithProCutApiAsync(sourcePath, outputDirectory, endpointUri,
+                proCutApi.ApiKey, processingSetup, activityMessages, cancellationToken);
+            return Path.Combine(outputDirectory, outputName);
         }
 
-        if (!sourceIsFile)
+        Directory.CreateDirectory(defaultOutputPath);
+        var sourceFiles = FileSystemItemFilter.EnumerateIncludedFiles(sourcePath).ToArray();
+        foreach (var sourceFile in sourceFiles)
         {
-            return new ProcessingResult
-            {
-                Success = false,
-                Message = $"Source path does not exist: {sourcePath}",
-                SourcePath = sourcePath,
-                OutputPath = defaultOutputPath,
-                RemoteFolderName = remoteFolderName,
-                StartedAtUtc = startedAt,
-                FinishedAtUtc = DateTime.UtcNow,
-                Errors = [$"Source path does not exist: {sourcePath}"]
-            };
+            cancellationToken.ThrowIfCancellationRequested();
+            var relativeDirectory = Path.GetDirectoryName(Path.GetRelativePath(sourcePath, sourceFile))!;
+            var outputDirectory = Path.Combine(defaultOutputPath, relativeDirectory);
+            Directory.CreateDirectory(outputDirectory);
+            await ProcessFileWithProCutApiAsync(sourceFile, outputDirectory, endpointUri,
+                proCutApi.ApiKey, processingSetup, activityMessages, cancellationToken);
         }
 
-        var fileName = Path.GetFileName(sourcePath);
-        if (FileSystemItemFilter.ShouldIgnoreFileSystemItem(fileName))
-        {
-            return new ProcessingResult
-            {
-                Success = true,
-                Message = $"Skipped ignored file: {fileName}",
-                SourcePath = sourcePath,
-                OutputPath = defaultOutputPath,
-                RemoteFolderName = remoteFolderName,
-                StartedAtUtc = startedAt,
-                FinishedAtUtc = DateTime.UtcNow
-            };
-        }
-
-        var outputFolder = Path.GetDirectoryName(defaultOutputPath) ?? profile.StagingFolder;
-        Directory.CreateDirectory(outputFolder);
-        string outputFileName;
-        try
-        {
-            outputFileName = await ProcessFileWithProCutApiAsync(sourcePath, outputFolder, endpointUri!, proCutApi.ApiKey, processingSetup, activityMessages, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            activityMessages.Add($"ProCut Suite API processing failed for {fileName}: {ex.Message}");
-            return new ProcessingResult
-            {
-                Success = false,
-                Message = $"ProCut Suite API processing failed: {ex.Message}",
-                SourcePath = sourcePath,
-                OutputPath = defaultOutputPath,
-                RemoteFolderName = remoteFolderName,
-                StartedAtUtc = startedAt,
-                FinishedAtUtc = DateTime.UtcNow,
-                ActivityMessages = activityMessages,
-                Errors = [ex.ToString()]
-            };
-        }
-
-        var outputPath = Path.Combine(outputFolder, outputFileName);
-
-        return new ProcessingResult
-        {
-            Success = true,
-            Message = $"ProCut Suite API processed 1 file into {outputPath}",
-            SourcePath = sourcePath,
-            OutputPath = outputPath,
-            RemoteFolderName = remoteFolderName,
-            StartedAtUtc = startedAt,
-            FinishedAtUtc = DateTime.UtcNow,
-            ActivityMessages = activityMessages,
-            ProcessedFiles = [outputFileName]
-        };
+        return defaultOutputPath;
     }
 
     private async Task<string> ProcessFileWithProCutApiAsync(
@@ -335,21 +247,28 @@ public sealed class StagingProjectProcessor : IProjectProcessor
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
-        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        using var requestTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        requestTimeout.CancelAfter(_httpClient.Timeout);
+        var requestToken = requestTimeout.Token;
+        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, requestToken);
         if (!response.IsSuccessStatusCode)
         {
-            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
-            var detail = string.IsNullOrWhiteSpace(errorBody)
-                ? response.ReasonPhrase
-                : errorBody.Trim();
-            activityMessages.Add($"ProCut Suite API error {(int)response.StatusCode} {response.StatusCode}: {detail}");
-            throw new InvalidOperationException($"ProCut Suite API returned {(int)response.StatusCode} {response.StatusCode}: {detail}");
+            var status = (int)response.StatusCode;
+            var retryable = response.StatusCode is HttpStatusCode.RequestTimeout or HttpStatusCode.TooManyRequests || status >= 500;
+            var retryHeader = response.Headers.RetryAfter;
+            var retryAfter = retryHeader?.Delta ?? (retryHeader?.Date - DateTimeOffset.UtcNow);
+            throw new ProCutOutputException($"ProCut Suite API returned HTTP {status} ({response.StatusCode}).", retryable,
+                retryable && retryAfter > TimeSpan.Zero ? retryAfter : null);
         }
 
         var outputFileName = ResolveProCutOutputFileName(response.Content.Headers.ContentDisposition, sourceFileName);
         var outputPath = Path.Combine(outputDirectory, outputFileName);
-        await using var outputStream = File.Create(outputPath);
-        await response.Content.CopyToAsync(outputStream, cancellationToken);
+        if (File.Exists(outputPath) || Directory.Exists(outputPath))
+        {
+            throw new ProCutOutputException($"Multiple ProCut Suite API outputs use the filename {outputFileName}.");
+        }
+
+        await ProCutResponseOutput.SaveAsync(response, outputPath, requestToken);
         activityMessages.Add($"ProCut Suite API response received: {sourceFileName} -> {outputFileName}");
         return outputFileName;
     }
@@ -457,27 +376,12 @@ public sealed class StagingProjectProcessor : IProjectProcessor
         out Uri? endpointUri,
         out string error)
     {
-        endpointUri = null;
-        error = string.Empty;
-
         var endpoint = string.IsNullOrWhiteSpace(processingSetup.ProCutApiEndpoint)
             ? "/api/external/gcode/process"
             : processingSetup.ProCutApiEndpoint.Trim();
-        if (Uri.TryCreate(endpoint, UriKind.Absolute, out endpointUri) &&
-            (string.Equals(endpointUri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) ||
-             string.Equals(endpointUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)))
-        {
-            return true;
-        }
-
-        if (!Uri.TryCreate(proCutApi.BaseUrl, UriKind.Absolute, out var baseUri))
-        {
-            error = "the ProCut Suite API base URL is invalid.";
-            return false;
-        }
-
-        endpointUri = new Uri(baseUri, endpoint.TrimStart('/'));
-        return true;
+        var resolved = ProCutApiUri.TryResolveEndpoint(proCutApi.BaseUrl, endpoint, out endpointUri);
+        error = resolved ? string.Empty : "the API endpoint must use the configured HTTPS origin.";
+        return resolved;
     }
 
     private static string ResolveProCutOutputFileName(ContentDispositionHeaderValue? contentDisposition, string fallbackFileName)
@@ -488,46 +392,74 @@ public sealed class StagingProjectProcessor : IProjectProcessor
             fileName = contentDisposition?.FileName;
         }
 
-        fileName = fileName?.Trim().Trim('"');
-        return string.IsNullOrWhiteSpace(fileName)
-            ? fallbackFileName
-            : Path.GetFileName(fileName);
+        fileName = string.IsNullOrWhiteSpace(fileName) ? fallbackFileName : fileName.Trim().Trim('"');
+        if (FileSystemItemFilter.ShouldIgnoreFileSystemItem(fileName) || fileName.EndsWith('.') || fileName.EndsWith(' ') ||
+            fileName.IndexOfAny(['/', '\\', ':', '<', '>', '"', '|', '?', '*']) >= 0 || fileName.Any(char.IsControl) ||
+            IsWindowsDeviceName(fileName))
+        {
+            throw new ProCutOutputException("The ProCut Suite API returned an invalid output filename.");
+        }
+
+        return fileName;
     }
 
-    private static void DeletePathIfExists(string path)
+    private static bool IsWindowsDeviceName(string fileName)
     {
-        if (Directory.Exists(path))
+        var dot = fileName.IndexOf('.');
+        var stem = (dot >= 0 ? fileName[..dot] : fileName).TrimEnd().ToUpperInvariant();
+        return stem is "CON" or "PRN" or "AUX" or "NUL" ||
+            (stem.Length == 4 && (stem.StartsWith("COM", StringComparison.Ordinal) || stem.StartsWith("LPT", StringComparison.Ordinal)) &&
+                (stem[3] is >= '1' and <= '9' or '\u00B9' or '\u00B2' or '\u00B3'));
+    }
+
+    private static string? ResolveRemoteFolderName(string sourcePath, string sourceName, bool isDirectory, WatchProfileSettings profile) =>
+        isDirectory && !string.IsNullOrWhiteSpace(sourceName) &&
+        (string.IsNullOrWhiteSpace(profile.WatchFolder) || !IsSamePath(sourcePath, profile.WatchFolder))
+            ? sourceName
+            : null;
+
+    private static string? ResolveRemoteRelativeParent(string sourcePath, string watchFolder)
+    {
+        if (string.IsNullOrWhiteSpace(watchFolder) || !IsSameOrWithinDirectory(sourcePath, watchFolder))
         {
-            Directory.Delete(path, recursive: true);
-            return;
+            return null;
         }
 
-        if (File.Exists(path))
+        var parent = Path.GetDirectoryName(Path.GetRelativePath(watchFolder, sourcePath));
+        return string.IsNullOrEmpty(parent) ? null : parent.Replace(Path.DirectorySeparatorChar, '/');
+    }
+
+    private static bool IsSamePath(string first, string second) =>
+        Path.GetRelativePath(Path.GetFullPath(first), Path.GetFullPath(second)) == ".";
+
+    private static bool IsSameOrWithinDirectory(string path, string directory)
+    {
+        var relative = Path.GetRelativePath(directory, path);
+        return !Path.IsPathRooted(relative) && relative != ".." &&
+            !relative.StartsWith($"..{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
+    }
+
+    private static void TryDiscardJobDirectory(string jobDirectory)
+    {
+        try
         {
-            File.Delete(path);
+            Directory.Delete(jobDirectory, recursive: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Trace.TraceWarning($"Could not remove unpublished staged job {jobDirectory}: {ex.Message}");
         }
     }
 
-    private static async Task<ProcessingResult> RunExternalScriptAsync(
+    private static async Task<string> RunExternalScriptAsync(
         string sourcePath,
         string defaultOutputPath,
         ProcessingSetupSettings processingSetup,
-        DateTime startedAt,
-        string? remoteFolderName,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(processingSetup.ScriptPath) || !File.Exists(processingSetup.ScriptPath))
         {
-            return new ProcessingResult
-            {
-                Success = false,
-                Message = "External processing failed because the script path is missing or invalid.",
-                SourcePath = sourcePath,
-                OutputPath = defaultOutputPath,
-                RemoteFolderName = remoteFolderName,
-                StartedAtUtc = startedAt,
-                FinishedAtUtc = DateTime.UtcNow
-            };
+            throw new InvalidOperationException("External processing failed because the script path is missing or invalid.");
         }
 
         var (fileName, arguments) = BuildProcessStart(processingSetup, sourcePath, defaultOutputPath);
@@ -563,7 +495,19 @@ public sealed class StagingProjectProcessor : IProjectProcessor
         process.Start();
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
-        await process.WaitForExitAsync(cancellationToken);
+        try
+        {
+            await process.WaitForExitAsync(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+            }
+
+            throw;
+        }
 
         var scriptOutputPath = ParseOutputPath(stdout.ToString()) ?? defaultOutputPath;
         if (process.ExitCode != 0)
@@ -573,48 +517,15 @@ public sealed class StagingProjectProcessor : IProjectProcessor
                 ? $"External script failed with exit code {process.ExitCode}."
                 : $"External script failed with exit code {process.ExitCode}: {errorText}";
 
-            return new ProcessingResult
-            {
-                Success = false,
-                Message = message,
-                SourcePath = sourcePath,
-                OutputPath = scriptOutputPath,
-                RemoteFolderName = remoteFolderName,
-                StartedAtUtc = startedAt,
-                FinishedAtUtc = DateTime.UtcNow,
-                Errors = string.IsNullOrWhiteSpace(errorText) ? [] : [errorText]
-            };
+            throw new InvalidOperationException(message);
         }
 
         if (!Directory.Exists(scriptOutputPath))
         {
-            return new ProcessingResult
-            {
-                Success = false,
-                Message = $"External script succeeded but output folder was not found: {scriptOutputPath}",
-                SourcePath = sourcePath,
-                OutputPath = scriptOutputPath,
-                RemoteFolderName = remoteFolderName,
-                StartedAtUtc = startedAt,
-                FinishedAtUtc = DateTime.UtcNow
-            };
+            throw new InvalidOperationException($"External script succeeded but output folder was not found: {scriptOutputPath}");
         }
 
-        var processedFiles = FileSystemItemFilter.EnumerateIncludedFiles(scriptOutputPath)
-            .Select(path => Path.GetRelativePath(scriptOutputPath, path))
-            .ToList();
-
-        return new ProcessingResult
-        {
-            Success = true,
-            Message = $"External script prepared {processedFiles.Count} file(s) into {scriptOutputPath}",
-            SourcePath = sourcePath,
-            OutputPath = scriptOutputPath,
-            RemoteFolderName = remoteFolderName,
-            StartedAtUtc = startedAt,
-            FinishedAtUtc = DateTime.UtcNow,
-            ProcessedFiles = processedFiles
-        };
+        return scriptOutputPath;
     }
 
     private static (string FileName, string Arguments) BuildProcessStart(
@@ -705,27 +616,34 @@ public sealed class StagingProjectProcessor : IProjectProcessor
         return line is null ? null : line["OUTPUT_PATH=".Length..].Trim();
     }
 
-    private static List<string> CopyDirectory(string sourceDirectory, string destinationDirectory, CancellationToken cancellationToken)
+    private static void CopyDirectory(string sourceDirectory, string destinationDirectory, CancellationToken cancellationToken)
     {
-        var files = new List<string>();
-
-        foreach (var directory in FileSystemItemFilter.EnumerateIncludedDirectories(sourceDirectory))
+        var pending = new Stack<(string Source, string Destination)>();
+        pending.Push((sourceDirectory, destinationDirectory));
+        while (pending.TryPop(out var item))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var relativeDirectory = Path.GetRelativePath(sourceDirectory, directory);
-            Directory.CreateDirectory(Path.Combine(destinationDirectory, relativeDirectory));
-        }
+            if ((File.GetAttributes(item.Source) & FileAttributes.ReparsePoint) != 0)
+            {
+                throw new InvalidDataException($"Staging cannot copy a symbolic link: {item.Source}");
+            }
 
-        foreach (var file in FileSystemItemFilter.EnumerateIncludedFiles(sourceDirectory))
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var relativePath = Path.GetRelativePath(sourceDirectory, file);
-            var destinationPath = Path.Combine(destinationDirectory, relativePath);
-            Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
-            File.Copy(file, destinationPath, overwrite: true);
-            files.Add(relativePath);
-        }
+            if (!Directory.Exists(item.Source))
+            {
+                File.Copy(item.Source, item.Destination);
+                continue;
+            }
 
-        return files;
+            Directory.CreateDirectory(item.Destination);
+            foreach (var entry in Directory.EnumerateFileSystemEntries(item.Source))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var name = Path.GetFileName(entry);
+                if (!FileSystemItemFilter.ShouldIgnoreFileSystemItem(name))
+                {
+                    pending.Push((entry, Path.Combine(item.Destination, name)));
+                }
+            }
+        }
     }
 }

@@ -11,4 +11,13 @@ public interface IProjectProcessor
         ProcessingSetupSettings processingSetup,
         ProCutApiSettings? proCutApi = null,
         CancellationToken cancellationToken = default);
+
+    Task<ProcessingResult> ProcessQueuedAsync(
+        string sourcePath,
+        WatchProfileSettings profile,
+        ProcessingSetupSettings processingSetup,
+        ProCutApiSettings? proCutApi,
+        string sourceFingerprint,
+        CancellationToken cancellationToken) =>
+        ProcessAsync(sourcePath, profile, processingSetup, proCutApi, cancellationToken);
 }

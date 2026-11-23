@@ -5,6 +5,8 @@ namespace CNCSync.Infrastructure.Networking;
 
 internal static class SshConnectionFactory
 {
+    internal static readonly TimeSpan IoTimeout = TimeSpan.FromSeconds(15);
+
     public static ConnectionInfo CreateConnectionInfo(DestinationSettings destination)
     {
         var port = destination.Port > 0 ? destination.Port : 22;
@@ -12,7 +14,7 @@ internal static class SshConnectionFactory
             ? CreatePrivateKeyAuthenticationMethod(destination)
             : new PasswordAuthenticationMethod(destination.Username, destination.Password);
 
-        return new ConnectionInfo(destination.Host, port, destination.Username, authenticationMethod);
+        return new ConnectionInfo(destination.Host, port, destination.Username, authenticationMethod) { Timeout = IoTimeout };
     }
 
     private static AuthenticationMethod CreatePrivateKeyAuthenticationMethod(DestinationSettings destination)
