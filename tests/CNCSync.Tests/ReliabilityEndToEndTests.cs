@@ -152,7 +152,35 @@ public sealed class ReliabilityEndToEndTests
     }
 
     [Fact]
-    public async Task Restart_ReconcilesWithoutResubmittingDeliveredFile()
+    public async Task WatcherDrop_SubmitsNewJobFolderWithoutSubmittingExistingJobs()
+    {
+        var existing = Path.Combine("existing-job", "historical.nc");
+        var newInput = Path.Combine("new-job", Program);
+        using var workspace = new Workspace();
+        Directory.CreateDirectory(Path.GetDirectoryName(workspace.InputPath(existing))!);
+        using var deadline = new CancellationTokenSource(TestTimeout);
+        await workspace.DropAsync(existing, deadline.Token);
+        using var handler = new ScriptedHandler((_, request) => Ok(request.FileName));
+        using var client = new HttpClient(handler);
+        await using var coordinator = workspace.CreateCoordinator(client);
+        var completed = ObserveCompletions(coordinator);
+
+        await coordinator.StartAsync(workspace.Settings, deadline.Token);
+        await Task.Delay(TimeSpan.FromSeconds(3), deadline.Token);
+        Assert.Empty(handler.Requests);
+
+        await workspace.DropFolderAsync("new-job", Program, deadline.Token);
+        var result = await completed.ReadAsync(deadline.Token);
+        Assert.True(result.Success, result.Message);
+        await coordinator.StopAsync(deadline.Token);
+
+        Assert.Equal(Program, Assert.Single(handler.Requests).FileName);
+        Assert.Equal(Processed, await File.ReadAllTextAsync(workspace.DeliveredPath(newInput), deadline.Token));
+        Assert.False(File.Exists(workspace.DeliveredPath(existing)));
+    }
+
+    [Fact]
+    public async Task Restart_DeduplicatesLiveEventForPreviouslyDeliveredFile()
     {
         const string newFile = "second.nc";
         using var workspace = new Workspace();
@@ -170,6 +198,11 @@ public sealed class ReliabilityEndToEndTests
             await coordinator.StopAsync(deadline.Token);
         }
 
+        var originalPath = workspace.InputPath(Program);
+        var originalFingerprint = WorkItemFingerprint.Capture(originalPath, includeContent: true);
+        var parkedPath = Path.Combine(Path.GetDirectoryName(workspace.Profile.WatchFolder)!, Program);
+        File.Move(originalPath, parkedPath);
+
         var restartedMonitor = new FileSystemFolderMonitor();
         await using (var coordinator = workspace.CreateCoordinator(client, restartedMonitor, maxConcurrentJobs: 1))
         {
@@ -184,8 +217,10 @@ public sealed class ReliabilityEndToEndTests
             };
 
             await coordinator.StartAsync(workspace.Settings, deadline.Token);
+            File.Move(parkedPath, originalPath);
+            Assert.Equal(originalFingerprint, WorkItemFingerprint.Capture(originalPath, includeContent: true));
             // The coordinator subscribes first. With one worker, the second drop
-            // can't finish until the original scan item has been considered.
+            // can't finish until the live event for the original file has been considered.
             await originalReady.Task.WaitAsync(deadline.Token);
             await workspace.DropAsync(newFile, deadline.Token);
             var result = await completed.ReadAsync(deadline.Token);
@@ -326,6 +361,13 @@ public sealed class ReliabilityEndToEndTests
             var incoming = Path.Combine(_root, Guid.NewGuid().ToString("N"));
             await File.WriteAllTextAsync(incoming, content, cancellationToken);
             File.Move(incoming, InputPath(name));
+        }
+
+        public async Task DropFolderAsync(string name, string fileName, CancellationToken cancellationToken)
+        {
+            var incoming = Directory.CreateDirectory(Path.Combine(_root, Guid.NewGuid().ToString("N")));
+            await File.WriteAllTextAsync(Path.Combine(incoming.FullName, fileName), Input, cancellationToken);
+            Directory.Move(incoming.FullName, InputPath(name));
         }
 
         public SyncCoordinator CreateCoordinator(HttpClient client, FileSystemFolderMonitor? monitor = null, int maxConcurrentJobs = 2) =>

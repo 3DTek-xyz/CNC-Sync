@@ -17,7 +17,7 @@ public sealed partial class SyncCoordinator : ISyncCoordinator
     private readonly SemaphoreSlim _deliverySlot = new(1);
     private readonly WorkItemLocks _jobLocks = new();
     private WatchWorkQueue? _queue;
-    private AppSettings? _currentSettings;
+    private ProCutApiSettings? _proCutApiSettings;
 
     public SyncCoordinator(
         IFolderMonitor folderMonitor, IProjectProcessor projectProcessor, IDestinationService destinationService,
@@ -56,7 +56,7 @@ public sealed partial class SyncCoordinator : ISyncCoordinator
                 throw new InvalidOperationException(string.Join(Environment.NewLine, validation.Errors));
             }
 
-            _currentSettings = settings;
+            UpdateProCutApiSettings(settings.ProCutApi);
             Volatile.Write(ref _queue, new WatchWorkQueue(_maxConcurrentJobs, _clock,
                 (item, token) => RunWatchedAsync(item, settings, token)));
             try
@@ -98,6 +98,13 @@ public sealed partial class SyncCoordinator : ISyncCoordinator
         }
     }
 
+    public void UpdateProCutApiSettings(ProCutApiSettings settings) =>
+        Volatile.Write(ref _proCutApiSettings, new ProCutApiSettings
+        {
+            BaseUrl = settings.BaseUrl,
+            ApiKey = settings.ApiKey
+        });
+
     private async Task StopMonitoringAsync()
     {
         var queue = Interlocked.Exchange(ref _queue, null);
@@ -112,7 +119,7 @@ public sealed partial class SyncCoordinator : ISyncCoordinator
         try
         {
             using var job = await _jobLocks.AcquireAsync(WorkItemKey.Create(profile, path), cancellationToken);
-            var result = await ProcessAsync(path, profile, processingSetup, proCutApi ?? _currentSettings?.ProCutApi,
+            var result = await ProcessAsync(path, profile, processingSetup, proCutApi ?? Volatile.Read(ref _proCutApiSettings),
                 fingerprint: null, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             if (result.Success && destination is not null)
@@ -163,7 +170,8 @@ public sealed partial class SyncCoordinator : ISyncCoordinator
             var setup = settings.ProcessingSetups.FirstOrDefault(entry =>
                 string.Equals(entry.Id, item.Profile.ProcessingSetupId, StringComparison.OrdinalIgnoreCase))
                 ?? ProcessingSetupSettings.CreateDefault("Default Processing");
-            var configuration = ProcessingConfigurationFingerprint.Capture(setup, settings.ProCutApi);
+            var proCutApi = Volatile.Read(ref _proCutApiSettings) ?? settings.ProCutApi;
+            var configuration = ProcessingConfigurationFingerprint.Capture(setup, proCutApi);
             if (state?.Fingerprint != fingerprint)
             {
                 state = null;
@@ -194,7 +202,7 @@ public sealed partial class SyncCoordinator : ISyncCoordinator
                 return state.RetryAt;
             }
 
-            return await ProcessWatchedVersionAsync(item, settings, setup, fingerprint, configuration, state?.Attempts ?? 0, token);
+            return await ProcessWatchedVersionAsync(item, settings, setup, proCutApi, fingerprint, configuration, state?.Attempts ?? 0, token);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
@@ -213,8 +221,8 @@ public sealed partial class SyncCoordinator : ISyncCoordinator
     }
 
     private async Task<DateTimeOffset?> ProcessWatchedVersionAsync(
-        WorkItemReadyEvent item, AppSettings settings, ProcessingSetupSettings setup, string fingerprint,
-        string configuration, int previousAttempts, CancellationToken token)
+        WorkItemReadyEvent item, AppSettings settings, ProcessingSetupSettings setup, ProCutApiSettings proCutApi,
+        string fingerprint, string configuration, int previousAttempts, CancellationToken token)
     {
         var profile = item.Profile;
         var destination = settings.Destinations.FirstOrDefault(entry =>
@@ -233,7 +241,7 @@ public sealed partial class SyncCoordinator : ISyncCoordinator
         }
 
         var result = completed is null
-            ? await AttemptProcessingAsync(item, setup, settings.ProCutApi, fingerprint, configuration, attempts, token)
+            ? await AttemptProcessingAsync(item, setup, proCutApi, fingerprint, configuration, attempts, token)
             : ToProcessingResult(completed);
         token.ThrowIfCancellationRequested();
         if (CaptureStableFingerprint(item, token) != fingerprint)

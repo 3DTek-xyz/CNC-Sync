@@ -423,14 +423,17 @@ tools=[{"type":"corner_smooth","options":{...}}]</code></pre>
             <li><code>Watch Folder</code>: local folder being watched.</li>
             <li><code>Staging Folder</code>: local folder used for prepared output.</li>
             <li><code>Additional Remote Path</code>: optional path appended under the selected destination base path.</li>
-            <li><code>Work Item Mode</code>: choose whether ProCut Suite Desktop should process each change on its own, or group changes by the main project folder.</li>
+            <li><code>Work Item Mode</code>: controls how much work a live change triggers.</li>
             <li><code>Processing Setup</code>: which processing rule to run.</li>
             <li><code>Destination</code>: which destination to upload to.</li>
             <li><code>Required Quiet Time</code>: how long files or folders must stay unchanged before processing starts.</li>
             <li><code>Stability Check Interval</code>: how often ProCut Suite Desktop checks pending items to see if they are ready.</li>
           </ul>
-          <p><code>Individual files and folders</code> is the general-purpose mode and reacts to each change on its own.</p>
-          <p><code>Grouped project folders</code> is for job-folder workflows such as Mozaik exports. It is the safer choice when a destination replaces remote folder contents before upload.</p>
+          <ul>
+            <li><strong>Individual files and folders</strong> treats each changed file or arriving folder as its own work item. With ProCut Suite API processing, an arriving folder is processed file by file. Subfolders keep their paths relative to the watch folder at the destination.</li>
+            <li><strong>Grouped project folders</strong> treats each folder directly inside the watch folder as a complete job. A change anywhere inside that job triggers processing of the whole job folder, including unchanged files. Use this mode for Mozaik jobs that should be delivered together, especially when the destination replaces folder contents before upload.</li>
+          </ul>
+          <p>For example, if Mozaik updates <code>Kitchen Remodel/Panel A.nc</code> while monitoring is active, <strong>Individual files and folders</strong> processes <code>Panel A.nc</code> on its own. <strong>Grouped project folders</strong> processes the entire <code>Kitchen Remodel</code> job, including its other panels.</p>
         </section>
 
         <section id="monitoring">
@@ -445,20 +448,13 @@ tools=[{"type":"corner_smooth","options":{...}}]</code></pre>
           <p><code>Start</code> begins folder monitoring. <code>Stop</code> stops folder monitoring.</p>
           <p>If enabled watch profiles exist and settings validate successfully, the app can auto-start monitoring on launch.</p>
           <p>Changes to monitoring-related settings are applied live by reloading monitoring automatically.</p>
+          <p>Monitoring queues changes detected while the watcher is active and processes them after the required quiet time.</p>
         </section>
 
         <section id="manual-catch-up">
           <h2>Manual Catch-Up</h2>
-          <p><code>Manual Catch-Up</code> is for reconciling missed uploads.</p>
-          <p>It uses the local staging folder as a retry outbox. It:</p>
-          <ul>
-            <li>reads the selected watch profile</li>
-            <li>looks for items still waiting in staging because a previous delivery did not complete successfully</li>
-            <li>retries those staged items to the selected destination</li>
-            <li>removes staged items after a successful upload</li>
-          </ul>
-          <p>Use this when the destination was unavailable, monitoring was stopped, or staged items are still waiting locally after a failed delivery.</p>
-          <p>Scheduled catch-up uses the same staged-outbox model. It can only retry items that made it into staging while ProCut Suite Desktop was running, so it cannot detect and reprocess files that were created while the app was not running and never made it into staging.</p>
+          <p><code>Manual Catch-Up</code> retries verified staged output for the selected profile, such as after a destination outage. Successfully delivered output is removed from staging. Scheduled catch-up uses the same rules.</p>
+          <p>To process a job that arrived while monitoring was stopped, export it again while monitoring is running.</p>
         </section>
 
         <section id="activity-log">

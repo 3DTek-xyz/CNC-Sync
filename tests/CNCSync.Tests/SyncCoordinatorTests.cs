@@ -168,6 +168,36 @@ public sealed class SyncCoordinatorTests
     }
 
     [Fact]
+    public async Task WatchQueue_UsesUpdatedApiSettingsWithoutRestartingMonitoring()
+    {
+        using var fixture = new QueueFixture();
+        fixture.UseApiProcessing();
+        var path = fixture.Write("rotate-key.nc");
+        var updatedApi = new ProCutApiSettings
+        {
+            BaseUrl = "https://api.example.com",
+            ApiKey = TestSecrets.ProCutApiKey + "-updated"
+        };
+        var outcomes = System.Threading.Channels.Channel.CreateUnbounded<ProcessingResult>();
+        var processor = new DelegateProcessor((source, api, _) => Task.FromResult(new ProcessingResult
+        {
+            SourcePath = source,
+            Success = api?.BaseUrl == updatedApi.BaseUrl && api.ApiKey == updatedApi.ApiKey
+        }));
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+        await using var coordinator = fixture.Create(processor);
+        coordinator.ProcessingCompleted += result => outcomes.Writer.TryWrite(result);
+        await coordinator.StartAsync(fixture.Settings, timeout.Token);
+        fixture.Emit(path);
+        Assert.False((await outcomes.Reader.ReadAsync(timeout.Token)).Success);
+
+        coordinator.UpdateProCutApiSettings(updatedApi);
+        Assert.True(coordinator.IsRunning);
+        fixture.Emit(path);
+        Assert.True((await outcomes.Reader.ReadAsync(timeout.Token)).Success);
+    }
+
+    [Fact]
     public async Task WatchQueue_DropsOldRetryDeadlineWhenApiSettingsAreCorrected()
     {
         using var fixture = new QueueFixture();
@@ -912,10 +942,15 @@ public sealed class SyncCoordinatorTests
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
-    private sealed class DelegateProcessor(Func<string, CancellationToken, Task<ProcessingResult>> process) : IProjectProcessor
+    private sealed class DelegateProcessor(Func<string, ProCutApiSettings?, CancellationToken, Task<ProcessingResult>> process) : IProjectProcessor
     {
+        public DelegateProcessor(Func<string, CancellationToken, Task<ProcessingResult>> process)
+            : this((path, _, token) => process(path, token))
+        {
+        }
+
         public Task<ProcessingResult> ProcessAsync(string sourcePath, WatchProfileSettings profile, ProcessingSetupSettings processingSetup, ProCutApiSettings? proCutApi = null, CancellationToken cancellationToken = default) =>
-            process(sourcePath, cancellationToken);
+            process(sourcePath, proCutApi, cancellationToken);
     }
 
     private sealed class QueueFixture : IDisposable

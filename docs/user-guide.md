@@ -262,7 +262,7 @@ Fields:
 - `Additional Remote Path`
   - optional path appended under the selected destination base path
 - `Work Item Mode`
-  - choose whether ProCut Suite Desktop should process each change on its own, or group changes by the main project folder
+  - controls how much work a live change triggers
 - `Processing Setup`
   - which processing rule to run
 - `Destination`
@@ -272,9 +272,10 @@ Fields:
 - `Stability Check Interval`
   - how often ProCut Suite Desktop checks pending items to see if they are ready
 
-`Individual files and folders` is the general-purpose mode and reacts to each change on its own. When using ProCut Suite API processing in this mode, files in subfolders keep their folder structure relative to the watch folder at the destination.
+- **Individual files and folders** treats each changed file or arriving folder as its own work item. With ProCut Suite API processing, an arriving folder is processed file by file. Subfolders keep their paths relative to the watch folder at the destination.
+- **Grouped project folders** treats each folder directly inside the watch folder as a complete job. A change anywhere inside that job triggers processing of the whole job folder, including unchanged files. Use this mode for Mozaik jobs that should be delivered together, especially when the destination replaces folder contents before upload.
 
-`Grouped project folders` is for job-folder workflows such as Mozaik exports. It is the safer choice when a remote destination replaces folder contents before upload.
+For example, if Mozaik updates `Kitchen Remodel/Panel A.nc` while monitoring is active, **Individual files and folders** processes `Panel A.nc` on its own. **Grouped project folders** processes the entire `Kitchen Remodel` job, including its other panels.
 
 Grouped delivery to a `Local Folder` with `Replace Remote Folder On Upload` enabled is rejected before destination files change. Turn off replacement and run `Manual Catch-Up` to copy the staged output without removing obsolete files, or use a supported remote destination. Single-file API delivery to a local folder is unaffected.
 
@@ -293,13 +294,13 @@ The `Monitoring` panel shows:
 If enabled watch profiles exist and settings validate successfully, the app can auto-start monitoring on launch.
 Changes to monitoring-related settings are applied live by reloading monitoring automatically.
 
-Starting monitoring scans existing inputs, including files that arrived while it was stopped. Unchanged inputs with a successful delivery record are skipped. Before starting after an upgrade, review any files already in the watch folder that should not be submitted again; older deliveries may not have recovery records.
+Monitoring queues changes detected while the watcher is active and processes them after the required quiet time.
 
 ## Manual Catch-Up
 
 `Manual Catch-Up` retries verified staged output for the selected profile, such as after a destination outage. Successfully delivered output is removed from staging. Scheduled catch-up uses the same rules.
 
-Catch-up does not rerun processing, submit missed inputs to the API, or upload incomplete files. Older files in staging without a completion record are also ignored; review and reprocess the original input if needed. To pick up new inputs that arrived while monitoring was stopped, start monitoring.
+To process a job that arrived while monitoring was stopped, export it again while monitoring is running.
 
 ## Activity Log
 

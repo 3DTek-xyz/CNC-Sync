@@ -314,9 +314,9 @@
                                     </Grid>
 
                                     <Grid ColumnDefinitions="220,*">
-                                        <TextBlock VerticalAlignment="Center" Text="Work Item Mode" />
-                                        <Grid Grid.Column="1" ColumnDefinitions="260,*" ColumnSpacing="12">
-                                            <ComboBox Grid.Column="0"
+                                        <TextBlock VerticalAlignment="Top" Margin="0,8,0,0" Text="Work Item Mode" />
+                                        <StackPanel Grid.Column="1" Spacing="6">
+                                            <ComboBox HorizontalAlignment="Left" MinWidth="260"
                                                       ItemsSource="{Binding AvailableWatchProfileWorkItemModes}"
                                                       SelectedItem="{Binding SelectedWatchProfile.WorkItemMode}">
                                                 <ComboBox.ItemTemplate>
@@ -325,12 +325,15 @@
                                                     </DataTemplate>
                                                 </ComboBox.ItemTemplate>
                                             </ComboBox>
-                                            <TextBlock Grid.Column="1"
-                                                       Classes="muted"
-                                                       VerticalAlignment="Center"
-                                                       Text="Choose whether ProCut Suite Desktop should process each change on its own, or group changes by the main project folder."
-                                                       TextWrapping="Wrap" />
-                                        </Grid>
+                                            <TextBlock Classes="muted" TextWrapping="Wrap">
+                                                <Run FontWeight="SemiBold" Text="Individual files and folders" />
+                                                <Run Text=" treats each changed file or arriving folder as its own item. ProCut Suite API processes an arriving folder file by file." />
+                                            </TextBlock>
+                                            <TextBlock Classes="muted" TextWrapping="Wrap">
+                                                <Run FontWeight="SemiBold" Text="Grouped project folders" />
+                                                <Run Text=" processes the entire top-level job folder when something inside it changes. Editing one Mozaik part can resend unchanged parts from the same job." />
+                                            </TextBlock>
+                                        </StackPanel>
                                     </Grid>
 
                                     <Grid ColumnDefinitions="220,*">

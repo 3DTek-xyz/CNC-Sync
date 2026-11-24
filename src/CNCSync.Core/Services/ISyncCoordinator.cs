@@ -11,6 +11,7 @@ public interface ISyncCoordinator : IAsyncDisposable
     bool IsRunning { get; }
     Task StartAsync(AppSettings settings, CancellationToken cancellationToken = default);
     Task StopAsync(CancellationToken cancellationToken = default);
+    void UpdateProCutApiSettings(ProCutApiSettings settings);
     Task<ProcessingResult> ProcessPathAsync(string path, WatchProfileSettings profile, DestinationSettings? destination, ProcessingSetupSettings processingSetup, ProCutApiSettings? proCutApi = null, CancellationToken cancellationToken = default);
     Task<(bool Success, string Message)> TestDestinationAsync(DestinationSettings destination, CancellationToken cancellationToken = default);
     Task<(bool Success, string Message)> CatchUpMissingItemsAsync(WatchProfileSettings profile, DestinationSettings destination, ProcessingSetupSettings processingSetup, ProCutApiSettings? proCutApi = null, CancellationToken cancellationToken = default);

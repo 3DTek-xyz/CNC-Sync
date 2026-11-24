@@ -92,7 +92,7 @@ public sealed class FileSystemFolderMonitor(TimeProvider? timeProvider = null) :
         private readonly ConcurrentDictionary<(string ProfileId, string Path), Observation> _pending = new();
         private readonly ConcurrentDictionary<string, (WatchProfileSettings Profile, Exception Error)> _faults = new();
         private readonly Dictionary<string, FileSystemWatcher> _watchers = new();
-        private readonly Dictionary<string, (WatchProfileSettings Profile, DateTimeOffset Due)> _rescans = new();
+        private readonly Dictionary<string, (WatchProfileSettings Profile, DateTimeOffset Due)> _reconnects = new();
         private readonly HashSet<string> _apiFileProfiles;
         private readonly CancellationTokenSource _stop = new();
         private readonly Task _loop;
@@ -109,8 +109,10 @@ public sealed class FileSystemFolderMonitor(TimeProvider? timeProvider = null) :
                 .Select(profile => profile.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
             foreach (var profile in profiles)
             {
-                _rescans[profile.Id] = (profile, clock.GetUtcNow());
-                TryAttachWatcher(profile);
+                if (!TryAttachWatcher(profile))
+                {
+                    _reconnects[profile.Id] = (profile, clock.GetUtcNow().AddSeconds(10));
+                }
             }
 
             _loop = Task.Run(() => PollAsync(_stop.Token));
@@ -137,7 +139,7 @@ public sealed class FileSystemFolderMonitor(TimeProvider? timeProvider = null) :
             }
         }
 
-        public void QueuePath(WatchProfileSettings profile, string path, bool changed)
+        public void QueuePath(WatchProfileSettings profile, string path, bool changed, bool? directoryArrived = null)
         {
             if (_stop.IsCancellationRequested || !IsIncludedRelativePath(Path.GetRelativePath(profile.WatchFolder, path)))
             {
@@ -146,10 +148,11 @@ public sealed class FileSystemFolderMonitor(TimeProvider? timeProvider = null) :
 
             var workPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(ResolveWorkItemPath(profile, path)));
             var key = (profile.Id, OperatingSystem.IsWindows() ? workPath.ToUpperInvariant() : workPath);
-            var observation = new Observation(profile, workPath, _clock.GetUtcNow());
+            var observation = new Observation(profile, workPath, _clock.GetUtcNow(), directoryArrived ?? false);
             if (changed)
             {
-                _pending[key] = observation;
+                _pending.AddOrUpdate(key, observation, (_, previous) =>
+                    observation with { DirectoryArrived = directoryArrived ?? previous.DirectoryArrived });
             }
             else
             {
@@ -159,7 +162,7 @@ public sealed class FileSystemFolderMonitor(TimeProvider? timeProvider = null) :
 
         public void SignalWatcherError(WatchProfileSettings profile, Exception error) => _faults[profile.Id] = (profile, error);
 
-        private void TryAttachWatcher(WatchProfileSettings profile)
+        private bool TryAttachWatcher(WatchProfileSettings profile)
         {
             FileSystemWatcher? watcher = null;
             try
@@ -171,23 +174,61 @@ public sealed class FileSystemFolderMonitor(TimeProvider? timeProvider = null) :
                         NotifyFilters.CreationTime | NotifyFilters.Size,
                     InternalBufferSize = 64 * 1024
                 };
-                watcher.Created += (_, args) => QueuePath(profile, args.FullPath, changed: true);
+                var existingDirectories = GetExistingMacDirectories(profile);
+                watcher.Created += (_, args) => QueuePath(profile, args.FullPath, changed: true,
+                    directoryArrived: existingDirectories?.ContainsKey(args.FullPath) != true);
                 watcher.Changed += (_, args) => QueuePath(profile, args.FullPath, changed: true);
-                watcher.Deleted += (_, args) => QueuePath(profile, args.FullPath, changed: true);
-                watcher.Renamed += (_, args) =>
+                watcher.Deleted += (sender, args) =>
                 {
-                    QueuePath(profile, args.OldFullPath, changed: true);
-                    QueuePath(profile, args.FullPath, changed: true);
+                    existingDirectories?.TryRemove(args.FullPath, out _);
+                    QueuePath(profile, args.FullPath, changed: true, directoryArrived: false);
+                };
+                watcher.Renamed += (sender, args) =>
+                {
+                    QueuePath(profile, args.OldFullPath, changed: true, directoryArrived: false);
+                    if (existingDirectories?.TryRemove(args.OldFullPath, out _) == true)
+                    {
+                        existingDirectories.TryAdd(args.FullPath, 0);
+                    }
+
+                    var arrived = !IsIncludedRelativePath(Path.GetRelativePath(profile.WatchFolder, args.OldFullPath));
+                    QueuePath(profile, args.FullPath, changed: true, directoryArrived: arrived);
                 };
                 watcher.Error += (_, args) => SignalWatcherError(profile, args.GetException());
                 watcher.EnableRaisingEvents = true;
                 _watchers.Add(profile.Id, watcher);
+                return true;
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
             {
                 watcher?.Dispose();
-                _onError(profile, $"Watcher unavailable for {profile.WatchFolder}; rescan and reconnect will retry: {ex.Message}");
+                _onError(profile, $"Watcher unavailable for {profile.WatchFolder}; reconnect will retry: {ex.Message}");
+                return false;
             }
+        }
+
+        private static ConcurrentDictionary<string, byte>? GetExistingMacDirectories(WatchProfileSettings profile)
+        {
+            if (!OperatingSystem.IsMacOS() || profile.WorkItemMode != WatchProfileWorkItemMode.ChangedFilesAndFolders)
+            {
+                return null;
+            }
+
+            // FSEvents can report Created alongside a metadata change to an existing directory.
+            // Record directory names so those events cannot queue the directory's existing contents.
+            var directories = new ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
+            var options = new EnumerationOptions
+            {
+                RecurseSubdirectories = true,
+                AttributesToSkip = FileAttributes.ReparsePoint | FileAttributes.Hidden,
+                IgnoreInaccessible = true
+            };
+            foreach (var path in Directory.EnumerateDirectories(profile.WatchFolder, "*", options))
+            {
+                directories.TryAdd(path, 0);
+            }
+
+            return directories;
         }
 
         private async Task PollAsync(CancellationToken token)
@@ -209,7 +250,7 @@ public sealed class FileSystemFolderMonitor(TimeProvider? timeProvider = null) :
         private void RecoverWatchers(CancellationToken token)
         {
             var now = _clock.GetUtcNow();
-            foreach (var (key, fault) in _faults)
+            foreach (var key in _faults.Keys)
             {
                 token.ThrowIfCancellationRequested();
                 if (!_faults.TryRemove(key, out var latest))
@@ -217,49 +258,30 @@ public sealed class FileSystemFolderMonitor(TimeProvider? timeProvider = null) :
                     continue;
                 }
 
-                _onError(latest.Profile, $"Watcher error for {latest.Profile.WatchFolder}; rescanning: {latest.Error.Message}");
+                _onError(latest.Profile, $"Watcher error for {latest.Profile.WatchFolder}; reconnecting. Some changes may have been missed: {latest.Error.Message}");
                 if (_watchers.Remove(key, out var previous))
                 {
                     previous.Dispose();
                 }
 
-                _rescans[key] = (fault.Profile, now);
+                _reconnects[key] = (latest.Profile, now);
             }
 
-            foreach (var (key, scan) in _rescans.Where(entry => entry.Value.Due <= now).ToArray())
+            foreach (var (key, reconnect) in _reconnects.Where(entry => entry.Value.Due <= now).ToArray())
             {
                 token.ThrowIfCancellationRequested();
-                if (!_watchers.ContainsKey(key))
+                if (TryAttachWatcher(reconnect.Profile))
                 {
-                    TryAttachWatcher(scan.Profile);
-                }
-
-                if (TryDiscover(scan.Profile, token) && _watchers.ContainsKey(key))
-                {
-                    _rescans.Remove(key);
+                    _reconnects.Remove(key);
                 }
                 else
                 {
-                    _rescans[key] = (scan.Profile, now.AddSeconds(10));
+                    _reconnects[key] = (reconnect.Profile, now.AddSeconds(10));
                 }
             }
         }
 
-        private bool TryDiscover(WatchProfileSettings profile, CancellationToken token)
-        {
-            try
-            {
-                DiscoverDirectory(profile, profile.WatchFolder, token);
-                return true;
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                _onError(profile, $"Watch folder rescan failed for {profile.WatchFolder}: {ex.Message}");
-                return false;
-            }
-        }
-
-        private void DiscoverDirectory(WatchProfileSettings profile, string path, CancellationToken token)
+        private void QueueFilesInArrivingDirectory(WatchProfileSettings profile, string path, CancellationToken token)
         {
             foreach (var entry in new DirectoryInfo(path).EnumerateFileSystemInfos())
             {
@@ -270,15 +292,13 @@ public sealed class FileSystemFolderMonitor(TimeProvider? timeProvider = null) :
                     continue;
                 }
 
-                var directory = entry.Attributes.HasFlag(FileAttributes.Directory);
-                if (!directory || !_apiFileProfiles.Contains(profile.Id))
+                if (entry.Attributes.HasFlag(FileAttributes.Directory))
+                {
+                    QueueFilesInArrivingDirectory(profile, entry.FullName, token);
+                }
+                else
                 {
                     QueuePath(profile, entry.FullName, changed: false);
-                }
-
-                if (directory && profile.WorkItemMode == WatchProfileWorkItemMode.ChangedFilesAndFolders)
-                {
-                    DiscoverDirectory(profile, entry.FullName, token);
                 }
             }
         }
@@ -301,12 +321,21 @@ public sealed class FileSystemFolderMonitor(TimeProvider? timeProvider = null) :
                     return;
                 }
 
-                if (_apiFileProfiles.Contains(item.Profile.Id) && Directory.Exists(item.Path))
+                if (item.Profile.WorkItemMode == WatchProfileWorkItemMode.ChangedFilesAndFolders &&
+                    Directory.Exists(item.Path))
                 {
-                    // An individually watched API file should not be billed again as part of its parent directory.
-                    DiscoverDirectory(item.Profile, item.Path, token);
-                    _pending.TryRemove(entry);
-                    return;
+                    if (!item.DirectoryArrived)
+                    {
+                        _pending.TryRemove(entry);
+                        return;
+                    }
+
+                    if (_apiFileProfiles.Contains(item.Profile.Id))
+                    {
+                        QueueFilesInArrivingDirectory(item.Profile, item.Path, token);
+                        _pending.TryRemove(entry);
+                        return;
+                    }
                 }
 
                 var fingerprint = WorkItemFingerprint.Capture(item.Path, includeContent: false, token);
@@ -355,6 +384,7 @@ public sealed class FileSystemFolderMonitor(TimeProvider? timeProvider = null) :
         }
 
         private sealed record Observation(WatchProfileSettings Profile, string Path, DateTimeOffset NextCheck,
-            string? Fingerprint = null, DateTimeOffset StableSince = default, bool ErrorReported = false);
+            bool DirectoryArrived, string? Fingerprint = null,
+            DateTimeOffset StableSince = default, bool ErrorReported = false);
     }
 }

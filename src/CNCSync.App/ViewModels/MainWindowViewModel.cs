@@ -1805,6 +1805,7 @@ public partial class MainWindowViewModel : ViewModelBase
             lockAcquired = true;
             var settings = ToSettings();
             await _settingsStore.SaveAsync(settings);
+            _syncCoordinator.UpdateProCutApiSettings(settings.ProCutApi);
             await _loginStartupService.ApplyAsync(settings.LaunchAtLogin);
             _usageTelemetryService.ApplySettings(settings);
 
@@ -2047,6 +2048,8 @@ public partial class MainWindowViewModel : ViewModelBase
         public Task StartAsync(AppSettings settings, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public Task StopAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public void UpdateProCutApiSettings(ProCutApiSettings settings) { }
 
         public Task<ProcessingResult> ProcessPathAsync(
             string path,
