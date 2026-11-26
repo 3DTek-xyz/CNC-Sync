@@ -21,9 +21,11 @@ ICON_FILE="$ROOT/packaging/macos/procut-suite.icns"
 case "$RUNTIME" in
   osx-arm64)
     PACKAGE_SUFFIX="macos-arm64"
+    TARGET_ARCH="arm64"
     ;;
   osx-x64)
     PACKAGE_SUFFIX="macos-x64"
+    TARGET_ARCH="x86_64"
     ;;
   *)
     echo "Unsupported macOS runtime: $RUNTIME" >&2
@@ -34,7 +36,16 @@ esac
 rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR"
 
-xcrun swiftc -emit-library -framework Foundation -framework ServiceManagement "$BRIDGE_SOURCE" -o "$BUILD_DIR/$BRIDGE_NAME"
+plist_dir="$(mktemp -d)"
+trap 'rm -rf "$plist_dir"' EXIT
+release_plist="$plist_dir/Info.plist"
+cp "$PLIST_PATH" "$release_plist"
+plutil -replace CFBundleShortVersionString -string "$VERSION" "$release_plist"
+plutil -replace CFBundleVersion -string "$VERSION" "$release_plist"
+minimum_version="$(plutil -extract LSMinimumSystemVersion raw "$release_plist")"
+
+xcrun swiftc -target "$TARGET_ARCH-apple-macos$minimum_version" -emit-library \
+  -framework Foundation -framework ServiceManagement "$BRIDGE_SOURCE" -o "$BUILD_DIR/$BRIDGE_NAME"
 zsh "$ICON_SCRIPT" >/dev/null
 
 "$VPK_BIN" '[osx]' pack \
@@ -48,7 +59,7 @@ zsh "$ICON_SCRIPT" >/dev/null
   --runtime "$RUNTIME" \
   --channel "$RUNTIME" \
   --icon "$ICON_FILE" \
-  --plist "$PLIST_PATH"
+  --plist "$release_plist"
 
 portable_file="$(find "$DIST_DIR" -maxdepth 1 -name '*Portable.zip' | head -n 1)"
 setup_file="$(find "$DIST_DIR" -maxdepth 1 -name '*Setup.pkg' | head -n 1)"

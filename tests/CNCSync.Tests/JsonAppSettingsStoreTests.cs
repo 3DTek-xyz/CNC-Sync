@@ -58,6 +58,24 @@ public sealed class JsonAppSettingsStoreTests
     }
 
     [Fact]
+    public async Task SaveAndLoad_PreservesSshHostFingerprint()
+    {
+        using var root = new TemporaryDirectory();
+        var store = new JsonAppSettingsStore(root.Path, Path.Combine(root.Path, "legacy"),
+            Path.Combine(root.Path, "bundled"), new InMemorySecretStore());
+        var settings = AppSettings.CreateDefault();
+        settings.Destinations[0].Type = DestinationType.Sftp;
+        settings.Destinations[0].RequireSshHostKeyFingerprint = true;
+        settings.Destinations[0].SshHostKeyFingerprint = SshHostFingerprintTests.Fingerprint;
+
+        await store.SaveAsync(settings);
+
+        var loaded = await store.LoadAsync();
+        Assert.True(loaded.Destinations[0].RequireSshHostKeyFingerprint);
+        Assert.Equal(SshHostFingerprintTests.Fingerprint, loaded.Destinations[0].SshHostKeyFingerprint);
+    }
+
+    [Fact]
     public async Task LoadAsync_SeedsProCutApiImportTemplateBesideSettingsFile()
     {
         var root = Path.Combine(Path.GetTempPath(), $"cncsync-store-{Guid.NewGuid():N}");

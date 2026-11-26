@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:CNCSync.App.ViewModels"
+        xmlns:views="using:CNCSync.App.Views"
         xmlns:core="using:CNCSync.Core.Configuration"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -211,10 +212,6 @@
                                     <TextBlock VerticalAlignment="Center" Text="Start Minimized" />
                                     <CheckBox Grid.Column="1" IsChecked="{Binding StartMinimized}" />
                                 </Grid>
-                                <TextBlock Classes="muted"
-                                           Text="{Binding TelemetryNotice}"
-                                           TextWrapping="Wrap"
-                                           Margin="0,4,0,0" />
                             </StackPanel>
                         </Border>
 
@@ -993,6 +990,21 @@
                                     </Grid>
 
                                     <Grid ColumnDefinitions="220,*"
+                                          IsVisible="{Binding SelectedDestination.UsesSshAuthentication}">
+                                        <TextBlock VerticalAlignment="Top" Margin="0,7,0,0" Text="Server identity" />
+                                        <StackPanel Grid.Column="1" Spacing="6">
+                                            <CheckBox Content="Require SSH server fingerprint"
+                                                      IsChecked="{Binding SelectedDestination.RequireSshHostKeyFingerprint}" />
+                                            <StackPanel Spacing="6" IsVisible="{Binding SelectedDestination.RequireSshHostKeyFingerprint}">
+                                                <TextBox Text="{Binding SelectedDestination.SshHostKeyFingerprint, UpdateSourceTrigger=LostFocus}"
+                                                         Watermark="SHA256:…" />
+                                                <TextBlock Classes="muted" TextWrapping="Wrap"
+                                                           Text="Test This Destination can show the fingerprint. Confirm it with your server administrator before entering it." />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <Grid ColumnDefinitions="220,*"
                                           IsVisible="{Binding SelectedDestination.SupportsAnonymousFtp}">
                                         <TextBlock VerticalAlignment="Center" Text="Use Anonymous FTP" />
                                         <CheckBox Grid.Column="1" IsChecked="{Binding SelectedDestination.UseAnonymousFtp}" />
@@ -1064,9 +1076,9 @@
                                             Classes="primary"
                                             Content="Test This Destination"
                                             Command="{Binding TestDestinationCommand}" />
-                                    <TextBlock Classes="muted"
-                                               Text="{Binding DestinationTestStatus}"
-                                               TextWrapping="Wrap" />
+                                    <SelectableTextBlock Classes="muted"
+                                                         Text="{Binding DestinationTestStatus}"
+                                                         TextWrapping="Wrap" />
 
                                     <Border Classes="card" Padding="16" CornerRadius="14" Margin="0,8,0,0">
                                         <StackPanel Spacing="10">
@@ -1132,6 +1144,10 @@
                 </ScrollViewer>
             </TabItem>
 
+            <TabItem Header="Print Sharing">
+                <views:DesktopPrintStationView DataContext="{Binding PrintStation}" />
+            </TabItem>
+
             <TabItem Header="Activity">
                 <Grid RowDefinitions="Auto,*" Margin="0,12,0,0">
                     <TextBlock Classes="muted" Text="Recent events from monitoring, processing, catch-up, and destination activity. Use this tab to trace what happened and when." />
@@ -1173,19 +1189,10 @@
                                             Content="Open App Data Folder"
                                             Click="OpenAppData_OnClick" />
                                     <Button Classes="subtle"
-                                            Content="Send Error Logs for Support"
-                                            Command="{Binding SendSupportDiagnosticsCommand}" />
-                                    <Button Classes="subtle"
                                             Content="Open Support Issues"
                                             Tag="{Binding SupportIssuesUrl}"
                                             Click="OpenExternalLink_OnClick" />
                                 </StackPanel>
-                                <TextBlock Classes="muted"
-                                           Text="{Binding SupportDiagnosticsStatus}"
-                                           TextWrapping="Wrap" />
-                                <TextBlock Classes="muted"
-                                           Text="If you send error logs for support, please also open a GitHub support issue with a detailed description of the problem so we know what to investigate."
-                                           TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 

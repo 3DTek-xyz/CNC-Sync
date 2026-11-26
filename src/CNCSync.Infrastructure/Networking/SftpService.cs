@@ -9,47 +9,8 @@ namespace CNCSync.Infrastructure.Networking;
 public sealed class SftpService : ISftpService
 {
     public Task<(bool Success, string Message)> TestConnectionAsync(DestinationSettings destination, CancellationToken cancellationToken = default) =>
-        Task.Run(async () =>
-        {
-            if (string.IsNullOrWhiteSpace(destination.Host))
-            {
-                return (false, "SFTP host is not configured.");
-            }
-
-            if (string.IsNullOrWhiteSpace(destination.Username))
-            {
-                return (false, "SFTP username is not configured.");
-            }
-
-            if (destination.SshAuthenticationMode == SshAuthenticationMode.Password &&
-                string.IsNullOrWhiteSpace(destination.Password))
-            {
-                return (false, "SFTP password is not configured.");
-            }
-
-            if (destination.SshAuthenticationMode == SshAuthenticationMode.PrivateKey &&
-                string.IsNullOrWhiteSpace(destination.PrivateKeyPath))
-            {
-                return (false, "SFTP private key path is not configured.");
-            }
-
-            try
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                using var client = CreateClient(destination);
-                await client.ConnectAsync(cancellationToken);
-                return (true, $"SFTP connection successful: {destination.Host}:{destination.Port}");
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                return (false, $"SFTP connection failed: {ex.Message}");
-            }
-        }, cancellationToken);
+        Task.Run(() => SshConnectionFactory.TestConnectionAsync(
+            destination, "SFTP", SshConnectionFactory.ConnectSftpAsync, cancellationToken), cancellationToken);
 
     public Task<(bool Success, string Message)> UploadDirectoryAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, IProgress<string>? progress = null, CancellationToken cancellationToken = default) =>
         UploadFileSystemItemAsync(localPath, destination, remoteDirectoryPath, progress, cancellationToken);
@@ -71,8 +32,7 @@ public sealed class SftpService : ISftpService
 
             try
             {
-                using var client = CreateClient(destination);
-                await client.ConnectAsync(cancellationToken);
+                using var client = await SshConnectionFactory.ConnectSftpAsync(destination, cancellationToken);
 
                 var targetRoot = NormalizeSessionDirectoryPath(remoteDirectoryPath);
                 await EnsureDirectoryExistsAsync(client, targetRoot, cancellationToken);
@@ -132,8 +92,7 @@ public sealed class SftpService : ISftpService
 
             try
             {
-                using var client = CreateClient(destination);
-                await client.ConnectAsync(cancellationToken);
+                using var client = await SshConnectionFactory.ConnectSftpAsync(destination, cancellationToken);
 
                 var targetPath = NormalizeSessionDirectoryPath(remoteDirectoryPath);
 
@@ -187,8 +146,7 @@ public sealed class SftpService : ISftpService
         {
             try
             {
-                using var client = CreateClient(destination);
-                await client.ConnectAsync(cancellationToken);
+                using var client = await SshConnectionFactory.ConnectSftpAsync(destination, cancellationToken);
 
                 var normalizedPath = NormalizeSessionPath(remoteFilePath);
                 if (!await client.ExistsAsync(normalizedPath, cancellationToken))
@@ -225,8 +183,7 @@ public sealed class SftpService : ISftpService
 
             try
             {
-                using var client = CreateClient(destination);
-                await client.ConnectAsync(cancellationToken);
+                using var client = await SshConnectionFactory.ConnectSftpAsync(destination, cancellationToken);
 
                 var normalizedPath = NormalizeSessionPath(remotePath);
                 if (normalizedPath == ".")
@@ -255,11 +212,6 @@ public sealed class SftpService : ISftpService
                 return (false, $"SFTP delete failed: {ex.Message}");
             }
         }, cancellationToken);
-
-    internal static SftpClient CreateClient(DestinationSettings destination)
-    {
-        return new SftpClient(SshConnectionFactory.CreateConnectionInfo(destination)) { OperationTimeout = SshConnectionFactory.IoTimeout };
-    }
 
     private static async Task EnsureDirectoryExistsAsync(SftpClient client, string? remotePath, CancellationToken cancellationToken)
     {

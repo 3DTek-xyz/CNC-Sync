@@ -17,23 +17,50 @@ public sealed class WindowsDpapiSecretStore : ISecretStore
 
     public string? GetSecret(string key)
     {
-        var path = GetSecretPath(key);
-        if (!File.Exists(path))
+        byte[] protectedBytes;
+        try
+        {
+            using var file = new FileStream(GetSecretPath(key), FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+            protectedBytes = new byte[checked((int)file.Length)];
+            file.ReadExactly(protectedBytes);
+        }
+        catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException)
         {
             return null;
         }
 
-        var protectedBytes = File.ReadAllBytes(path);
         var plaintextBytes = ProtectedData.Unprotect(protectedBytes, optionalEntropy: null, DataProtectionScope.CurrentUser);
-        return Encoding.UTF8.GetString(plaintextBytes);
+        try
+        {
+            return Encoding.UTF8.GetString(plaintextBytes);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(plaintextBytes);
+        }
     }
 
     public void SetSecret(string key, string secret)
     {
         Directory.CreateDirectory(_secretsDirectory);
         var plaintextBytes = Encoding.UTF8.GetBytes(secret);
-        var protectedBytes = ProtectedData.Protect(plaintextBytes, optionalEntropy: null, DataProtectionScope.CurrentUser);
-        File.WriteAllBytes(GetSecretPath(key), protectedBytes);
+        var temporaryPath = Path.Combine(_secretsDirectory, $"{Guid.NewGuid():N}.tmp");
+        try
+        {
+            var protectedBytes = ProtectedData.Protect(plaintextBytes, optionalEntropy: null, DataProtectionScope.CurrentUser);
+            using (var file = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                file.Write(protectedBytes);
+                file.Flush(flushToDisk: true);
+            }
+
+            File.Move(temporaryPath, GetSecretPath(key), overwrite: true);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(plaintextBytes);
+            File.Delete(temporaryPath);
+        }
     }
 
     public void DeleteSecret(string key)

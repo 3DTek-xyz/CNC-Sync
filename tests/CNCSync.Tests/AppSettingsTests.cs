@@ -1,9 +1,30 @@
+using System.Text.Json;
 using CNCSync.Core.Configuration;
 
 namespace CNCSync.Tests;
 
 public class AppSettingsTests
 {
+    [Fact]
+    public void LegacyTelemetrySettings_AreIgnoredAndAreNotWrittenBack()
+    {
+        const string legacySettings = """
+            {
+                "LaunchAtLogin": true,
+                "TelemetryInstallId": "legacy-install-id",
+                "TelemetryInstallReportedAtUtc": "2026-01-01T00:00:00Z",
+                "TelemetryLastSeenVersion": "1.0.0",
+                "TelemetryLastSeenAtUtc": "2026-01-02T00:00:00Z",
+                "TelemetryLastHeartbeatAtUtc": "2026-01-03T00:00:00Z"
+            }
+            """;
+
+        var settings = JsonSerializer.Deserialize<AppSettings>(legacySettings)!.Normalize();
+
+        Assert.True(settings.LaunchAtLogin);
+        Assert.DoesNotContain("Telemetry", JsonSerializer.Serialize(settings), StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Defaults_AreSuitableForFirstRun()
     {
@@ -70,7 +91,6 @@ public class AppSettingsTests
 
         Assert.Equal("https://procutsuite.com", settings.ProCutApi.BaseUrl);
         Assert.Equal(string.Empty, settings.ProCutApi.ApiKey);
-        Assert.Equal(string.Empty, settings.TelemetryInstallId);
         Assert.Equal(DestinationType.LocalFolder, destination.Type);
         Assert.Equal("ProCut Suite API Output Folder", destination.Name);
         Assert.Equal(ProcessingMode.ProCutApi, processingSetup.Mode);

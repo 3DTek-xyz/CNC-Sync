@@ -4,13 +4,13 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
 using System.Linq;
-using System.Reflection;
 using Avalonia.Threading;
 using Avalonia.Markup.Xaml;
 using Avalonia.Controls.Notifications;
 using CNCSync.App.ViewModels;
 using CNCSync.App.Views;
 using CNCSync.Infrastructure.Configuration;
+using CNCSync.Infrastructure.DesktopPrinting;
 using CNCSync.Infrastructure.Logging;
 using CNCSync.Infrastructure.Monitoring;
 using CNCSync.Infrastructure.Networking;
@@ -77,23 +77,11 @@ public partial class App : Application
                 $"Startup settings loaded. Destinations={initialSettings.Destinations.Count}, " +
                 $"ProcessingSetups={initialSettings.ProcessingSetups.Count}, WatchProfiles={initialSettings.WatchProfiles.Count}, " +
                 $"LaunchedAtLogin={Program.LaunchedAtLogin}");
-            var telemetryService = new PostHogUsageTelemetryService(ResolveAppVersion(), initialSettings);
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    if (telemetryService.CaptureStartupState(initialSettings, Program.LaunchedAtLogin))
-                    {
-                        await settingsStore.SaveAsync(initialSettings);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    DiagnosticLog.WriteException("Startup telemetry capture failed.", ex);
-                }
-            });
             themePreferenceService.Apply(initialSettings.ThemePreference);
-            _mainWindowViewModel = new MainWindowViewModel(settingsStore, validator, coordinator, destinationService, updateService, loginStartupService, scriptBundleImportService, vpnService, themePreferenceService, telemetryService, initialSettings);
+            var printStation = new DesktopPrintStation(
+                Path.GetDirectoryName(settingsStore.SettingsFilePath) ?? AppContext.BaseDirectory, initialSettings.ProCutApi);
+            _mainWindowViewModel = new MainWindowViewModel(settingsStore, validator, coordinator, destinationService, updateService, loginStartupService, scriptBundleImportService, vpnService, themePreferenceService, initialSettings, printStation);
+            _ = Task.Run(() => printStation.StartAsync());
             DiagnosticLog.WriteInfo("Main window view model created.");
             coordinator.StatusChanged += OnCoordinatorStatusChanged;
             coordinator.ActivityLogged += OnCoordinatorActivityLogged;
@@ -130,6 +118,7 @@ public partial class App : Application
                 _singleInstanceCts?.Cancel();
                 _singleInstanceCts?.Dispose();
                 _singleInstanceCts = null;
+                printStation.DisposeAsync().AsTask().GetAwaiter().GetResult();
             };
 
             desktop.MainWindow.Opened += (_, _) =>
@@ -185,14 +174,6 @@ public partial class App : Application
         {
             DiagnosticLog.WriteException("Unhandled UI thread exception.", args.Exception);
         };
-    }
-
-    private static string ResolveAppVersion()
-    {
-        var assembly = typeof(App).Assembly;
-        return assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
-               ?? assembly.GetName().Version?.ToString()
-               ?? "dev";
     }
 
     public bool ShouldCancelClose() => !_exitRequested;

@@ -228,6 +228,7 @@
           <li><a href="#what-it-does">What ProCut Suite Desktop Does</a></li>
           <li><a href="#setup-flow">Typical Setup Flow</a></li>
           <li><a href="#app-settings">App Settings</a></li>
+          <li><a href="#print-sharing">Print Sharing</a></li>
           <li><a href="#destinations">Destinations</a></li>
           <li><a href="#processing-setups">Processing Setups</a></li>
           <li><a href="#watch-folders">Watch Folders</a></li>
@@ -290,8 +291,23 @@
             <li><code>ProCut Suite API</code>: save the ProCut Suite base URL and API key used by ProCut Suite API processing setups.</li>
           </ul>
           <p>Settings are saved automatically as you change them.</p>
-          <p>The same area also includes a short notice that anonymised usage telemetry is collected for product improvements and support planning.</p>
           <p>Imported settings replace the current profile configuration. Passwords and SSH key passphrases are stored in the local OS secret store, so after moving a settings file between machines you may need to re-enter those secrets on the new machine.</p>
+        </section>
+
+        <section id="print-sharing">
+          <h2>Print Sharing</h2>
+          <p>Use <strong>Print Sharing</strong> on the computer that has the printers you want to share. Nesting discovers the selected queues through ProCut Suite and sends print requests directly to the station on the workshop LAN.</p>
+          <ol>
+            <li>Install the printer and set its driver to the correct stock. On Windows, select the installed SumatraPDF executable. On macOS and Linux, use a CUPS queue.</li>
+            <li>Save the ProCut Suite API key in <strong>App Settings</strong>. In <strong>Print Sharing</strong>, select the workshop, enter a station name, and choose the workshop's network adapter if prompted.</li>
+            <li>Under <strong>HTTPS certificate</strong>, choose <strong>Automatic public certificate</strong>. ProCut Suite assigns a station address and renews its browser-trusted certificate automatically. Printing devices can use that address without installing a trust certificate.</li>
+            <li>Tick the installed printers you want to share. Use their connection type and system-reported location to tell similar printers apart. Enter an optional display name to change how a printer appears in ProCut Suite. Select <strong>Refresh Printers</strong> to see recently installed printers. Enable sharing and select <strong>Save and Apply</strong>. Allow inbound TCP on port 8443 from the private workshop subnet.</li>
+            <li>Keep the station running. Choose a shared printer in Nesting and allow browser local network access if prompted. The app reports the job as queued when the OS accepts it. Check the first print for stock and sizing.</li>
+          </ol>
+          <p>If your workshop network blocks the automatic station address, choose <strong>Local certificate with manual trust</strong> and select <strong>Export Trust Certificate…</strong>. Transfer the certificate directly from the station and compare its SHA-256 fingerprint with the one shown in PCS Sync before trusting it. Install it on each device that prints from this station.</p>
+          <p>With manual trust, PCS Sync issues a new server certificate under the same station CA when the LAN IP changes. The issuing key stays in protected storage and is restricted to private IPv4 addresses. The station needs a new CA after five years.</p>
+          <p>On macOS, import the <code>.cer</code> file in Keychain Access and set its SSL trust to <strong>Always Trust</strong>. On Windows, open the <code>.cer</code> file, select <strong>Install Certificate</strong>, then choose <strong>Current User</strong> and <strong>Trusted Root Certification Authorities</strong>. Managed computers may require an administrator to install the certificate.</p>
+          <p>For a manually managed certificate, choose <strong>Use a custom HTTPS certificate</strong> to enter the station's HTTPS address and select matching PEM files. The printing computer must trust the certificate chain.</p>
         </section>
 
         <section id="destinations">
@@ -314,6 +330,8 @@
             <li><code>Password</code>: standard username/password sign-in.</li>
             <li><code>Private Key</code>: key file path plus optional key passphrase.</li>
           </ul>
+          <p><strong>Require SSH server fingerprint</strong> is optional and defaults to off for new and existing SFTP and SCP destinations. Plain FTP continues to use its existing settings.</p>
+          <p>To enable the check, turn on <strong>Require SSH server fingerprint</strong> and select <strong>Test This Destination</strong> with <strong>SSH server fingerprint</strong> blank. The test shows the server's SHA-256 fingerprint before signing in. Confirm it with your server administrator, enter it, save, and test again. When the check is on, connections require a matching fingerprint. Confirm any fingerprint change with your server administrator before replacing the saved value.</p>
           <p>Network Share notes:</p>
           <ul>
             <li>On macOS, explicit sign-in to a Mac SMB share may require enabling that account under <code>Windows File Sharing</code>.</li>
@@ -480,10 +498,9 @@ tools=[{"type":"corner_smooth","options":{...}}]</code></pre>
             <li>shared custom-script import reminders</li>
             <li>a link to the project page</li>
             <li>a link to the update log / GitHub releases page</li>
-            <li>a button to send sanitised recent logs for support</li>
+            <li>a button to open the app data folder containing local Activity and diagnostic logs</li>
             <li>a link to open GitHub support issues</li>
           </ul>
-          <p>If you send logs for support, also open a GitHub issue with a clear description of the problem so the logs have useful context.</p>
           <p>If you need project-specific scripts, paid help is available. Please open a support issue to request it. App bugs or updates that could benefit everyone can be logged as issues for consideration.</p>
         </section>
 

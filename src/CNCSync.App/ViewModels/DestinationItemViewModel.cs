@@ -39,6 +39,12 @@ public partial class DestinationItemViewModel : ObservableObject
     private SshAuthenticationMode sshAuthenticationMode = SshAuthenticationMode.Password;
 
     [ObservableProperty]
+    private bool requireSshHostKeyFingerprint;
+
+    [ObservableProperty]
+    private string sshHostKeyFingerprint = string.Empty;
+
+    [ObservableProperty]
     private string privateKeyPath = string.Empty;
 
     [ObservableProperty]
@@ -205,6 +211,8 @@ public partial class DestinationItemViewModel : ObservableObject
             Username = settings.Username,
             Password = settings.Password,
             SshAuthenticationMode = settings.SshAuthenticationMode,
+            RequireSshHostKeyFingerprint = settings.RequireSshHostKeyFingerprint,
+            SshHostKeyFingerprint = settings.SshHostKeyFingerprint,
             PrivateKeyPath = settings.PrivateKeyPath,
             PrivateKeyPassphrase = settings.PrivateKeyPassphrase,
             LocalRootPath = settings.LocalRootPath,
@@ -232,6 +240,8 @@ public partial class DestinationItemViewModel : ObservableObject
             Username = Username,
             Password = Password,
             SshAuthenticationMode = SshAuthenticationMode,
+            RequireSshHostKeyFingerprint = RequireSshHostKeyFingerprint,
+            SshHostKeyFingerprint = SshHostFingerprint.Normalize(SshHostKeyFingerprint) ?? SshHostKeyFingerprint,
             PrivateKeyPath = PrivateKeyPath,
             PrivateKeyPassphrase = PrivateKeyPassphrase,
             LocalRootPath = LocalRootPath,

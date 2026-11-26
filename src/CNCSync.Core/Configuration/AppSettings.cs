@@ -5,11 +5,6 @@ public sealed class AppSettings
     public bool LaunchAtLogin { get; set; }
     public bool StartMinimized { get; set; } = true;
     public AppThemePreference ThemePreference { get; set; } = AppThemePreference.Light;
-    public string TelemetryInstallId { get; set; } = string.Empty;
-    public DateTime? TelemetryInstallReportedAtUtc { get; set; }
-    public string TelemetryLastSeenVersion { get; set; } = string.Empty;
-    public DateTime? TelemetryLastSeenAtUtc { get; set; }
-    public DateTime? TelemetryLastHeartbeatAtUtc { get; set; }
     public bool ScheduledCatchUpEnabled { get; set; }
     public int ScheduledCatchUpIntervalMinutes { get; set; } = 10;
     public string CustomScriptSourceUrl { get; set; } = string.Empty;
@@ -29,7 +24,6 @@ public sealed class AppSettings
             LaunchAtLogin = false,
             StartMinimized = true,
             ThemePreference = AppThemePreference.Light,
-            TelemetryInstallId = Guid.NewGuid().ToString("N"),
             ScheduledCatchUpEnabled = false,
             ScheduledCatchUpIntervalMinutes = 10,
             CustomScriptSourceUrl = string.Empty,
@@ -50,7 +44,6 @@ public sealed class AppSettings
             LaunchAtLogin = false,
             StartMinimized = true,
             ThemePreference = AppThemePreference.Light,
-            TelemetryInstallId = string.Empty,
             ScheduledCatchUpEnabled = false,
             ScheduledCatchUpIntervalMinutes = 10,
             CustomScriptSourceUrl = string.Empty,
@@ -137,12 +130,6 @@ public sealed class AppSettings
             ThemePreference = AppThemePreference.Light;
         }
 
-        if (string.IsNullOrWhiteSpace(TelemetryInstallId))
-        {
-            TelemetryInstallId = Guid.NewGuid().ToString("N");
-        }
-
-        TelemetryLastSeenVersion = (TelemetryLastSeenVersion ?? string.Empty).Trim();
 
         if (ScheduledCatchUpIntervalMinutes <= 0)
         {

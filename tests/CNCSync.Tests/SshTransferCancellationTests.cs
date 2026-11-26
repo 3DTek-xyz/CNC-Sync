@@ -10,9 +10,11 @@ namespace CNCSync.Tests;
 public sealed class SshTransferCancellationTests
 {
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Upload_CancelsWhenServerStallsDuringHandshake(bool useScp)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task Upload_CancelsWhenServerStallsDuringHandshake(bool useScp, bool verifyFingerprint)
     {
         using var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
@@ -27,7 +29,9 @@ public sealed class SshTransferCancellationTests
             Host = "127.0.0.1",
             Port = ((IPEndPoint)listener.LocalEndpoint).Port,
             Username = "test",
-            Password = "test"
+            Password = "test",
+            RequireSshHostKeyFingerprint = verifyFingerprint,
+            SshHostKeyFingerprint = verifyFingerprint ? SshHostFingerprintTests.Fingerprint : string.Empty
         };
         Task<(bool Success, string Message)> upload = useScp
             ? scp.UploadFileSystemItemAsync(file, destination, "/jobs", cancellationToken: cancellation.Token)

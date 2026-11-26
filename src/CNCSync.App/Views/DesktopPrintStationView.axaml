@@ -1,0 +1,185 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:CNCSync.App.ViewModels"
+             xmlns:printing="using:CNCSync.Infrastructure.DesktopPrinting"
+             x:Class="CNCSync.App.Views.DesktopPrintStationView"
+             x:DataType="vm:DesktopPrintStationViewModel">
+    <Grid Margin="0,12,0,0" RowDefinitions="Auto,*" RowSpacing="12">
+        <Border Classes="card" Padding="18" CornerRadius="16" Margin="0,0,20,0">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="{Binding Status}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                    <TextBlock Classes="muted" Text="{Binding EditorMessage}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SaveError}" IsVisible="{Binding HasSaveError}" FontWeight="SemiBold"
+                               TextWrapping="Wrap" AutomationProperties.LiveSetting="Assertive" />
+                </StackPanel>
+                <Button Grid.Column="1" Classes="primary" VerticalAlignment="Center"
+                        Content="Save and Apply" Command="{Binding SaveCommand}" />
+            </Grid>
+        </Border>
+
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="0,0,20,0" Spacing="16" IsEnabled="{Binding !IsBusy}">
+                <Border Classes="card" Padding="18" CornerRadius="16">
+                    <StackPanel Spacing="12">
+                        <CheckBox Content="Enable print sharing" IsChecked="{Binding Enabled}" />
+                        <TextBlock Classes="muted" TextWrapping="Wrap"
+                                   Text="Choose which workshop can find the printers you share from this computer. This uses the API key saved in App Settings." />
+                        <CheckBox Content="Use the local ProCut Suite API (development)" IsChecked="{Binding UseLocalDevelopmentApi}" />
+                        <StackPanel IsVisible="{Binding UseLocalDevelopmentApi}" Spacing="4">
+                            <Grid ColumnDefinitions="185,*" ColumnSpacing="8">
+                                <TextBlock Text="Development API key" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1" Text="{Binding DevelopmentApiKey}" PasswordChar="*"
+                                         Watermark="{Binding DevelopmentApiKeyWatermark, Mode=OneWay}"
+                                         AutomationProperties.Name="Development API key" />
+                            </Grid>
+                            <TextBlock Classes="muted" TextWrapping="Wrap"
+                                       Text="Enter a key from the local ProCut Suite site, then refresh workshops. PCS Sync saves the verified key in protected storage for next time." />
+                        </StackPanel>
+                        <Grid ColumnDefinitions="185,*,Auto" ColumnSpacing="8">
+                            <TextBlock Text="Workshop" VerticalAlignment="Center" />
+                            <ComboBox Grid.Column="1" HorizontalAlignment="Stretch"
+                                      ItemsSource="{Binding Workshops}" SelectedItem="{Binding SelectedWorkshop}"
+                                      PlaceholderText="Select a workshop" AutomationProperties.Name="Workshop">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="printing:DesktopPrintWorkshop">
+                                        <TextBlock Text="{Binding Name}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <Button Grid.Column="2" Classes="subtle" Content="Refresh Workshops"
+                                    Command="{Binding RefreshWorkshopsCommand}" />
+                        </Grid>
+                        <Grid ColumnDefinitions="185,*" ColumnSpacing="8">
+                            <TextBlock Text="Station name" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="{Binding StationName}" Watermark="Workshop print station"
+                                     AutomationProperties.Name="Station name" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Classes="card" Padding="18" CornerRadius="16">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="LAN Connection" FontSize="18" FontWeight="SemiBold" />
+                        <Grid ColumnDefinitions="185,*,Auto" ColumnSpacing="8">
+                            <TextBlock Text="Network adapter" VerticalAlignment="Center" />
+                            <ComboBox Grid.Column="1" HorizontalAlignment="Stretch"
+                                      ItemsSource="{Binding NetworkInterfaces}" SelectedItem="{Binding SelectedNetworkInterface}"
+                                      PlaceholderText="Select the workshop network adapter" AutomationProperties.Name="Network adapter">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:DesktopPrintNetworkChoice">
+                                        <TextBlock Text="{Binding Label}" ToolTip.Tip="{Binding Id}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <Button Grid.Column="2" Classes="subtle" Content="Refresh Adapters" Command="{Binding RefreshNetworkInterfacesCommand}" />
+                        </Grid>
+                        <TextBlock Classes="muted" TextWrapping="Wrap"
+                                   Text="Choose the adapter connected to your workshop network." />
+                        <Grid ColumnDefinitions="185,*" ColumnSpacing="8">
+                            <TextBlock Text="HTTPS certificate" VerticalAlignment="Center" />
+                            <ComboBox Grid.Column="1" ItemsSource="{Binding CertificateChoices}"
+                                      SelectedItem="{Binding SelectedCertificate}" AutomationProperties.Name="HTTPS certificate">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:PrintCertificateChoice">
+                                        <TextBlock Text="{Binding Label}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </Grid>
+                        <StackPanel IsVisible="{Binding UsePublicCertificate}" Spacing="8">
+                            <Grid ColumnDefinitions="185,*" ColumnSpacing="8">
+                                <TextBlock Text="Station HTTPS address" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1" Text="{Binding PublicOrigin, Mode=OneWay}" IsReadOnly="True"
+                                         Watermark="Assigned when Print Sharing starts" AutomationProperties.Name="Public station HTTPS address" />
+                            </Grid>
+                            <TextBlock Classes="muted" TextWrapping="Wrap"
+                                       Text="ProCut Suite assigns the station address and renews its certificate automatically. Phones, tablets and computers can print without installing a certificate." />
+                        </StackPanel>
+                        <StackPanel IsVisible="{Binding UseLocalCertificate}" Spacing="8">
+                            <Grid ColumnDefinitions="185,*" ColumnSpacing="8">
+                                <TextBlock Text="Station HTTPS address" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1" Text="{Binding ManagedOrigin, Mode=OneWay}" IsReadOnly="True"
+                                         Watermark="Select a connected network adapter" AutomationProperties.Name="Automatic station HTTPS address" />
+                            </Grid>
+                            <TextBlock Classes="muted" TextWrapping="Wrap"
+                                       Text="Use this if the workshop network blocks the automatic station address. Export the certificate and trust it once on each device that will print." />
+                            <Button Classes="subtle" Content="Export Trust Certificate…" Click="ExportTrustCertificate_OnClick" />
+                            <SelectableTextBlock Text="{Binding TrustFingerprint}" TextWrapping="Wrap"
+                                                 IsVisible="{Binding HasTrustFingerprint}" />
+                        </StackPanel>
+                        <StackPanel IsVisible="{Binding UseManualCertificate}" Spacing="8">
+                            <Grid ColumnDefinitions="185,*" ColumnSpacing="8">
+                                <TextBlock Text="Station HTTPS address" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1" Text="{Binding Origin}" Watermark="https://print.workshop.example:8443"
+                                         AutomationProperties.Name="Custom station HTTPS address" />
+                            </Grid>
+                            <Grid ColumnDefinitions="185,*,Auto" ColumnSpacing="8">
+                                <TextBlock Text="Certificate (PEM)" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1" Text="{Binding CertificatePath}" AutomationProperties.Name="Certificate path" />
+                                <Button Grid.Column="2" Classes="subtle" Content="Browse…" Click="BrowseCertificate_OnClick"
+                                        AutomationProperties.Name="Browse for certificate" />
+                            </Grid>
+                            <Grid ColumnDefinitions="185,*,Auto" ColumnSpacing="8">
+                                <TextBlock Text="Private key (PEM)" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1" Text="{Binding PrivateKeyPath}" AutomationProperties.Name="Private key path" />
+                                <Button Grid.Column="2" Classes="subtle" Content="Browse…" Click="BrowsePrivateKey_OnClick"
+                                        AutomationProperties.Name="Browse for private key" />
+                            </Grid>
+                            <TextBlock Classes="muted" TextWrapping="Wrap"
+                                       Text="Use a stable hostname that workshop computers can resolve to this computer. Their browsers must trust the HTTPS certificate." />
+                        </StackPanel>
+                        <TextBlock Classes="muted" TextWrapping="Wrap"
+                                   Text="Allow inbound connections to the station port only from the private workshop subnet in this computer’s firewall." />
+                        <Grid ColumnDefinitions="185,*" ColumnSpacing="8">
+                            <TextBlock Text="Allowed website origins" VerticalAlignment="Top" Margin="0,8,0,0" />
+                            <TextBox Grid.Column="1" Text="{Binding BrowserOrigins}" AcceptsReturn="True" MinHeight="62"
+                                     Watermark="One HTTPS origin per line" AutomationProperties.Name="Allowed website origins" />
+                        </Grid>
+                        <CheckBox Content="Allow the local ProCut Suite website (localhost:5173)" IsChecked="{Binding AllowLocalDevelopmentOrigin}" />
+                    </StackPanel>
+                </Border>
+
+                <Border Classes="card" Padding="18" CornerRadius="16">
+                    <StackPanel Spacing="12">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <TextBlock Text="Printers" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Classes="subtle" Content="Refresh Printers" Command="{Binding RefreshPrintersCommand}" />
+                        </Grid>
+                        <TextBlock Classes="muted" TextWrapping="Wrap"
+                                   Text="Tick the printers you want to share. To show a different name in ProCut Suite, enter an optional display name." />
+                        <StackPanel IsVisible="{Binding IsWindows}" Spacing="4">
+                            <Grid ColumnDefinitions="185,*,Auto" ColumnSpacing="8">
+                                <TextBlock Text="SumatraPDF executable" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1" Text="{Binding WindowsPdfRendererPath}" AutomationProperties.Name="SumatraPDF executable path" />
+                                <Button Grid.Column="2" Classes="subtle" Content="Browse…" Click="BrowsePdfRenderer_OnClick"
+                                        AutomationProperties.Name="Browse for SumatraPDF" />
+                            </Grid>
+                            <TextBlock Classes="muted" TextWrapping="Wrap"
+                                       Text="Select the installed or portable SumatraPDF app. Windows verifies its publisher signature before it can send PDFs to your printer." />
+                        </StackPanel>
+                        <TextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding PrinterDiscoveryMessage}"
+                                   IsVisible="{Binding HasPrinterDiscoveryMessage}" />
+                        <ItemsControl ItemsSource="{Binding Printers}" AutomationProperties.Name="Printers on this computer">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:DesktopPrintQueueViewModel">
+                                    <StackPanel Spacing="4" Margin="0,3,0,3">
+                                        <CheckBox IsChecked="{Binding IsShared}" IsEnabled="{Binding CanChangeSharing}"
+                                                  AutomationProperties.Name="{Binding Label}">
+                                            <TextBlock Text="{Binding Label}" TextWrapping="Wrap" />
+                                        </CheckBox>
+                                        <TextBlock Classes="muted" Text="{Binding ConnectionLabel}" Margin="24,0,0,0"
+                                                   TextWrapping="Wrap" />
+                                        <TextBox Text="{Binding DisplayName}" Watermark="Optional display name" Margin="24,0,0,4"
+                                                 IsVisible="{Binding IsShared}" MaxLength="{Binding MaxDisplayNameLength}"
+                                                 AutomationProperties.Name="Optional display name" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

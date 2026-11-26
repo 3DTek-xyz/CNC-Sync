@@ -19,31 +19,8 @@ public sealed class ScpService : IScpService, IDisposable
     }
 
     public Task<(bool Success, string Message)> TestConnectionAsync(DestinationSettings destination, CancellationToken cancellationToken = default) =>
-        Task.Run(() =>
-        {
-            var validation = ValidateSshDestination(destination, "SCP");
-            if (!validation.Success)
-            {
-                return validation;
-            }
-
-            try
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                using var client = CreateSshClient(destination);
-                client.ConnectAsync(cancellationToken).GetAwaiter().GetResult();
-                return (true, $"SCP connection successful: {destination.Host}:{destination.Port}");
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                return (false, $"SCP connection failed: {ex.Message}");
-            }
-        }, cancellationToken);
+        Task.Run(() => SshConnectionFactory.TestConnectionAsync(
+            destination, "SCP", SshConnectionFactory.ConnectSshAsync, cancellationToken), cancellationToken);
 
     public Task<(bool Success, string Message)> UploadDirectoryAsync(string localPath, DestinationSettings destination, string remoteDirectoryPath, IProgress<string>? progress = null, CancellationToken cancellationToken = default) =>
         UploadFileSystemItemAsync(localPath, destination, remoteDirectoryPath, progress, cancellationToken);
@@ -66,8 +43,7 @@ public sealed class ScpService : IScpService, IDisposable
 
             try
             {
-                using var sshClient = CreateSshClient(destination);
-                sshClient.ConnectAsync(cancellationToken).GetAwaiter().GetResult();
+                using var sshClient = SshConnectionFactory.ConnectSshAsync(destination, cancellationToken).GetAwaiter().GetResult();
 
                 var targetRoot = NormalizeSessionDirectoryPath(remoteDirectoryPath);
                 EnsureDirectoryExists(sshClient, targetRoot, cancellationToken);
@@ -224,8 +200,7 @@ public sealed class ScpService : IScpService, IDisposable
 
             try
             {
-                using var client = CreateSshClient(destination);
-                client.ConnectAsync(cancellationToken).GetAwaiter().GetResult();
+                using var client = SshConnectionFactory.ConnectSshAsync(destination, cancellationToken).GetAwaiter().GetResult();
 
                 var normalizedPath = NormalizeSessionPath(remotePath);
                 if (normalizedPath == ".")
@@ -272,24 +247,7 @@ public sealed class ScpService : IScpService, IDisposable
             return (false, $"{protocolLabel} host is not configured.");
         }
 
-        if (string.IsNullOrWhiteSpace(destination.Username))
-        {
-            return (false, $"{protocolLabel} username is not configured.");
-        }
-
-        if (destination.SshAuthenticationMode == SshAuthenticationMode.Password &&
-            string.IsNullOrWhiteSpace(destination.Password))
-        {
-            return (false, $"{protocolLabel} password is not configured.");
-        }
-
-        if (destination.SshAuthenticationMode == SshAuthenticationMode.PrivateKey &&
-            string.IsNullOrWhiteSpace(destination.PrivateKeyPath))
-        {
-            return (false, $"{protocolLabel} private key path is not configured.");
-        }
-
-        return (true, string.Empty);
+        return SshConnectionFactory.ValidateCredentials(destination, protocolLabel);
     }
 
     private BrowserSessionLease AcquireBrowserSession(DestinationSettings destination, CancellationToken cancellationToken)
@@ -311,16 +269,7 @@ public sealed class ScpService : IScpService, IDisposable
 
             DisposeCachedBrowserSessionUnsafe();
 
-            var client = CreateSshClient(destination);
-            try
-            {
-                client.ConnectAsync(cancellationToken).GetAwaiter().GetResult();
-            }
-            catch
-            {
-                client.Dispose();
-                throw;
-            }
+            var client = SshConnectionFactory.ConnectSshAsync(destination, cancellationToken).GetAwaiter().GetResult();
             _cachedBrowserSession = new CachedBrowserSession(connectionKey, client);
             ScheduleBrowserSessionExpiry();
             return new BrowserSessionLease(client);
@@ -437,11 +386,6 @@ public sealed class ScpService : IScpService, IDisposable
         }
 
         return (true, command.Result.Trim(), string.Empty);
-    }
-
-    private static SshClient CreateSshClient(DestinationSettings destination)
-    {
-        return new SshClient(SshConnectionFactory.CreateConnectionInfo(destination));
     }
 
     private static void UploadFile(SshClient client, Stream file, string remotePath, CancellationToken cancellationToken)
@@ -605,7 +549,7 @@ public sealed class ScpService : IScpService, IDisposable
     }
 
     private static string BuildConnectionKey(DestinationSettings destination) =>
-        $"{destination.Host}\n{destination.Port}\n{destination.Username}\n{destination.SshAuthenticationMode}\n{destination.Password}\n{destination.PrivateKeyPath}\n{destination.PrivateKeyPassphrase}";
+        $"{destination.Host}\n{destination.Port}\n{destination.Username}\n{destination.SshAuthenticationMode}\n{destination.Password}\n{destination.PrivateKeyPath}\n{destination.PrivateKeyPassphrase}\n{SshConnectionFactory.GetRequiredFingerprint(destination)}";
 
     private static string DescribeRemotePath(string path) =>
         string.IsNullOrWhiteSpace(path) || path == "." ? "/" : path;

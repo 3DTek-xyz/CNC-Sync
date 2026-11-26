@@ -55,6 +55,13 @@ public sealed class AppSettingsValidator
                 result.Errors.Add($"{label} remote base path must use a slash-style server path.");
             }
 
+            if (destination.Type is DestinationType.Sftp or DestinationType.Scp &&
+                destination.RequireSshHostKeyFingerprint &&
+                SshHostFingerprint.Normalize(destination.SshHostKeyFingerprint) is null)
+            {
+                result.Warnings.Add($"{label} needs a verified SHA256 SSH server fingerprint before it can connect.");
+            }
+
             if (destination.Type == DestinationType.Ftp &&
                 !destination.UseAnonymousFtp &&
                 string.IsNullOrWhiteSpace(destination.Username))

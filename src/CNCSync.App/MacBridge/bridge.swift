@@ -3,6 +3,7 @@ import ServiceManagement
 
 private var lastErrorMessage = ""
 
+@available(macOS 13.0, *)
 private func statusCode(_ status: SMAppService.Status) -> Int32 {
     switch status {
     case .notRegistered, .notFound:

@@ -43,6 +43,26 @@ Settings are saved automatically as you change them.
 Imported settings replace the current profile configuration.
 Passwords and SSH key passphrases are stored in the local OS secret store, so after moving a settings file between machines you may need to re-enter those secrets on the new machine.
 
+## Print Sharing
+
+Use **Print Sharing** on a computer that has the printers you want to share. Nesting discovers the selected queues through ProCut Suite and sends print requests directly to the station on the workshop LAN.
+
+1. Install the printer and set its driver to the correct stock. On Windows, select the installed SumatraPDF executable. On macOS and Linux, use a CUPS queue.
+2. Save the ProCut Suite API key in **App Settings**. In **Print Sharing**, refresh and select the workshop. Enter a station name and select the network adapter connected to the workshop if the app shows more than one option.
+3. Under **HTTPS certificate**, choose **Automatic public certificate**. ProCut Suite assigns a station address and renews its browser-trusted certificate automatically. Printing devices can use that address without installing a trust certificate.
+4. Tick the installed printers you want to share. Use the connection type and system-reported location to tell similar printers apart. Enter a display name if you want a different name to appear in ProCut Suite. If you have just installed a printer, select **Refresh Printers**. Enable sharing and select **Save and Apply**. Allow inbound TCP on port 8443 from the private workshop subnet in the station's firewall.
+5. Keep the station running. In Nesting, choose a shared printer. If the browser asks for local network access, allow it for the ProCut Suite site. **Queued** means the OS accepted the job. Check the first print for stock and sizing.
+
+If your workshop network blocks the automatic station address, choose **Local certificate with manual trust** and select **Export Trust Certificate…**. Transfer the certificate directly from the station and compare its SHA-256 fingerprint with the one shown in PCS Sync before trusting it. Install it on each device that prints from this station.
+
+With manual trust, PCS Sync issues a new server certificate under the same station CA when the LAN IP changes. The issuing key stays in protected storage and is restricted to private IPv4 addresses. The station needs a new CA after five years.
+
+On macOS, import the `.cer` file in Keychain Access and set its SSL trust to **Always Trust**. On Windows, open the `.cer` file, select **Install Certificate**, then choose **Current User** and **Trusted Root Certification Authorities** when prompted for the location. Managed computers may require an administrator to install the certificate.
+
+For a manually managed certificate, choose **Use a custom HTTPS certificate** in **Print Sharing**. Supply the station's HTTPS address and matching PEM certificate and private key. Keep the hostname pointed at the station's LAN address. Client computers must trust the certificate chain.
+
+For a local ProCut Suite development session, turn on **Use the local ProCut Suite API (development)** before refreshing workshops. Enter an API key created on the development site. PCS Sync uses the Vite API proxy on this computer at port 5173 and saves the verified development key separately in protected storage. Asterisks in the field indicate a saved key. Type a new key to replace it. To accept print requests from the local site, also allow **the local ProCut Suite website (localhost:5173)**.
+
 ## Destinations
 
 A destination defines one reusable delivery target:
@@ -71,6 +91,10 @@ SSH destination authentication:
   - standard username/password sign-in
 - `Private Key`
   - key file path plus optional key passphrase
+
+**Require SSH server fingerprint** is optional and defaults to off for new and existing SFTP and SCP destinations. Plain FTP continues to use its existing settings.
+
+To enable the check, turn on **Require SSH server fingerprint** and select **Test This Destination** with **SSH server fingerprint** blank. The test shows the server's SHA-256 fingerprint before signing in. Confirm it with your server administrator, enter it, save, and test again. When the check is on, connections require a matching fingerprint. Confirm any fingerprint change with your server administrator before replacing the saved value.
 
 Network Share notes:
 

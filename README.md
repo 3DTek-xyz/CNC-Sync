@@ -31,10 +31,9 @@ The current app is built around reusable destinations, processing setups, and wa
 - start at login desktop behavior instead of a service-style deployment
 - clean separation between UI, core logic, and infrastructure
 
-## Support and Telemetry
+## Support
 
-- The app shows an in-product notice that anonymised usage telemetry is collected for product improvements and support planning.
-- The Help / About area can send sanitised recent logs and settings snippets to PostHog when a user explicitly chooses `Send Error Logs for Support`.
+- Choose `Open App Data Folder` in Help / About to find local Activity and diagnostic logs.
 - Project-specific scripts can be offered as paid help.
 - App bugs or improvements that could benefit everyone should be logged as GitHub issues for consideration.
 

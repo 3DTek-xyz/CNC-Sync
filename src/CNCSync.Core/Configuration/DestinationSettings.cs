@@ -13,6 +13,8 @@ public sealed class DestinationSettings
     public string Username { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
     public SshAuthenticationMode SshAuthenticationMode { get; set; } = SshAuthenticationMode.Password;
+    public bool RequireSshHostKeyFingerprint { get; set; }
+    public string SshHostKeyFingerprint { get; set; } = string.Empty;
     public string PrivateKeyPath { get; set; } = string.Empty;
     public string PrivateKeyPassphrase { get; set; } = string.Empty;
     public string LocalRootPath { get; set; } = string.Empty;

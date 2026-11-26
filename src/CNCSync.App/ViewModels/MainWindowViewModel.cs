@@ -10,6 +10,7 @@ using CNCSync.Core.Processing;
 using CNCSync.Core.Services;
 using CNCSync.App.Services;
 using CNCSync.Infrastructure.Logging;
+using CNCSync.Infrastructure.DesktopPrinting;
 using CNCSync.Infrastructure.ProCutApi;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -18,6 +19,7 @@ namespace CNCSync.App.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
+    private const int MaxActivityItems = 500;
     private static readonly string ResolvedAppVersion = ResolveAppVersion();
     private readonly IAppSettingsStore _settingsStore;
     private readonly AppSettingsValidator _validator;
@@ -28,21 +30,18 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IScriptBundleImportService _scriptBundleImportService;
     private readonly IVpnService _vpnService;
     private readonly IThemePreferenceService _themePreferenceService;
-    private readonly IUsageTelemetryService _usageTelemetryService;
+    private readonly DesktopPrintStation? _printStation;
+    public DesktopPrintStationViewModel? PrintStation { get; }
     private readonly ProCutApiSchemaClient _proCutApiSchemaClient = new();
     private readonly SemaphoreSlim _saveLock = new(1, 1);
-    private readonly Lock _activityLogFileLock = new();
+    private readonly ActivityFileLog _activityFileLog;
+    private int _activityFileWarningShown;
     private readonly DispatcherTimer _scheduledCatchUpTimer = new();
     private CancellationTokenSource? _autoSaveCts;
     private bool _restartMonitoringAfterSave;
     private bool _isApplyingSettings;
     private string? _proCutApiKeyOrigin;
     private bool _scheduledCatchUpInProgress;
-    private string _telemetryInstallId = Guid.NewGuid().ToString("N");
-    private DateTime? _telemetryInstallReportedAtUtc;
-    private string _telemetryLastSeenVersion = string.Empty;
-    private DateTime? _telemetryLastSeenAtUtc;
-    private DateTime? _telemetryLastHeartbeatAtUtc;
 
     private static ProCutApiServiceOption CreateDefaultProCutGcodeServiceOption() =>
         new()
@@ -108,9 +107,6 @@ public partial class MainWindowViewModel : ViewModelBase
     private AppThemePreference themePreference = AppThemePreference.Light;
 
     [ObservableProperty]
-    private string telemetryNotice = string.Empty;
-
-    [ObservableProperty]
     private bool scheduledCatchUpEnabled;
 
     [ObservableProperty]
@@ -153,9 +149,6 @@ public partial class MainWindowViewModel : ViewModelBase
     private string processingSetupImportStatus = "Paste a script source URL and click Check / Import.";
 
     [ObservableProperty]
-    private string supportDiagnosticsStatus = "No support logs have been sent yet.";
-
-    [ObservableProperty]
     private WatchProfileItemViewModel? selectedWatchProfile;
 
     [ObservableProperty]
@@ -189,8 +182,8 @@ public partial class MainWindowViewModel : ViewModelBase
         IScriptBundleImportService scriptBundleImportService,
         IVpnService vpnService,
         IThemePreferenceService themePreferenceService,
-        IUsageTelemetryService usageTelemetryService,
-        AppSettings initialSettings)
+        AppSettings initialSettings,
+        DesktopPrintStation? printStation = null)
     {
         _settingsStore = settingsStore;
         _validator = validator;
@@ -201,7 +194,8 @@ public partial class MainWindowViewModel : ViewModelBase
         _scriptBundleImportService = scriptBundleImportService;
         _vpnService = vpnService;
         _themePreferenceService = themePreferenceService;
-        _usageTelemetryService = usageTelemetryService;
+        _printStation = printStation;
+        PrintStation = printStation is null ? null : new DesktopPrintStationViewModel(printStation);
         _scheduledCatchUpTimer.Tick += OnScheduledCatchUpTimerTick;
         PropertyChanged += OnViewModelPropertyChanged;
         WatchProfiles.CollectionChanged += OnWatchProfilesCollectionChanged;
@@ -210,18 +204,22 @@ public partial class MainWindowViewModel : ViewModelBase
 
         SettingsPath = _settingsStore.SettingsFilePath;
         ActivityLogPath = Path.Combine(Path.GetDirectoryName(SettingsPath) ?? AppContext.BaseDirectory, "activity.log");
+        _activityFileLog = new ActivityFileLog(ActivityLogPath);
         ScriptsPath = _settingsStore.ScriptsDirectoryPath;
         UpdateStatus = _updateService.IsSupported
             ? "Update checks are available for installed packaged releases from the public ProCut Suite Desktop update feed."
             : "Automatic updates are only available on supported packaged desktop builds.";
         Apply(initialSettings);
-        TelemetryNotice = _usageTelemetryService.NoticeText;
         _ = SyncLaunchAtLoginStateAsync();
         ValidationSummary = "Run validation to check saved settings.";
 
         _syncCoordinator.ActivityLogged += OnActivityLogged;
         _syncCoordinator.StatusChanged += OnStatusChanged;
         _syncCoordinator.ProcessingCompleted += OnProcessingCompleted;
+        if (printStation is not null)
+        {
+            printStation.ActivityLogged += OnPrintActivityLogged;
+        }
 
         AddActivity("App shell created.");
         AddActivity("Initial settings loaded.");
@@ -244,7 +242,6 @@ public partial class MainWindowViewModel : ViewModelBase
             new DesignScriptBundleImportService(),
             new DesignVpnService(),
             new DesignThemePreferenceService(),
-            new NullUsageTelemetryService(),
             AppSettings.CreateDefault())
     {
     }
@@ -843,36 +840,6 @@ public partial class MainWindowViewModel : ViewModelBase
         await RunUpdateCheckAsync(silentIfCurrent: false);
     }
 
-    [RelayCommand]
-    private async Task SendSupportDiagnosticsAsync()
-    {
-        try
-        {
-            SupportDiagnosticsStatus = "Sending support logs...";
-            CurrentTask = SupportDiagnosticsStatus;
-            var settings = ToSettings();
-            var activityTail = ReadLogTail(ActivityLogPath, 200);
-            var diagnosticsPath = Path.Combine(Path.GetDirectoryName(SettingsPath) ?? AppContext.BaseDirectory, "diagnostics.log");
-            var diagnosticsTail = ReadLogTail(diagnosticsPath, 200);
-
-            var submitted = await Task.Run(() => _usageTelemetryService.SendSupportDiagnostics(settings, activityTail, diagnosticsTail));
-            var message = submitted
-                ? "Support logs sent successfully."
-                : "Support logs failed to send.";
-
-            SupportDiagnosticsStatus = message;
-            AddActivity(message);
-            CurrentTask = message;
-        }
-        catch (Exception ex)
-        {
-            var message = $"Support logs failed to send: {ex.Message}";
-            SupportDiagnosticsStatus = message;
-            AddActivity(message);
-            CurrentTask = message;
-        }
-    }
-
     [RelayCommand(CanExecute = nameof(CanApplyUpdate))]
     private async Task DownloadAndRestartUpdateAsync()
     {
@@ -883,10 +850,6 @@ public partial class MainWindowViewModel : ViewModelBase
             UpdateStatus = result.Message;
             AddActivity(result.Message);
             CurrentTask = result.Message;
-            if (result.Success)
-            {
-                _usageTelemetryService.CaptureUpdateApplyRequested();
-            }
             OnPropertyChanged(nameof(CanApplyUpdate));
             DownloadAndRestartUpdateCommand.NotifyCanExecuteChanged();
         }
@@ -923,14 +886,12 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         await _syncCoordinator.StartAsync(settings);
-        _usageTelemetryService.CaptureMonitoringStarted(settings);
     }
 
     [RelayCommand(CanExecute = nameof(CanStopMonitoring))]
     private async Task StopMonitoringAsync()
     {
         await _syncCoordinator.StopAsync();
-        _usageTelemetryService.CaptureMonitoringStopped();
     }
 
     [RelayCommand]
@@ -1100,7 +1061,6 @@ public partial class MainWindowViewModel : ViewModelBase
             ToSettings().ProCutApi);
         LastProcessingSummary = result.Message;
         CurrentTask = result.Message;
-        _usageTelemetryService.CaptureManualCatchUpCompleted(result.Success, result.Message);
 
         if (result.Success &&
             SelectedDestination is not null &&
@@ -1159,11 +1119,6 @@ public partial class MainWindowViewModel : ViewModelBase
         LaunchAtLogin = settings.LaunchAtLogin;
         StartMinimized = settings.StartMinimized;
         ThemePreference = settings.ThemePreference;
-        _telemetryInstallId = settings.TelemetryInstallId;
-        _telemetryInstallReportedAtUtc = settings.TelemetryInstallReportedAtUtc;
-        _telemetryLastSeenVersion = settings.TelemetryLastSeenVersion;
-        _telemetryLastSeenAtUtc = settings.TelemetryLastSeenAtUtc;
-        _telemetryLastHeartbeatAtUtc = settings.TelemetryLastHeartbeatAtUtc;
         ScheduledCatchUpEnabled = settings.ScheduledCatchUpEnabled;
         ScheduledCatchUpIntervalMinutes = settings.ScheduledCatchUpIntervalMinutes;
         CustomScriptSourceUrl = settings.CustomScriptSourceUrl;
@@ -1173,8 +1128,6 @@ public partial class MainWindowViewModel : ViewModelBase
             ? uri.GetLeftPart(UriPartial.Authority)
             : null;
         ProCutApiKey = _proCutApiKeyOrigin is null ? string.Empty : settings.ProCutApi.ApiKey;
-        _usageTelemetryService.ApplySettings(settings);
-        TelemetryNotice = _usageTelemetryService.NoticeText;
 
         Destinations.Clear();
         foreach (var destination in settings.Destinations)
@@ -1212,11 +1165,6 @@ public partial class MainWindowViewModel : ViewModelBase
             LaunchAtLogin = LaunchAtLogin,
             StartMinimized = StartMinimized,
             ThemePreference = ThemePreference,
-            TelemetryInstallId = _telemetryInstallId,
-            TelemetryInstallReportedAtUtc = _telemetryInstallReportedAtUtc,
-            TelemetryLastSeenVersion = _telemetryLastSeenVersion,
-            TelemetryLastSeenAtUtc = _telemetryLastSeenAtUtc,
-            TelemetryLastHeartbeatAtUtc = _telemetryLastHeartbeatAtUtc,
             ScheduledCatchUpEnabled = ScheduledCatchUpEnabled,
             ScheduledCatchUpIntervalMinutes = ScheduledCatchUpIntervalMinutes,
             CustomScriptSourceUrl = CustomScriptSourceUrl,
@@ -1251,13 +1199,21 @@ public partial class MainWindowViewModel : ViewModelBase
         });
     }
 
+    private void OnPrintActivityLogged(string message)
+    {
+        var entry = new ActivityLogEntry
+        {
+            TimestampLocal = DateTime.Now,
+            Source = "Print Sharing",
+            Message = message
+        };
+        AppendActivityToFile(entry);
+        Dispatcher.UIThread.Post(() => AddActivityEntry(entry, appendToFile: false));
+    }
+
     private void OnProcessingCompleted(ProcessingResult result)
     {
-        Dispatcher.UIThread.Post(() =>
-        {
-            UpdateProcessingSummary(result);
-            _usageTelemetryService.CaptureProcessingCompleted(result);
-        });
+        Dispatcher.UIThread.Post(() => UpdateProcessingSummary(result));
     }
 
     private void UpdateProcessingSummary(ProcessingResult result)
@@ -1293,15 +1249,16 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         ActivityItems.Insert(0, entry);
+        if (ActivityItems.Count > MaxActivityItems)
+        {
+            ActivityItems.RemoveAt(ActivityItems.Count - 1);
+        }
+
         ActivityLogText = string.Join(
             Environment.NewLine,
             ActivityItems
                 .OrderByDescending(item => item.TimestampLocal)
-                .Select(item =>
-                {
-                    var sourcePrefix = string.IsNullOrWhiteSpace(item.Source) ? string.Empty : $" [{item.Source}]";
-                    return $"{item.TimestampLocal:yyyy-MM-dd HH:mm:ss.fff}{sourcePrefix} {item.Message}";
-                }));
+                .Select(FormatActivityEntry));
 
         if (appendToFile)
         {
@@ -1311,37 +1268,21 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void AppendActivityToFile(ActivityLogEntry entry)
     {
-        try
+        if (!_activityFileLog.TryAppend(FormatActivityEntry(entry) + Environment.NewLine) &&
+            Interlocked.Exchange(ref _activityFileWarningShown, 1) == 0)
         {
-            var directory = Path.GetDirectoryName(ActivityLogPath);
-            if (!string.IsNullOrWhiteSpace(directory))
+            Dispatcher.UIThread.Post(() => AddActivityEntry(new ActivityLogEntry
             {
-                Directory.CreateDirectory(directory);
-            }
-
-            var sourcePrefix = string.IsNullOrWhiteSpace(entry.Source) ? string.Empty : $" [{entry.Source}]";
-            var line = $"{entry.TimestampLocal:yyyy-MM-dd HH:mm:ss.fff}{sourcePrefix} {entry.Message}{Environment.NewLine}";
-
-            lock (_activityLogFileLock)
-            {
-                File.AppendAllText(ActivityLogPath, line);
-            }
-        }
-        catch
-        {
-            // Keep activity logging non-fatal during monitoring and UI updates.
+                TimestampLocal = DateTime.Now,
+                Message = "Could not save Activity to disk. Check free space and access to the app settings folder."
+            }, appendToFile: false));
         }
     }
 
-    private static string ReadLogTail(string path, int maxLines)
+    private static string FormatActivityEntry(ActivityLogEntry entry)
     {
-        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
-        {
-            return string.Empty;
-        }
-
-        var lines = File.ReadLines(path).TakeLast(Math.Max(1, maxLines));
-        return string.Join(Environment.NewLine, lines);
+        var sourcePrefix = string.IsNullOrWhiteSpace(entry.Source) ? string.Empty : $" [{entry.Source}]";
+        return $"{entry.TimestampLocal:yyyy-MM-dd HH:mm:ss.fff}{sourcePrefix} {entry.Message}";
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -1806,8 +1747,12 @@ public partial class MainWindowViewModel : ViewModelBase
             var settings = ToSettings();
             await _settingsStore.SaveAsync(settings);
             _syncCoordinator.UpdateProCutApiSettings(settings.ProCutApi);
+            if (_printStation is not null)
+            {
+                await _printStation.UpdateApiSettingsAsync(settings.ProCutApi);
+            }
+
             await _loginStartupService.ApplyAsync(settings.LaunchAtLogin);
-            _usageTelemetryService.ApplySettings(settings);
 
             if (_restartMonitoringAfterSave &&
                 string.Equals(MonitoringStatus, "Running", StringComparison.OrdinalIgnoreCase))
@@ -1963,11 +1908,6 @@ public partial class MainWindowViewModel : ViewModelBase
             if (!silentIfCurrent || result.UpdateAvailable || !result.Success)
             {
                 AddActivity(result.Message);
-            }
-
-            if (result.UpdateAvailable)
-            {
-                _usageTelemetryService.CaptureUpdateAvailable();
             }
 
             OnPropertyChanged(nameof(CanApplyUpdate));
